@@ -1,0 +1,79 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 210 40% 98%;
+  --foreground: 210 30% 15%;
+  --card: 0 0% 100%;
+  --card-foreground: 210 30% 15%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 210 30% 15%;
+  --primary: 188 71% 39%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 200 30% 96%;
+  --secondary-foreground: 210 30% 20%;
+  --muted: 200 24% 92%;
+  --muted-foreground: 210 10% 40%;
+  --accent: 188 71% 39%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 200 14% 90%;
+  --input: 200 14% 90%;
+  --ring: 188 71% 39%;
+  --radius: 0.75rem;
+  --education-blue: 204 90% 45%;
+  --education-green: 155 60% 40%;
+  --shadow-card: 0 8px 22px rgba(16, 37, 66, 0.08);
+  --shadow-hover: 0 10px 28px rgba(16, 37, 66, 0.12);
+}
+
+body {
+  @apply bg-slate-50 text-gray-900 antialiased;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+* {
+  scroll-behavior: smooth;
+}
+
+.container-balanced {
+  @apply max-w-6xl mx-auto px-4 sm:px-6 lg:px-8;
+}
+
+.card-surface {
+  @apply bg-white shadow-sm rounded-2xl border border-slate-100;
+}
+
+.primary-btn {
+  @apply inline-flex items-center justify-center rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-emerald-700 transition-colors duration-200;
+}
+
+.secondary-btn {
+  @apply inline-flex items-center justify-center rounded-xl border border-emerald-100 bg-white px-4 py-2 text-sm font-semibold text-emerald-700 hover:border-emerald-200 hover:bg-emerald-50 transition-colors duration-200;
+}
+
+.badge-soft {
+  @apply inline-flex items-center rounded-full bg-emerald-50 text-emerald-700 px-3 py-1 text-xs font-semibold;
+}
+
+input, select, textarea {
+  @apply rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 transition;
+}
+
+.tab-btn {
+  @apply px-3 sm:px-4 py-2 text-sm font-semibold rounded-xl transition-colors duration-200;
+}
+
+.tab-btn.active {
+  @apply bg-emerald-50 text-emerald-700 shadow-inner;
+}
+
+.section-title {
+  @apply text-lg sm:text-xl font-semibold text-slate-900;
+}
+
+.helper-text {
+  @apply text-sm text-slate-500;
+}

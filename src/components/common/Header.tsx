@@ -1,49 +1,130 @@
-import React, { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
-import routes from "../../routes";
+import React from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { Languages, Menu, X } from 'lucide-react';
+import { useLanguage } from '../../context/LanguageContext';
+
+const navLinks = [
+  { path: '/', label: 'Accueil' },
+  { path: '/posts', label: 'Posts' },
+  { path: '/messages', label: 'Messages' },
+  { path: '/notifications', label: 'Notifications' },
+  { path: '/profile', label: 'Profil' },
+];
 
 const Header: React.FC = () => {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
-  const navigation = routes.filter((route) => route.visible !== false);
+  const { language, setLanguage } = useLanguage();
+  const [open, setOpen] = React.useState(false);
+
+  const switchLanguage = (lang: 'ar' | 'fr') => {
+    setLanguage(lang);
+    setOpen(false);
+  };
 
   return (
-    <header className="bg-white shadow-md sticky top-0 z-10">
-      <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
-          <div className="flex items-center">
-            <Link to="/" className="flex-shrink-0 flex items-center">
-              {/* Please replace with your website logo */}
-              <img
-                className="h-8 w-auto"
-                src={`https://miaoda-site-img.cdn.bcebos.com/placeholder/code_logo_default.png`}
-                alt="Website logo"
-              />
-              {/* Please replace with your website name */}
-              <span className="ml-2 text-xl font-bold text-blue-600">
-                Website Name
-              </span>
-            </Link>
+    <header className="bg-white shadow-sm border-b border-slate-100 sticky top-0 z-20">
+      <div className="container-balanced flex items-center justify-between gap-4 py-3">
+        <Link to="/" className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 font-black">
+            M
           </div>
+          <div className="leading-tight">
+            <p className="text-lg font-extrabold text-slate-900">Multaqa</p>
+            <p className="text-xs text-slate-500">Find your ideal study partner</p>
+          </div>
+        </Link>
 
-          {/* When there's only one page, you can remove the entire navigation section */}
-          <div className="hidden md:flex items-center space-x-8">
-            {navigation.map((item) => (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={`px-3 py-2 text-base font-medium rounded-md ${
-                  location.pathname === item.path
-                    ? "text-blue-600 bg-blue-50"
-                    : "text-gray-700 hover:text-blue-600 hover:bg-gray-50"
-                } transition duration-300`}
+        <div className="hidden md:flex items-center gap-3">
+          {navLinks.map((link) => (
+            <Link
+              key={link.path}
+              to={link.path}
+              className={`px-4 py-2 text-sm font-semibold rounded-xl transition-colors duration-200 ${
+                location.pathname === link.path
+                  ? 'bg-emerald-50 text-emerald-700'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+              }`}
+            >
+              {link.label}
+            </Link>
+          ))}
+        </div>
+
+        <div className="flex items-center gap-3">
+          <div className="hidden sm:flex items-center rounded-full border border-slate-200 bg-slate-50 px-1 py-1 text-xs font-semibold text-slate-700">
+            <button
+              type="button"
+              onClick={() => switchLanguage('ar')}
+              className={`px-3 py-1 rounded-full flex items-center gap-1 transition ${
+                language === 'ar' ? 'bg-white shadow-sm text-emerald-700' : ''
+              }`}
+            >
+              <Languages size={14} /> العربية
+            </button>
+            <button
+              type="button"
+              onClick={() => switchLanguage('fr')}
+              className={`px-3 py-1 rounded-full transition ${
+                language === 'fr' ? 'bg-white shadow-sm text-emerald-700' : ''
+              }`}
+            >
+              Français
+            </button>
+          </div>
+          <button
+            type="button"
+            onClick={() => setOpen((prev) => !prev)}
+            className="md:hidden p-2 rounded-lg border border-slate-200 text-slate-700"
+            aria-label="Menu"
+          >
+            {open ? <X size={18} /> : <Menu size={18} />}
+          </button>
+        </div>
+      </div>
+
+      {open && (
+        <div className="md:hidden border-t border-slate-100 bg-white shadow-inner">
+          <div className="container-balanced py-3 space-y-2">
+            <div className="flex items-center gap-2 text-sm font-semibold text-slate-600">
+              <Languages size={16} />
+              <button
+                type="button"
+                onClick={() => switchLanguage('ar')}
+                className={`px-3 py-1 rounded-full ${
+                  language === 'ar' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100'
+                }`}
               >
-                {item.name}
-              </Link>
-            ))}
+                العربية
+              </button>
+              <button
+                type="button"
+                onClick={() => switchLanguage('fr')}
+                className={`px-3 py-1 rounded-full ${
+                  language === 'fr' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100'
+                }`}
+              >
+                Français
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {navLinks.map((link) => (
+                <Link
+                  key={link.path}
+                  to={link.path}
+                  onClick={() => setOpen(false)}
+                  className={`px-3 py-2 rounded-xl text-sm font-semibold border transition ${
+                    location.pathname === link.path
+                      ? 'border-emerald-100 bg-emerald-50 text-emerald-700'
+                      : 'border-slate-100 bg-slate-50 text-slate-700'
+                  }`}
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </div>
           </div>
         </div>
-      </nav>
+      )}
     </header>
   );
 };

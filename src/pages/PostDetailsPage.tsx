@@ -1,0 +1,81 @@
+import React from 'react';
+import { Link, useParams } from 'react-router-dom';
+import { Calendar, Globe, MessageCircle, Users } from 'lucide-react';
+
+const mockPost = {
+  id: '1',
+  title: 'Groupe de révision IA',
+  type: 'Study group',
+  subject: 'Intelligence Artificielle',
+  level: 'Master 1',
+  author: 'Sara Benali',
+  faculty: 'Informatique',
+  description: 'Nous préparons ensemble les examens IA : fiches collaboratives, exercices corrigés et sessions live chaque weekend.',
+  language: 'Français',
+  availability: 'Soir 19h-21h, Weekend',
+  skills: ['Python', 'Machine Learning', 'Réseaux de neurones'],
+};
+
+const PostDetailsPage: React.FC = () => {
+  const { id } = useParams();
+  const post = mockPost;
+
+  return (
+    <div className="card-surface p-5 space-y-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="space-y-2">
+          <p className="badge-soft inline-flex">{post.type}</p>
+          <h1 className="text-2xl font-bold text-slate-900">{post.title}</h1>
+          <p className="text-slate-600">{post.subject} · {post.level}</p>
+          <p className="text-slate-700 leading-relaxed">{post.description}</p>
+          <div className="flex flex-wrap gap-2 text-sm text-slate-600">
+            <span className="badge-soft bg-blue-50 text-blue-700">{post.faculty}</span>
+            <span className="badge-soft bg-emerald-50 text-emerald-700">{post.language}</span>
+            <span className="badge-soft bg-amber-50 text-amber-700">{post.availability}</span>
+          </div>
+        </div>
+        <div className="text-right text-sm text-slate-500">
+          <p className="font-semibold text-slate-800">{post.author}</p>
+          <p>ID annonce: {id}</p>
+        </div>
+      </div>
+
+      <div className="grid md:grid-cols-3 gap-3">
+        <div className="card-surface p-4">
+          <h3 className="font-semibold text-slate-900 mb-2">Compétences recherchées</h3>
+          <div className="flex flex-wrap gap-2">
+            {post.skills.map((skill) => (
+              <span key={skill} className="badge-soft">{skill}</span>
+            ))}
+          </div>
+        </div>
+        <div className="card-surface p-4">
+          <h3 className="font-semibold text-slate-900 mb-2">Disponibilité</h3>
+          <div className="flex items-center gap-2 text-slate-600">
+            <Calendar size={16} />
+            <span>{post.availability}</span>
+          </div>
+        </div>
+        <div className="card-surface p-4">
+          <h3 className="font-semibold text-slate-900 mb-2">Langue</h3>
+          <div className="flex items-center gap-2 text-slate-600">
+            <Globe size={16} />
+            <span>{post.language}</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-3">
+        <button className="primary-btn">
+          <Users size={16} className="me-1" /> Demander à rejoindre
+        </button>
+        <button className="secondary-btn">
+          <MessageCircle size={16} className="me-1" /> Contacter
+        </button>
+        <Link to="/posts" className="secondary-btn">Retour au fil</Link>
+      </div>
+    </div>
+  );
+};
+
+export default PostDetailsPage;
