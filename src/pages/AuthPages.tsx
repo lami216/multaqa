@@ -18,14 +18,14 @@ export const AuthLayout: React.FC<{ title: string; children: React.ReactNode; su
 export const LoginPage: React.FC = () => (
   <AuthLayout title="Connexion" subtitle="Rejoignez vos partenaires de travail en quelques secondes">
     <form className="space-y-3">
-      <div className="text-left">
+      <div className="text-start">
         <label className="text-sm font-semibold text-slate-700">Email</label>
         <div className="mt-1 flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3">
           <Mail size={16} className="text-slate-400" />
           <input className="flex-1 border-none focus:ring-0" placeholder="email@exemple.com" type="email" />
         </div>
       </div>
-      <div className="text-left">
+      <div className="text-start">
         <label className="text-sm font-semibold text-slate-700">Mot de passe</label>
         <div className="mt-1 flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3">
           <Lock size={16} className="text-slate-400" />
@@ -44,18 +44,18 @@ export const LoginPage: React.FC = () => (
 export const RegisterPage: React.FC = () => (
   <AuthLayout title="Créer un compte" subtitle="Organisez vos études avec Multaqa">
     <form className="space-y-3">
-      <div className="text-left">
+      <div className="text-start">
         <label className="text-sm font-semibold text-slate-700">Nom complet</label>
         <div className="mt-1 flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3">
           <UserPlus size={16} className="text-slate-400" />
           <input className="flex-1 border-none focus:ring-0" placeholder="Votre nom" />
         </div>
       </div>
-      <div className="text-left">
+      <div className="text-start">
         <label className="text-sm font-semibold text-slate-700">Email</label>
         <input className="w-full mt-1" placeholder="email@exemple.com" type="email" />
       </div>
-      <div className="text-left">
+      <div className="text-start">
         <label className="text-sm font-semibold text-slate-700">Mot de passe</label>
         <input className="w-full mt-1" placeholder="********" type="password" />
       </div>
@@ -70,7 +70,7 @@ export const RegisterPage: React.FC = () => (
 export const ForgotPasswordPage: React.FC = () => (
   <AuthLayout title="Mot de passe oublié" subtitle="Recevez un lien pour réinitialiser votre mot de passe">
     <form className="space-y-3">
-      <div className="text-left">
+      <div className="text-start">
         <label className="text-sm font-semibold text-slate-700">Email</label>
         <input className="w-full mt-1" placeholder="email@exemple.com" type="email" />
       </div>
@@ -83,11 +83,11 @@ export const ForgotPasswordPage: React.FC = () => (
 export const ResetPasswordPage: React.FC = () => (
   <AuthLayout title="Réinitialiser le mot de passe" subtitle="Choisissez un nouveau mot de passe sécurisé">
     <form className="space-y-3">
-      <div className="text-left">
+      <div className="text-start">
         <label className="text-sm font-semibold text-slate-700">Nouveau mot de passe</label>
         <input className="w-full mt-1" type="password" placeholder="********" />
       </div>
-      <div className="text-left">
+      <div className="text-start">
         <label className="text-sm font-semibold text-slate-700">Confirmer le mot de passe</label>
         <input className="w-full mt-1" type="password" placeholder="********" />
       </div>

@@ -2,6 +2,21 @@ import React, { createContext, useContext, useEffect, useMemo, useState } from '
 
 type Language = 'ar' | 'fr';
 
+const STORAGE_KEY = 'multaqa-language';
+
+const applyLanguageSettings = (language: Language) => {
+  if (typeof document === 'undefined') return;
+
+  const dir = language === 'ar' ? 'rtl' : 'ltr';
+  const html = document.documentElement;
+
+  html.dir = dir;
+  html.lang = language;
+  document.body.classList.toggle('font-[Tajawal]', language === 'ar');
+  document.body.classList.toggle('rtl-mode', language === 'ar');
+  localStorage.setItem(STORAGE_KEY, language);
+};
+
 interface LanguageContextValue {
   language: Language;
   setLanguage: (lang: Language) => void;
@@ -10,13 +25,16 @@ interface LanguageContextValue {
 const LanguageContext = createContext<LanguageContextValue | undefined>(undefined);
 
 export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [language, setLanguage] = useState<Language>('ar');
+  const [language, setLanguage] = useState<Language>(() => {
+    const stored = typeof localStorage !== 'undefined' ? localStorage.getItem(STORAGE_KEY) : null;
+    const initial = stored === 'fr' ? 'fr' : 'ar';
+
+    applyLanguageSettings(initial);
+    return initial;
+  });
 
   useEffect(() => {
-    const dir = language === 'ar' ? 'rtl' : 'ltr';
-    document.documentElement.dir = dir;
-    document.documentElement.lang = language;
-    document.body.classList.toggle('font-[Tajawal]', language === 'ar');
+    applyLanguageSettings(language);
   }, [language]);
 
   const value = useMemo(() => ({ language, setLanguage }), [language]);
