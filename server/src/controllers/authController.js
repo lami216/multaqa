@@ -4,6 +4,17 @@ import User from '../models/User.js';
 import Profile from '../models/Profile.js';
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../utils/jwt.js';
 
+const isProduction = process.env.NODE_ENV === 'production';
+const cookieSecure = process.env.COOKIE_SECURE === 'true' || isProduction;
+const cookieSameSite = isProduction ? 'none' : 'lax';
+const refreshCookieOptions = {
+  httpOnly: true,
+  secure: cookieSecure,
+  sameSite: cookieSameSite,
+  path: '/',
+  maxAge: 7 * 24 * 60 * 60 * 1000
+};
+
 export const register = async (req, res) => {
   try {
     const { email, password, username } = req.body;
@@ -32,12 +43,7 @@ export const register = async (req, res) => {
     user.refreshToken = refreshToken;
     await user.save();
 
-    res.cookie('refreshToken', refreshToken, {
-      httpOnly: true,
-      secure: process.env.COOKIE_SECURE === 'true',
-      sameSite: 'strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000
-    });
+    res.cookie('refreshToken', refreshToken, refreshCookieOptions);
 
     res.status(201).json({
       message: 'Registration successful',
@@ -79,12 +85,7 @@ export const login = async (req, res) => {
     user.refreshToken = refreshToken;
     await user.save();
 
-    res.cookie('refreshToken', refreshToken, {
-      httpOnly: true,
-      secure: process.env.COOKIE_SECURE === 'true',
-      sameSite: 'strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000
-    });
+    res.cookie('refreshToken', refreshToken, refreshCookieOptions);
 
     res.json({
       message: 'Login successful',
@@ -126,12 +127,7 @@ export const refresh = async (req, res) => {
     user.refreshToken = newRefreshToken;
     await user.save();
 
-    res.cookie('refreshToken', newRefreshToken, {
-      httpOnly: true,
-      secure: process.env.COOKIE_SECURE === 'true',
-      sameSite: 'strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000
-    });
+    res.cookie('refreshToken', newRefreshToken, refreshCookieOptions);
 
     res.json({ accessToken: newAccessToken });
   } catch (error) {
@@ -148,7 +144,12 @@ export const logout = async (req, res) => {
       await user.save();
     }
 
-    res.clearCookie('refreshToken');
+    res.clearCookie('refreshToken', {
+      httpOnly: true,
+      secure: cookieSecure,
+      sameSite: cookieSameSite,
+      path: '/'
+    });
     res.json({ message: 'Logout successful' });
   } catch (error) {
     console.error('Logout error:', error);

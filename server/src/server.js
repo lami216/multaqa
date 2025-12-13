@@ -21,12 +21,18 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+const isProduction = process.env.NODE_ENV === 'production';
+const corsOrigin = process.env.CORS_ORIGIN || 'http://localhost:5173';
+
+if (isProduction) {
+  app.set('trust proxy', 1);
+}
 
 connectDB();
 
 app.use(helmet());
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+  origin: corsOrigin,
   credentials: true
 }));
 app.use(express.json());
@@ -34,7 +40,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'Multaqa API is running' });
+  res.json({ ok: true });
 });
 
 app.get('/api/imagekit-auth', (req, res) => {
@@ -54,7 +60,7 @@ app.use('/api/chats', chatRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/admin', adminRoutes);
 
-if (process.env.NODE_ENV === 'production') {
+if (isProduction) {
   const frontendDist = path.resolve(__dirname, '../../dist');
 
   app.use(express.static(frontendDist));
