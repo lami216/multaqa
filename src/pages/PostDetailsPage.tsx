@@ -1,24 +1,41 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Calendar, Globe, MessageCircle, Users } from 'lucide-react';
-
-const mockPost = {
-  id: '1',
-  title: 'Groupe de révision IA',
-  type: 'Study group',
-  subject: 'Intelligence Artificielle',
-  level: 'Master 1',
-  author: 'Sara Benali',
-  faculty: 'Informatique',
-  description: 'Nous préparons ensemble les examens IA : fiches collaboratives, exercices corrigés et sessions live chaque weekend.',
-  language: 'Français',
-  availability: 'Soir 19h-21h, Weekend',
-  skills: ['Python', 'Machine Learning', 'Réseaux de neurones'],
-};
+import apiClient, { type StudyPost } from '../lib/apiClient';
 
 const PostDetailsPage: React.FC = () => {
   const { id } = useParams();
-  const post = mockPost;
+  const [post, setPost] = useState<StudyPost | null>(null);
+  const [notFound, setNotFound] = useState(false);
+
+  useEffect(() => {
+    if (!id) return;
+
+    apiClient.getPostById(id).then((data) => {
+      if (!data) {
+        setNotFound(true);
+        return;
+      }
+
+      setPost(data);
+    });
+  }, [id]);
+
+  if (!id || notFound) {
+    return (
+      <div className="card-surface p-5 space-y-3">
+        <h1 className="section-title">Post introuvable</h1>
+        <p className="helper-text">L'annonce demandée n'existe pas ou a été retirée.</p>
+        <Link to="/posts" className="primary-btn w-fit">
+          Retour aux posts
+        </Link>
+      </div>
+    );
+  }
+
+  if (!post) {
+    return <div className="card-surface p-5">Chargement des détails...</div>;
+  }
 
   return (
     <div className="card-surface p-5 space-y-4">

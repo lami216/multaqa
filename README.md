@@ -6,6 +6,38 @@ Miaoda Application Link URL
 
 A bilingual (Arabic/French) full-stack web platform for University of Nouakchott students to connect and find study partners, graduation project teammates, and tutoring opportunities.
 
+## 🧭 Local setup quick guide
+
+Follow these steps to spin up the project locally without digging through the entire document:
+
+1. **Environment variables**
+   - Create a `server/.env` file with your backend secrets (Mongo connection string, JWT secrets, Redis/ImageKit keys, admin seed credentials). Use the variable names listed in the **Server Environment Variables** section below.
+   - Create a root `.env` file for the frontend with at least:
+     ```env
+     VITE_API_URL=http://localhost:5000
+     VITE_IMAGEKIT_PUBLIC_KEY=your_imagekit_public_key
+     VITE_IMAGEKIT_URL_ENDPOINT=https://ik.imagekit.io/your_id
+     ```
+
+2. **Install dependencies**
+   ```bash
+   pnpm install           # install root/frontend packages
+   cd server && pnpm install  # install backend packages
+   ```
+
+3. **Run the apps**
+   ```bash
+   # backend (from /server)
+   pnpm dev
+
+   # frontend (from project root, in a second terminal)
+   pnpm dev -- --host 0.0.0.0
+   ```
+
+4. **Access the stack**
+   - Frontend: http://localhost:5173
+   - Backend API: http://localhost:5000
+
 ## 🎯 Project Overview
 
 Multaqa is a comprehensive academic collaboration platform that facilitates connections between students through:

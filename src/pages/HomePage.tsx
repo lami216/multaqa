@@ -1,7 +1,8 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { BookOpen, Plus, Search, UserRound } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
+import apiClient, { type StudentProfile } from '../lib/apiClient';
 
 const modes = [
   { key: 'review', label: 'Review partner' },
@@ -11,62 +12,20 @@ const modes = [
 
 const subjects = ['Algorithmique', 'Mathématiques', 'IA', 'Bases de données', 'Réseaux', 'Design', 'Marketing'];
 
-const students = [
-  {
-    id: 1,
-    name: 'Sara Benali',
-    faculty: 'Informatique',
-    level: 'Licence 3',
-    subjects: ['IA', 'Algorithmique'],
-    partnerType: 'Review partner',
-    mode: 'review',
-    match: 94,
-    avatar: 'https://i.pravatar.cc/120?img=47',
-    language: 'Français',
-  },
-  {
-    id: 2,
-    name: 'Omar Lahlou',
-    faculty: 'Ingénierie',
-    level: 'Master 1',
-    subjects: ['Réseaux', 'Cybersécurité'],
-    partnerType: 'Study group',
-    mode: 'study',
-    match: 88,
-    avatar: 'https://i.pravatar.cc/120?img=11',
-    language: 'العربية',
-  },
-  {
-    id: 3,
-    name: 'Nour Hassan',
-    faculty: 'Business School',
-    level: 'Licence 2',
-    subjects: ['Marketing', 'Stratégie'],
-    partnerType: 'Free help',
-    mode: 'help',
-    match: 91,
-    avatar: 'https://i.pravatar.cc/120?img=32',
-    language: 'العربية',
-  },
-  {
-    id: 4,
-    name: 'Yasmine Ait',
-    faculty: 'Sciences',
-    level: 'Master 2',
-    subjects: ['Biotech', 'Data'],
-    partnerType: 'Study group',
-    mode: 'study',
-    match: 86,
-    avatar: 'https://i.pravatar.cc/120?img=5',
-    language: 'Français',
-  },
-];
-
 const HomePage: React.FC = () => {
   const { language } = useLanguage();
   const [selectedMode, setSelectedMode] = useState<string>('review');
   const [selectedSubject, setSelectedSubject] = useState<string>('');
   const [subjectText, setSubjectText] = useState('');
+  const [students, setStudents] = useState<StudentProfile[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    apiClient.getStudents().then((data) => {
+      setStudents(data);
+      setLoading(false);
+    });
+  }, []);
 
   const filteredStudents = useMemo(() => {
     return students.filter((student) => {
@@ -75,7 +34,7 @@ const HomePage: React.FC = () => {
       const matchesText = subjectText ? student.subjects.some((s) => s.toLowerCase().includes(subjectText.toLowerCase())) : true;
       return matchesMode && matchesSelect && matchesText;
     });
-  }, [selectedMode, selectedSubject, subjectText]);
+  }, [selectedMode, selectedSubject, subjectText, students]);
 
   return (
     <div className="space-y-6">
@@ -149,10 +108,17 @@ const HomePage: React.FC = () => {
         </div>
 
         <div className="space-y-3">
-          {filteredStudents.map((student) => (
-            <div key={student.id} className="card-surface p-4 sm:p-5 flex gap-4">
-              <div className="flex flex-col items-center gap-2">
-                <img src={student.avatar} alt={student.name} className="h-16 w-16 rounded-full object-cover ring-2 ring-emerald-100" />
+          {loading ? (
+            <div className="card-surface p-6 text-sm text-slate-600">Chargement des suggestions...</div>
+          ) : filteredStudents.length === 0 ? (
+            <div className="card-surface p-6 text-sm text-slate-600">
+              Aucun profil ne correspond à ces filtres pour le moment. Essayez d'autres matières ou modes.
+            </div>
+          ) : (
+            filteredStudents.map((student) => (
+              <div key={student.id} className="card-surface p-4 sm:p-5 flex gap-4">
+                <div className="flex flex-col items-center gap-2">
+                  <img src={student.avatar} alt={student.name} className="h-16 w-16 rounded-full object-cover ring-2 ring-emerald-100" />
                 <div className="badge-soft">{student.language}</div>
               </div>
               <div className="flex-1 space-y-2">
@@ -187,7 +153,8 @@ const HomePage: React.FC = () => {
                 </div>
               </div>
             </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
 

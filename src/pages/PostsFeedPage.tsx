@@ -1,47 +1,21 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Bookmark, Filter, MessageCircle, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
-
-const posts = [
-  {
-    id: '1',
-    title: 'Groupe de révision IA',
-    type: 'Study group',
-    subject: 'Intelligence Artificielle',
-    level: 'Master 1',
-    author: 'Sara Benali',
-    faculty: 'Informatique',
-    description: 'Session hebdomadaire pour préparer le module IA et échanger des fiches.',
-    language: 'Français',
-  },
-  {
-    id: '2',
-    title: 'Tutorat gratuit Algèbre',
-    type: 'Free help',
-    subject: 'Algèbre',
-    level: 'Licence 2',
-    author: 'Youssef El Idrissi',
-    faculty: 'Mathématiques',
-    description: 'Je propose des explications simples pour réussir les TDs et devoirs.',
-    language: 'العربية',
-  },
-  {
-    id: '3',
-    title: 'Binôme DataViz',
-    type: 'Review partner',
-    subject: 'Datavisualisation',
-    level: 'Licence 3',
-    author: 'Nour Hassan',
-    faculty: 'Business',
-    description: 'Cherche partenaire pour préparer un projet de visualisation avec Tableau.',
-    language: 'Français',
-  },
-];
+import apiClient, { type StudyPost } from '../lib/apiClient';
 
 const PostsFeedPage: React.FC = () => {
   const [level, setLevel] = useState('');
   const [subject, setSubject] = useState('');
   const [type, setType] = useState('');
+  const [posts, setPosts] = useState<StudyPost[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    apiClient.getPosts().then((data) => {
+      setPosts(data);
+      setLoading(false);
+    });
+  }, []);
 
   const filtered = useMemo(() => {
     return posts.filter((post) => {
@@ -50,7 +24,7 @@ const PostsFeedPage: React.FC = () => {
       const matchesType = type ? post.type === type : true;
       return matchesLevel && matchesSubject && matchesType;
     });
-  }, [level, subject, type]);
+  }, [level, subject, type, posts]);
 
   return (
     <div className="space-y-4">
@@ -94,38 +68,46 @@ const PostsFeedPage: React.FC = () => {
       </div>
 
       <div className="space-y-3">
-        {filtered.map((post) => (
-          <div key={post.id} className="card-surface p-4 sm:p-5 flex flex-col gap-3">
-            <div className="flex items-start justify-between gap-3">
-              <div className="space-y-1">
-                <div className="flex flex-wrap gap-2 items-center text-xs font-semibold text-emerald-700">
-                  <span className="badge-soft">{post.type}</span>
-                  <span className="badge-soft bg-blue-50 text-blue-700">{post.level}</span>
-                </div>
-                <Link to={`/posts/${post.id}`} className="text-xl font-semibold text-slate-900 hover:text-emerald-700">
-                  {post.title}
-                </Link>
-                <p className="text-sm text-slate-600">{post.subject} · {post.faculty}</p>
-                <p className="text-sm text-slate-700 leading-relaxed">{post.description}</p>
-              </div>
-              <div className="text-right text-sm text-slate-500">
-                <p className="font-semibold text-slate-800">{post.author}</p>
-                <p>{post.language}</p>
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Link to={`/posts/${post.id}`} className="primary-btn">
-                <Users size={16} className="me-1" /> Rejoindre
-              </Link>
-              <button className="secondary-btn">
-                <MessageCircle size={16} className="me-1" /> Contacter
-              </button>
-              <button className="secondary-btn">
-                <Bookmark size={16} className="me-1" /> Sauvegarder
-              </button>
-            </div>
+        {loading ? (
+          <div className="card-surface p-6 text-sm text-slate-600">Chargement des annonces...</div>
+        ) : filtered.length === 0 ? (
+          <div className="card-surface p-6 text-sm text-slate-600">
+            Aucun résultat pour ces filtres. Essayez une autre matière ou un autre niveau.
           </div>
-        ))}
+        ) : (
+          filtered.map((post) => (
+            <div key={post.id} className="card-surface p-4 sm:p-5 flex flex-col gap-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-1">
+                  <div className="flex flex-wrap gap-2 items-center text-xs font-semibold text-emerald-700">
+                    <span className="badge-soft">{post.type}</span>
+                    <span className="badge-soft bg-blue-50 text-blue-700">{post.level}</span>
+                  </div>
+                  <Link to={`/posts/${post.id}`} className="text-xl font-semibold text-slate-900 hover:text-emerald-700">
+                    {post.title}
+                  </Link>
+                  <p className="text-sm text-slate-600">{post.subject} · {post.faculty}</p>
+                  <p className="text-sm text-slate-700 leading-relaxed">{post.description}</p>
+                </div>
+                <div className="text-right text-sm text-slate-500">
+                  <p className="font-semibold text-slate-800">{post.author}</p>
+                  <p>{post.language}</p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Link to={`/posts/${post.id}`} className="primary-btn">
+                  <Users size={16} className="me-1" /> Rejoindre
+                </Link>
+                <button className="secondary-btn">
+                  <MessageCircle size={16} className="me-1" /> Contacter
+                </button>
+                <button className="secondary-btn">
+                  <Bookmark size={16} className="me-1" /> Sauvegarder
+                </button>
+              </div>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );
