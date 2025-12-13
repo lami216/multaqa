@@ -38,6 +38,66 @@ Follow these steps to spin up the project locally without digging through the en
    - Frontend: http://localhost:5173
    - Backend API: http://localhost:5000
 
+## 🚀 Production deployment (PM2 + Nginx on a VPS)
+
+### What gets built
+- **Frontend**: Vite (`pnpm build`) outputs static assets to `dist/`.
+- **Backend**: Express entry file is `server/src/server.js` (port `5000` by default via `PORT`).
+- In production, the backend can serve the compiled frontend (it mounts `dist/` when `NODE_ENV=production`), and Nginx can handle TLS/static delivery while proxying `/api` to the Node server.
+
+### One-time server setup
+```bash
+sudo apt update && sudo apt install -y nginx
+corepack enable                    # ensures pnpm is available
+npm install -g pm2                 # process manager for Node
+```
+
+### Deploy the code
+```bash
+sudo mkdir -p /opt/multaqa
+cd /opt/multaqa
+git clone <repo-url> .
+
+# Frontend
+pnpm install --frozen-lockfile
+pnpm build                         # creates /opt/multaqa/dist
+
+# Backend
+cd server
+pnpm install --prod
+cp .env.example .env               # then edit with production secrets (CORS_ORIGIN should be your domain)
+NODE_ENV=production PORT=5000 pm2 start src/server.js \
+  --name multaqa-api \
+  --cwd /opt/multaqa/server
+pm2 save                           # persist across restarts
+```
+
+### Configure Nginx
+```bash
+sudo cp /opt/multaqa/docs/nginx.conf.example /etc/nginx/sites-available/multaqa
+sudo nano /etc/nginx/sites-available/multaqa
+# - set server_name to your domain
+# - ensure root points to /opt/multaqa/dist (or your chosen path)
+
+sudo ln -sf /etc/nginx/sites-available/multaqa /etc/nginx/sites-enabled/multaqa
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+### How it serves traffic
+- Nginx serves the Vite build from `/opt/multaqa/dist` and proxies `/api/*` to `http://127.0.0.1:5000` where PM2 keeps the Express server alive.
+- The Express server also serves `dist/` as a fallback when `NODE_ENV=production`, so direct access via `http://server:5000` will still render the frontend.
+
+### Updating an existing deployment
+```bash
+cd /opt/multaqa
+git pull
+pnpm install --frozen-lockfile
+pnpm build
+cd server && pnpm install --prod
+pm2 restart multaqa-api
+sudo systemctl reload nginx
+```
+
 ## 🎯 Project Overview
 
 Multaqa is a comprehensive academic collaboration platform that facilitates connections between students through:
