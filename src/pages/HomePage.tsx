@@ -1,40 +1,36 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { BookOpen, Plus, Search, UserRound } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { BookOpen, Plus, Search } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { useLanguage } from '../context/LanguageContext';
-import apiClient, { type StudentProfile } from '../lib/apiClient';
-
-const modes = [
-  { key: 'review', label: 'Review partner' },
-  { key: 'study', label: 'Study group' },
-  { key: 'help', label: 'Free help' },
-];
-
-const subjects = ['Algorithmique', 'Mathématiques', 'IA', 'Bases de données', 'Réseaux', 'Design', 'Marketing'];
+import { fetchPosts, type PostResponse } from '../lib/http';
 
 const HomePage: React.FC = () => {
-  const { language } = useLanguage();
-  const [selectedMode, setSelectedMode] = useState<string>('review');
-  const [selectedSubject, setSelectedSubject] = useState<string>('');
-  const [subjectText, setSubjectText] = useState('');
-  const [students, setStudents] = useState<StudentProfile[]>([]);
+  const [query, setQuery] = useState('');
+  const [posts, setPosts] = useState<PostResponse[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    apiClient.getStudents().then((data) => {
-      setStudents(data);
-      setLoading(false);
-    });
+    const load = async () => {
+      try {
+        const { data } = await fetchPosts();
+        setPosts(data.posts);
+      } catch (error) {
+        setPosts([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void load();
   }, []);
 
-  const filteredStudents = useMemo(() => {
-    return students.filter((student) => {
-      const matchesMode = student.mode === selectedMode;
-      const matchesSelect = selectedSubject ? student.subjects.includes(selectedSubject) : true;
-      const matchesText = subjectText ? student.subjects.some((s) => s.toLowerCase().includes(subjectText.toLowerCase())) : true;
-      return matchesMode && matchesSelect && matchesText;
-    });
-  }, [selectedMode, selectedSubject, subjectText, students]);
+  const filteredPosts = posts.filter((post) => {
+    if (!query) return true;
+    return (
+      post.title.toLowerCase().includes(query.toLowerCase()) ||
+      post.description.toLowerCase().includes(query.toLowerCase()) ||
+      (post.tags ?? []).some((tag) => tag.toLowerCase().includes(query.toLowerCase()))
+    );
+  });
 
   return (
     <div className="space-y-6">
@@ -42,8 +38,8 @@ const HomePage: React.FC = () => {
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-sm uppercase tracking-wide text-emerald-600 font-bold">Plateforme Étudiante</p>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900">Trouvez votre binôme d'étude idéal</h1>
-            <p className="helper-text mt-2">Filtres rapides pour trouver un partenaire ou un groupe en quelques clics.</p>
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900">Vos opportunités réelles</h1>
+            <p className="helper-text mt-2">Toutes les annonces proviennent de la base de données MongoDB, aucune donnée fictive.</p>
           </div>
           <div className="hidden sm:flex items-center justify-center h-12 w-12 rounded-2xl bg-emerald-50 text-emerald-700">
             <BookOpen />
@@ -51,108 +47,67 @@ const HomePage: React.FC = () => {
         </div>
 
         <div className="grid md:grid-cols-3 gap-3">
-          <div className="col-span-1">
-            <label className="text-sm font-semibold text-slate-700">Matière</label>
-            <select value={selectedSubject} onChange={(e) => setSelectedSubject(e.target.value)} className="w-full mt-1">
-              <option value="">Sélectionner une matière</option>
-              {subjects.map((subject) => (
-                <option key={subject} value={subject}>
-                  {subject}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="col-span-1">
-            <label className="text-sm font-semibold text-slate-700">Ou tapez le nom</label>
+          <div className="md:col-span-2">
+            <label className="text-sm font-semibold text-slate-700">Rechercher</label>
             <div className="mt-1 flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3">
               <Search size={18} className="text-slate-400" />
               <input
-                value={subjectText}
-                onChange={(e) => setSubjectText(e.target.value)}
-                placeholder="Ex: Machine Learning"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Filtrez par titre, tag ou description"
                 className="border-none flex-1 focus:ring-0 focus:border-transparent"
               />
             </div>
           </div>
-          <div className="col-span-1">
-            <label className="text-sm font-semibold text-slate-700">Langue préférée</label>
-            <div className="flex gap-2 mt-1">
-              <button type="button" className={`tab-btn flex-1 ${language === 'fr' ? 'active' : 'bg-white border border-slate-200'}`}>
-                Français
-              </button>
-              <button type="button" className={`tab-btn flex-1 ${language === 'ar' ? 'active' : 'bg-white border border-slate-200'}`}>
-                العربية
-              </button>
-            </div>
+          <div className="flex items-end">
+            <Link to="/posts/new" className="primary-btn w-full text-center">Publier une annonce</Link>
           </div>
-        </div>
-
-        <div className="flex gap-2 bg-slate-50 rounded-2xl p-2 text-sm font-semibold text-slate-600">
-          {modes.map((mode) => (
-            <button
-              key={mode.key}
-              type="button"
-              onClick={() => setSelectedMode(mode.key)}
-              className={`tab-btn flex-1 text-center ${selectedMode === mode.key ? 'active' : 'bg-white border border-slate-200'}`}
-            >
-              {mode.label}
-            </button>
-          ))}
         </div>
       </div>
 
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="section-title">Suggestions personnalisées</h2>
-          <span className="text-sm text-slate-500">{filteredStudents.length} résultats</span>
+          <h2 className="section-title">Dernières annonces</h2>
+          <span className="text-sm text-slate-500">{filteredPosts.length} résultats</span>
         </div>
 
         <div className="space-y-3">
           {loading ? (
-            <div className="card-surface p-6 text-sm text-slate-600">Chargement des suggestions...</div>
-          ) : filteredStudents.length === 0 ? (
+            <div className="card-surface p-6 text-sm text-slate-600">Chargement des annonces...</div>
+          ) : filteredPosts.length === 0 ? (
             <div className="card-surface p-6 text-sm text-slate-600">
-              Aucun profil ne correspond à ces filtres pour le moment. Essayez d'autres matières ou modes.
+              Aucune annonce encore. Publiez votre première demande ou consultez le panneau admin pour configurer les filières.
             </div>
           ) : (
-            filteredStudents.map((student) => (
-              <div key={student.id} className="card-surface p-4 sm:p-5 flex gap-4">
-                <div className="flex flex-col items-center gap-2">
-                  <img src={student.avatar} alt={student.name} className="h-16 w-16 rounded-full object-cover ring-2 ring-emerald-100" />
-                <div className="badge-soft">{student.language}</div>
-              </div>
-              <div className="flex-1 space-y-2">
-                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+            filteredPosts.map((post) => (
+              <div key={post._id} className="card-surface p-4 sm:p-5 flex flex-col gap-3">
+                <div className="flex items-start justify-between gap-3">
                   <div className="space-y-1">
-                    <p className="text-lg font-semibold text-slate-900">{student.name}</p>
-                    <p className="text-sm text-slate-600">{student.faculty} · {student.level}</p>
-                    <div className="flex flex-wrap gap-2">
-                      {student.subjects.map((subject) => (
-                        <span key={subject} className="badge-soft">
-                          {subject}
-                        </span>
-                      ))}
+                    <div className="flex flex-wrap gap-2 items-center text-xs font-semibold text-emerald-700">
+                      <span className="badge-soft">{post.category}</span>
+                      {post.level ? <span className="badge-soft bg-blue-50 text-blue-700">{post.level}</span> : null}
                     </div>
+                    <Link to={`/posts/${post._id}`} className="text-xl font-semibold text-slate-900 hover:text-emerald-700">
+                      {post.title}
+                    </Link>
+                    <p className="text-sm text-slate-600">{post.faculty ?? 'Faculté non renseignée'} · {post.languagePref ?? 'Langue libre'}</p>
+                    <p className="text-sm text-slate-700 leading-relaxed line-clamp-3">{post.description}</p>
                   </div>
-                  <div className="text-right">
-                    <p className="text-2xl font-extrabold text-emerald-600">{student.match}%</p>
-                    <p className="text-xs text-slate-500">de compatibilité</p>
+                  <div className="text-right text-sm text-slate-500">
+                    <p className="font-semibold text-slate-800">{post.author?.username ?? 'Auteur'}</p>
+                    <p>{new Date(post.createdAt).toLocaleDateString()}</p>
                   </div>
                 </div>
-                <div className="flex flex-wrap items-center gap-2 text-sm text-slate-600">
-                  <UserRound size={16} />
-                  <span>{student.partnerType}</span>
-                  <span className="text-slate-300">•</span>
-                  <span>Réponse rapide 1h</span>
-                  <span className="text-slate-300">•</span>
-                  <span>Disponibilité soir et week-end</span>
+                <div className="flex flex-wrap gap-2 text-sm">
+                  {(post.tags ?? []).map((tag) => (
+                    <span key={tag} className="badge-soft">{tag}</span>
+                  ))}
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <button className="primary-btn">Demander à rejoindre</button>
-                  <button className="secondary-btn">Contacter</button>
+                  <Link to={`/posts/${post._id}`} className="primary-btn">Consulter</Link>
+                  <Link to="/messages" className="secondary-btn">Contacter</Link>
                 </div>
               </div>
-            </div>
             ))
           )}
         </div>

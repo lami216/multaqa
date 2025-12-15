@@ -13,5 +13,13 @@ router.patch('/users/:id/ban', adminController.banUser);
 router.get('/faculties', adminController.getFaculties);
 router.post('/faculties', adminController.createFaculty);
 router.delete('/faculties/:id', adminController.deleteFaculty);
+router.get('/majors', adminController.getMajors);
+router.post('/majors', adminController.createMajor);
+router.patch('/majors/:id', adminController.updateMajor);
+router.delete('/majors/:id', adminController.deleteMajor);
+router.get('/subjects', adminController.getSubjects);
+router.post('/subjects', adminController.createSubject);
+router.patch('/subjects/:id', adminController.updateSubject);
+router.delete('/subjects/:id', adminController.deleteSubject);
 
 export default router;

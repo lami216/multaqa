@@ -5,8 +5,10 @@ import { validate, profileSchema } from '../middleware/validation.js';
 
 const router = express.Router();
 
+router.use(authenticate);
+
 router.get('/:username', userController.getPublicProfile);
-router.patch('/me', authenticate, validate(profileSchema), userController.updateProfile);
-router.post('/avatar', authenticate, userController.uploadAvatar);
+router.patch('/me', validate(profileSchema), userController.updateProfile);
+router.post('/avatar', userController.uploadAvatar);
 
 export default router;
