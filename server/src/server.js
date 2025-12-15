@@ -13,11 +13,12 @@ import chatRoutes from './routes/chatRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import imagekit from './config/imagekit.js';
-
-dotenv.config();
+import { authenticate } from './middleware/auth.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+dotenv.config({ path: path.join(__dirname, '../.env') });
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -43,7 +44,7 @@ app.get('/api/health', (req, res) => {
   res.json({ ok: true });
 });
 
-app.get('/api/imagekit-auth', (req, res) => {
+app.get('/api/imagekit-auth', authenticate, (req, res) => {
   try {
     const authenticationParameters = imagekit.getAuthenticationParameters();
     res.json(authenticationParameters);

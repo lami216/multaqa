@@ -1,31 +1,48 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { MessageCircle } from 'lucide-react';
-import apiClient, { type ChatMessage, type Conversation } from '../lib/apiClient';
+import { fetchChats, fetchMessages, sendMessage, type ChatMessageItem, type ChatSummary } from '../lib/http';
 
 const MessagesPage: React.FC = () => {
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [activeConversation, setActiveConversation] = useState<Conversation | null>(null);
+  const [conversations, setConversations] = useState<ChatSummary[]>([]);
+  const [messages, setMessages] = useState<ChatMessageItem[]>([]);
+  const [activeConversation, setActiveConversation] = useState<ChatSummary | null>(null);
+  const [body, setBody] = useState('');
 
   useEffect(() => {
-    apiClient.getConversations().then((data) => {
-      setConversations(data);
-      if (data.length) {
-        setActiveConversation(data[0]);
+    const load = async () => {
+      const { data } = await fetchChats();
+      setConversations(data.chats);
+      if (data.chats.length) {
+        setActiveConversation(data.chats[0]);
       }
-    });
+    };
+
+    void load();
   }, []);
 
   useEffect(() => {
     if (!activeConversation) return;
 
-    apiClient.getMessages(activeConversation.id).then(setMessages);
+    const loadMessages = async () => {
+      const { data } = await fetchMessages(activeConversation._id);
+      setMessages(data.messages);
+    };
+
+    void loadMessages();
   }, [activeConversation]);
 
   const headerSubtitle = useMemo(() => {
     if (!activeConversation) return 'Sélectionnez une conversation pour commencer';
-    return `En conversation avec ${activeConversation.name}`;
+    return `En conversation avec ${activeConversation.otherParticipant.username}`;
   }, [activeConversation]);
+
+  const handleSend = async () => {
+    if (!activeConversation || !body.trim()) return;
+    await sendMessage(activeConversation._id, body);
+    setBody('');
+    const { data } = await fetchMessages(activeConversation._id);
+    setMessages(data.messages);
+  };
 
   return (
     <div className="grid lg:grid-cols-3 gap-4 min-h-[60vh]">
@@ -37,17 +54,18 @@ const MessagesPage: React.FC = () => {
         <div className="space-y-2">
           {conversations.map((conversation) => (
             <button
-              key={conversation.id}
+              key={conversation._id}
               onClick={() => setActiveConversation(conversation)}
               className={`w-full text-start card-surface p-3 hover:shadow transition ${
-                activeConversation?.id === conversation.id ? 'ring-2 ring-emerald-100' : ''
+                activeConversation?._id === conversation._id ? 'ring-2 ring-emerald-100' : ''
               }`}
             >
-              <p className="font-semibold text-slate-900">{conversation.name}</p>
-              <p className="text-sm text-slate-600">{conversation.lastMessage}</p>
-              <p className="text-xs text-slate-400">{conversation.time}</p>
+              <p className="font-semibold text-slate-900">{conversation.otherParticipant.username}</p>
+              <p className="text-sm text-slate-600 line-clamp-1">{conversation.lastMessage?.body ?? 'Nouvelle conversation'}</p>
+              <p className="text-xs text-slate-400">{conversation.unreadCount} non lus</p>
             </button>
           ))}
+          {!conversations.length && <p className="text-sm text-slate-500">Aucun échange pour le moment.</p>}
         </div>
       </div>
 
@@ -55,23 +73,27 @@ const MessagesPage: React.FC = () => {
         <div className="flex items-center justify-between border-b pb-3 border-slate-100">
           <div>
             <p className="text-sm text-slate-500">{headerSubtitle}</p>
-            <p className="text-lg font-semibold text-slate-900">{activeConversation?.name ?? 'Aucun contact sélectionné'}</p>
+            <p className="text-lg font-semibold text-slate-900">{activeConversation?.otherParticipant.username ?? 'Aucun contact sélectionné'}</p>
           </div>
-          <span className="badge-soft">IA</span>
+          <span className="badge-soft">Sécurisé</span>
         </div>
         <div className="space-y-3 min-h-[260px]">
-          {messages.map((message, index) => (
+          {messages.map((message) => (
             <div
-              key={index}
-              className={`flex ${message.me ? 'justify-end' : 'justify-start'} text-sm`}
+              key={message._id}
+              className={`flex ${message.senderId._id === activeConversation?.otherParticipant.id ? 'justify-start' : 'justify-end'} text-sm`}
             >
               <div
                 className={`max-w-[75%] rounded-2xl px-4 py-3 shadow-sm ${
-                  message.me ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-800'
+                  message.senderId._id === activeConversation?.otherParticipant.id
+                    ? 'bg-slate-100 text-slate-800'
+                    : 'bg-emerald-600 text-white'
                 }`}
               >
-                <p>{message.content}</p>
-                <p className={`text-[11px] mt-1 ${message.me ? 'text-emerald-50' : 'text-slate-500'}`}>{message.time}</p>
+                <p>{message.body}</p>
+                <p className={`text-[11px] mt-1 ${message.senderId._id === activeConversation?.otherParticipant.id ? 'text-slate-500' : 'text-emerald-50'}`}>
+                  {new Date(message.createdAt).toLocaleString()}
+                </p>
               </div>
             </div>
           ))}
@@ -80,8 +102,13 @@ const MessagesPage: React.FC = () => {
           )}
         </div>
         <div className="mt-4 flex gap-2">
-          <input className="flex-1" placeholder="Envoyer un message..." />
-          <button className="primary-btn">Envoyer</button>
+          <input
+            className="flex-1"
+            placeholder="Envoyer un message..."
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+          />
+          <button className="primary-btn" type="button" onClick={handleSend}>Envoyer</button>
         </div>
       </div>
     </div>

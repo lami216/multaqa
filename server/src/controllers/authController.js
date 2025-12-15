@@ -15,6 +15,19 @@ const refreshCookieOptions = {
   maxAge: 7 * 24 * 60 * 60 * 1000
 };
 
+const accessCookieOptions = {
+  httpOnly: true,
+  secure: cookieSecure,
+  sameSite: cookieSameSite,
+  path: '/',
+  maxAge: 15 * 60 * 1000
+};
+
+const setAuthCookies = (res, accessToken, refreshToken) => {
+  res.cookie('accessToken', accessToken, accessCookieOptions);
+  res.cookie('refreshToken', refreshToken, refreshCookieOptions);
+};
+
 export const register = async (req, res) => {
   try {
     const { email, password, username } = req.body;
@@ -43,7 +56,7 @@ export const register = async (req, res) => {
     user.refreshToken = refreshToken;
     await user.save();
 
-    res.cookie('refreshToken', refreshToken, refreshCookieOptions);
+    setAuthCookies(res, accessToken, refreshToken);
 
     res.status(201).json({
       message: 'Registration successful',
@@ -85,7 +98,7 @@ export const login = async (req, res) => {
     user.refreshToken = refreshToken;
     await user.save();
 
-    res.cookie('refreshToken', refreshToken, refreshCookieOptions);
+    setAuthCookies(res, accessToken, refreshToken);
 
     res.json({
       message: 'Login successful',
@@ -127,7 +140,7 @@ export const refresh = async (req, res) => {
     user.refreshToken = newRefreshToken;
     await user.save();
 
-    res.cookie('refreshToken', newRefreshToken, refreshCookieOptions);
+    setAuthCookies(res, newAccessToken, newRefreshToken);
 
     res.json({ accessToken: newAccessToken });
   } catch (error) {
@@ -145,6 +158,12 @@ export const logout = async (req, res) => {
     }
 
     res.clearCookie('refreshToken', {
+      httpOnly: true,
+      secure: cookieSecure,
+      sameSite: cookieSameSite,
+      path: '/'
+    });
+    res.clearCookie('accessToken', {
       httpOnly: true,
       secure: cookieSecure,
       sameSite: cookieSameSite,

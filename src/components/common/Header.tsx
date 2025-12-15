@@ -2,19 +2,22 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Languages, Menu, X } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
-
-const navLinks = [
-  { path: '/', label: 'Accueil' },
-  { path: '/posts', label: 'Posts' },
-  { path: '/messages', label: 'Messages' },
-  { path: '/notifications', label: 'Notifications' },
-  { path: '/profile', label: 'Profil' },
-];
+import { useAuth } from '../../context/AuthContext';
 
 const Header: React.FC = () => {
   const location = useLocation();
   const { language, setLanguage } = useLanguage();
+  const { user, logout } = useAuth();
   const [open, setOpen] = React.useState(false);
+
+  const navLinks = [
+    { path: '/', label: 'Accueil' },
+    { path: '/posts', label: 'Posts' },
+    { path: '/messages', label: 'Messages' },
+    { path: '/notifications', label: 'Notifications' },
+    { path: '/profile', label: 'Profil' },
+    ...(user?.role === 'admin' ? [{ path: '/admin', label: 'Admin' }] : []),
+  ];
 
   const switchLanguage = (lang: 'ar' | 'fr') => {
     setLanguage(lang);
@@ -51,6 +54,18 @@ const Header: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-3">
+          {user && (
+            <div className="hidden sm:flex items-center gap-2 text-sm text-slate-700">
+              <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 font-semibold">{user.username}</span>
+              <button
+                type="button"
+                onClick={() => logout()}
+                className="text-slate-600 hover:text-slate-900 font-semibold"
+              >
+                Se déconnecter
+              </button>
+            </div>
+          )}
           <div className="hidden sm:flex items-center rounded-full border border-slate-200 bg-slate-50 px-1 py-1 text-xs font-semibold text-slate-700">
             <button
               type="button"
@@ -122,6 +137,18 @@ const Header: React.FC = () => {
                 </Link>
               ))}
             </div>
+            {user && (
+              <button
+                type="button"
+                onClick={() => {
+                  void logout();
+                  setOpen(false);
+                }}
+                className="w-full text-center border border-slate-200 rounded-xl py-2 text-sm font-semibold text-slate-700"
+              >
+                Se déconnecter
+              </button>
+            )}
           </div>
         </div>
       )}

@@ -2,6 +2,8 @@ import Report from '../models/Report.js';
 import User from '../models/User.js';
 import Post from '../models/Post.js';
 import Faculty from '../models/Faculty.js';
+import Major from '../models/Major.js';
+import Subject from '../models/Subject.js';
 import redis from '../config/redis.js';
 
 export const getReports = async (req, res) => {
@@ -143,5 +145,150 @@ export const deleteFaculty = async (req, res) => {
   } catch (error) {
     console.error('Delete faculty error:', error);
     res.status(500).json({ error: 'Failed to delete faculty' });
+  }
+};
+
+export const getMajors = async (req, res) => {
+  try {
+    const { facultyId } = req.query;
+    const query = { active: true };
+    if (facultyId) {
+      query.facultyId = facultyId;
+    }
+
+    const majors = await Major.find(query).sort({ nameAr: 1 }).populate('facultyId', 'nameAr nameFr');
+    res.json({ majors });
+  } catch (error) {
+    console.error('Get majors error:', error);
+    res.status(500).json({ error: 'Failed to fetch majors' });
+  }
+};
+
+export const createMajor = async (req, res) => {
+  try {
+    const { nameAr, nameFr, facultyId } = req.body;
+    const major = await Major.create({ nameAr, nameFr, facultyId });
+
+    res.status(201).json({ message: 'Major created successfully', major });
+  } catch (error) {
+    console.error('Create major error:', error);
+    res.status(500).json({ error: 'Failed to create major' });
+  }
+};
+
+export const updateMajor = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { nameAr, nameFr, facultyId, active } = req.body;
+
+    const major = await Major.findByIdAndUpdate(
+      id,
+      { nameAr, nameFr, facultyId, active },
+      { new: true }
+    );
+
+    if (!major) {
+      return res.status(404).json({ error: 'Major not found' });
+    }
+
+    res.json({ message: 'Major updated successfully', major });
+  } catch (error) {
+    console.error('Update major error:', error);
+    res.status(500).json({ error: 'Failed to update major' });
+  }
+};
+
+export const deleteMajor = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const major = await Major.findByIdAndUpdate(
+      id,
+      { active: false },
+      { new: true }
+    );
+
+    if (!major) {
+      return res.status(404).json({ error: 'Major not found' });
+    }
+
+    res.json({ message: 'Major deleted successfully' });
+  } catch (error) {
+    console.error('Delete major error:', error);
+    res.status(500).json({ error: 'Failed to delete major' });
+  }
+};
+
+export const getSubjects = async (req, res) => {
+  try {
+    const { facultyId, majorId } = req.query;
+    const query = { active: true };
+    if (facultyId) query.facultyId = facultyId;
+    if (majorId) query.majorId = majorId;
+
+    const subjects = await Subject.find(query)
+      .sort({ nameAr: 1 })
+      .populate('facultyId', 'nameAr nameFr')
+      .populate('majorId', 'nameAr nameFr');
+
+    res.json({ subjects });
+  } catch (error) {
+    console.error('Get subjects error:', error);
+    res.status(500).json({ error: 'Failed to fetch subjects' });
+  }
+};
+
+export const createSubject = async (req, res) => {
+  try {
+    const { nameAr, nameFr, facultyId, majorId } = req.body;
+    const subject = await Subject.create({ nameAr, nameFr, facultyId, majorId });
+
+    res.status(201).json({ message: 'Subject created successfully', subject });
+  } catch (error) {
+    console.error('Create subject error:', error);
+    res.status(500).json({ error: 'Failed to create subject' });
+  }
+};
+
+export const updateSubject = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { nameAr, nameFr, facultyId, majorId, active } = req.body;
+
+    const subject = await Subject.findByIdAndUpdate(
+      id,
+      { nameAr, nameFr, facultyId, majorId, active },
+      { new: true }
+    );
+
+    if (!subject) {
+      return res.status(404).json({ error: 'Subject not found' });
+    }
+
+    res.json({ message: 'Subject updated successfully', subject });
+  } catch (error) {
+    console.error('Update subject error:', error);
+    res.status(500).json({ error: 'Failed to update subject' });
+  }
+};
+
+export const deleteSubject = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const subject = await Subject.findByIdAndUpdate(
+      id,
+      { active: false },
+      { new: true }
+    );
+
+    if (!subject) {
+      return res.status(404).json({ error: 'Subject not found' });
+    }
+
+    res.json({ message: 'Subject deleted successfully' });
+  } catch (error) {
+    console.error('Delete subject error:', error);
+    res.status(500).json({ error: 'Failed to delete subject' });
   }
 };
