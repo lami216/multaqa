@@ -3,39 +3,27 @@ import { Edit3, GraduationCap, MapPin, Notebook, User } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { http, type Profile } from '../lib/http';
-import { appendCacheBuster } from '../lib/imageUtils';
 
 const ProfilePage: React.FC = () => {
-  const { user, profile: authProfile } = useAuth();
+  const { user } = useAuth();
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [avatarVersion, setAvatarVersion] = useState<string | number>(() => Date.now());
 
   useEffect(() => {
     const load = async () => {
       if (!user?.username) return;
       const { data } = await http.get<{ user: unknown; profile: Profile; posts: unknown }>(`/users/${user.username}`);
       setProfile(data.profile);
-      setAvatarVersion(data.profile.avatarFileId ?? Date.now());
     };
 
     void load();
   }, [user?.username]);
 
-  useEffect(() => {
-    if (authProfile) {
-      setProfile(authProfile);
-      setAvatarVersion(authProfile.avatarFileId ?? Date.now());
-    }
-  }, [authProfile]);
-
-  const avatarSrc = profile?.avatarUrl ? appendCacheBuster(profile.avatarUrl, avatarVersion) : '';
-
   return (
     <div className="space-y-4">
       <div className="card-surface p-5 flex flex-col gap-4">
         <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-          <div className="h-20 w-20 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center text-3xl font-bold overflow-hidden">
-            {avatarSrc ? <img src={avatarSrc} alt="Avatar" className="h-full w-full object-cover" /> : <User />}
+          <div className="h-20 w-20 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center text-3xl font-bold">
+            <User />
           </div>
           <div className="flex-1 space-y-1">
             <h1 className="text-2xl font-bold text-slate-900">{profile?.displayName ?? user?.username}</h1>

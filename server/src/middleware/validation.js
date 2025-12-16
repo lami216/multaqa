@@ -51,20 +51,6 @@ export const profileSchema = z.object({
   bio: z.string().max(500).optional()
 });
 
-const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp'];
-
-export const avatarSchema = z.object({
-  avatarUrl: z
-    .string()
-    .url()
-    .refine((url) => {
-      const endpoint = process.env.IMAGEKIT_URL_ENDPOINT;
-      return !endpoint || url.startsWith(endpoint);
-    }, 'Avatar URL must come from ImageKit'),
-  avatarFileId: z.string().min(1),
-  mimeType: z.enum(allowedMimeTypes)
-});
-
 export const messageSchema = z.object({
   body: z.string().min(1).max(2000)
 });

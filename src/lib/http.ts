@@ -26,8 +26,6 @@ export interface Profile {
   languages?: string[];
   bio?: string;
   avatarUrl?: string;
-  avatarFileId?: string;
-  updatedAt?: string;
 }
 
 export interface PostPayload {
