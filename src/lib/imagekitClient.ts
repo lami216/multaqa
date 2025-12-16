@@ -2,28 +2,26 @@ import ImageKit from 'imagekit-javascript';
 import { http } from './http';
 
 let client: ImageKit | null = null;
+let clientConfig: { publicKey: string; urlEndpoint: string } | null = null;
 
 export interface ImageKitAuthPayload {
   signature: string;
   expire: number;
   token: string;
+  publicKey: string;
+  urlEndpoint: string;
 }
 
-const getClient = () => {
-  if (client) return client;
-
-  const publicKey = import.meta.env.VITE_IMAGEKIT_PUBLIC_KEY;
-  const urlEndpoint = import.meta.env.VITE_IMAGEKIT_URL_ENDPOINT;
-
-  if (!publicKey || !urlEndpoint) {
-    throw new Error('ImageKit non configuré côté client');
+const getClient = (config: { publicKey: string; urlEndpoint: string }) => {
+  if (client && clientConfig?.publicKey === config.publicKey && clientConfig?.urlEndpoint === config.urlEndpoint) {
+    return client;
   }
 
   client = new ImageKit({
-    publicKey,
-    urlEndpoint,
-    authenticationEndpoint: ''
+    publicKey: config.publicKey,
+    urlEndpoint: config.urlEndpoint
   });
+  clientConfig = config;
 
   return client;
 };
@@ -35,7 +33,7 @@ export const fetchImageKitAuth = async () => {
 
 export const uploadToImageKit = async (file: Blob, fileName: string) => {
   const auth = await fetchImageKitAuth();
-  const imagekit = getClient();
+  const imagekit = getClient({ publicKey: auth.publicKey, urlEndpoint: auth.urlEndpoint });
 
   return imagekit.upload({
     file,
