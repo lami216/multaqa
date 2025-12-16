@@ -3,10 +3,17 @@ import { Edit3, GraduationCap, MapPin, Notebook, User } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { http, type Profile } from '../lib/http';
+import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 
 const ProfilePage: React.FC = () => {
-  const { user } = useAuth();
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const { user, profile: authProfile } = useAuth();
+  const [profile, setProfile] = useState<Profile | null>(authProfile ?? null);
+
+  const cacheBustedAvatar = (url?: string, version?: string | number) => {
+    if (!url) return undefined;
+    const v = typeof version === 'number' ? version : version ? new Date(version).getTime() : Date.now();
+    return `${url}?v=${v}`;
+  };
 
   useEffect(() => {
     const load = async () => {
@@ -18,13 +25,22 @@ const ProfilePage: React.FC = () => {
     void load();
   }, [user?.username]);
 
+  useEffect(() => {
+    setProfile(authProfile ?? null);
+  }, [authProfile]);
+
+  const avatarUrl = cacheBustedAvatar(profile?.avatarUrl, profile?.updatedAt);
+
   return (
     <div className="space-y-4">
       <div className="card-surface p-5 flex flex-col gap-4">
         <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-          <div className="h-20 w-20 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center text-3xl font-bold">
-            <User />
-          </div>
+          <Avatar className="h-20 w-20 rounded-2xl border border-emerald-100">
+            <AvatarImage src={avatarUrl} alt="Avatar" />
+            <AvatarFallback className="bg-emerald-50 text-emerald-700 flex items-center justify-center text-3xl font-bold">
+              {user?.username?.[0]?.toUpperCase() ?? <User />}
+            </AvatarFallback>
+          </Avatar>
           <div className="flex-1 space-y-1">
             <h1 className="text-2xl font-bold text-slate-900">{profile?.displayName ?? user?.username}</h1>
             <p className="text-slate-600 flex items-center gap-2 text-sm">

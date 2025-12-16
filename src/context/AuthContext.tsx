@@ -6,28 +6,39 @@ import {
   logoutRequest,
   signupRequest
 } from '../lib/http';
+import type { Profile } from '../lib/http';
 
 interface AuthContextValue {
   user: ApiUser | null;
+  profile: Profile | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   signup: (username: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
+  setProfile: (profile: Profile | null) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<ApiUser | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const syncProfile = (nextProfile: Profile | null) => {
+    setProfile(nextProfile);
+    setUser((prev) => (prev ? { ...prev, avatarUrl: nextProfile?.avatarUrl } : prev));
+  };
 
   const loadUser = async () => {
     try {
       const { data } = await fetchMe();
-      setUser(data.user);
+      setUser({ ...data.user, avatarUrl: data.profile?.avatarUrl });
+      syncProfile(data.profile ?? null);
     } catch (error) {
       setUser(null);
+      setProfile(null);
     } finally {
       setLoading(false);
     }
@@ -50,10 +61,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async () => {
     await logoutRequest();
     setUser(null);
+    setProfile(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, signup, logout, refresh: loadUser }}>
+    <AuthContext.Provider value={{ user, profile, loading, login, signup, logout, refresh: loadUser, setProfile: syncProfile }}>
       {children}
     </AuthContext.Provider>
   );

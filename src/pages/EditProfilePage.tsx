@@ -1,20 +1,45 @@
-import React, { useEffect, useState } from 'react';
-import { Camera } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Camera, Loader2 } from 'lucide-react';
 import { http, type Profile } from '../lib/http';
+import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
+import { useAuth } from '../context/AuthContext';
+import { processImageFile } from '../lib/imageProcessing';
+import { uploadToImageKit } from '../lib/imagekitClient';
 
 const EditProfilePage: React.FC = () => {
   const [form, setForm] = useState<Profile>({});
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
+  const [avatarPreview, setAvatarPreview] = useState<string | undefined>(undefined);
+  const [avatarError, setAvatarError] = useState('');
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const uploadTracker = useRef<number | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const previousObjectUrl = useRef<string | null>(null);
+  const { user, profile, setProfile } = useAuth();
+
+  const cacheBustedUrl = (url?: string, version?: string | number) => {
+    if (!url) return undefined;
+    const v = typeof version === 'number' ? version : version ? new Date(version).getTime() : Date.now();
+    return `${url}?v=${v}`;
+  };
 
   useEffect(() => {
     const load = async () => {
       const { data } = await http.get<{ user: unknown; profile: Profile }>('/auth/me');
       setForm(data.profile ?? {});
+      setProfile(data.profile ?? null);
+      setAvatarPreview(cacheBustedUrl(data.profile?.avatarUrl, data.profile?.updatedAt));
     };
 
     void load();
-  }, []);
+  }, [setProfile]);
+
+  useEffect(() => {
+    if (profile?.avatarUrl) {
+      setAvatarPreview(cacheBustedUrl(profile.avatarUrl, profile.updatedAt));
+    }
+  }, [profile?.avatarUrl, profile?.updatedAt]);
 
   const handleChange = (field: keyof Profile, value: unknown) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -24,7 +49,7 @@ const EditProfilePage: React.FC = () => {
     event.preventDefault();
     setSaving(true);
     setMessage('');
-    await http.patch('/users/me', {
+    const { data } = await http.patch<{ profile: Profile }>('/users/me', {
       displayName: form.displayName,
       faculty: form.faculty,
       major: form.major,
@@ -35,9 +60,70 @@ const EditProfilePage: React.FC = () => {
       languages: form.languages ?? [],
       bio: form.bio,
     });
+    setProfile(data.profile ?? null);
     setMessage('Profil mis à jour');
     setSaving(false);
   };
+
+  const revokePreview = () => {
+    if (previousObjectUrl.current) {
+      URL.revokeObjectURL(previousObjectUrl.current);
+      previousObjectUrl.current = null;
+    }
+  };
+
+  const handleAvatarSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const uploadId = Date.now();
+    uploadTracker.current = uploadId;
+    setAvatarError('');
+    setAvatarUploading(true);
+
+    try {
+      const processed = await processImageFile(file);
+
+      if (uploadTracker.current !== uploadId) return;
+
+      revokePreview();
+      previousObjectUrl.current = processed.previewUrl;
+      setAvatarPreview(processed.previewUrl);
+
+      const extension = processed.mimeType.split('/')[1] ?? 'jpg';
+      const uploadResponse = await uploadToImageKit(
+        processed.blob,
+        `${user?.username ?? 'avatar'}-${uploadId}.${extension}`
+      );
+
+      if (uploadTracker.current !== uploadId) return;
+
+      const { data } = await http.post<{ profile: Profile }>('/users/avatar', {
+        avatarUrl: uploadResponse.url,
+        avatarFileId: uploadResponse.fileId
+      });
+
+      setForm((prev) => ({ ...prev, avatarUrl: uploadResponse.url, avatarFileId: uploadResponse.fileId }));
+      setProfile(data.profile ?? null);
+      revokePreview();
+      setAvatarPreview(cacheBustedUrl(uploadResponse.url, Date.now()));
+      setMessage('Avatar mis à jour');
+    } catch (error) {
+      const errMessage = error instanceof Error ? error.message : 'Erreur lors du téléchargement de la photo';
+      setAvatarError(errMessage);
+    } finally {
+      if (uploadTracker.current === uploadId) {
+        setAvatarUploading(false);
+      }
+    }
+  };
+
+  const openPicker = () => {
+    setAvatarError('');
+    fileInputRef.current?.click();
+  };
+
+  useEffect(() => revokePreview, []);
 
   return (
     <div className="card-surface p-5 space-y-4">
@@ -51,10 +137,30 @@ const EditProfilePage: React.FC = () => {
 
       <form className="space-y-3" onSubmit={handleSubmit}>
         <div className="flex items-center gap-3">
-          <div className="h-16 w-16 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-700 font-bold">
-            <Camera />
+          <Avatar className="h-16 w-16 rounded-full border border-emerald-100">
+            <AvatarImage src={avatarPreview} alt="Avatar" />
+            <AvatarFallback className="bg-emerald-50 text-emerald-700 font-bold">
+              {user?.username?.[0]?.toUpperCase() ?? <Camera />}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex flex-col gap-1">
+            <div className="flex gap-2">
+              <button type="button" onClick={openPicker} className="secondary-btn" disabled={avatarUploading}>
+                {avatarUploading ? <Loader2 className="me-1 h-4 w-4 animate-spin" /> : <Camera className="me-1" />} Choisir une photo
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                capture="environment"
+                className="hidden"
+                onChange={handleAvatarSelect}
+              />
+            </div>
+            <p className="text-xs text-slate-500">JPG/PNG/WebP · Taille max 3MB. Caméra ou galerie.</p>
+            {avatarUploading && <p className="text-xs text-emerald-700">Compression et envoi en cours...</p>}
+            {avatarError && <p className="text-xs text-red-600">{avatarError}</p>}
           </div>
-          <button type="button" className="secondary-btn">Télécharger une photo</button>
         </div>
         <div className="grid md:grid-cols-2 gap-3">
           <div>
