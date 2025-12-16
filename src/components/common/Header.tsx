@@ -3,12 +3,17 @@ import { Link, useLocation } from 'react-router-dom';
 import { Languages, Menu, X } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
+import { appendCacheBuster } from '../../lib/imageUtils';
 
 const Header: React.FC = () => {
   const location = useLocation();
   const { language, setLanguage } = useLanguage();
-  const { user, logout } = useAuth();
+  const { user, logout, profile } = useAuth();
   const [open, setOpen] = React.useState(false);
+
+  const avatarSrc = profile?.avatarUrl
+    ? appendCacheBuster(profile.avatarUrl, profile.avatarFileId ?? profile.updatedAt ?? profile.avatarUrl)
+    : null;
 
   const navLinks = [
     { path: '/', label: 'Accueil' },
@@ -56,6 +61,13 @@ const Header: React.FC = () => {
         <div className="flex items-center gap-3">
           {user && (
             <div className="hidden sm:flex items-center gap-2 text-sm text-slate-700">
+              <div className="h-9 w-9 rounded-full bg-emerald-50 text-emerald-700 font-bold flex items-center justify-center overflow-hidden">
+                {avatarSrc ? (
+                  <img src={avatarSrc} alt="Avatar utilisateur" className="h-full w-full object-cover" />
+                ) : (
+                  <span className="text-sm">{user.username.slice(0, 1).toUpperCase()}</span>
+                )}
+              </div>
               <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 font-semibold">{user.username}</span>
               <button
                 type="button"
