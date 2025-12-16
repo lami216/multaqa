@@ -3,11 +3,12 @@ import { Link, useLocation } from 'react-router-dom';
 import { Languages, Menu, X } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
+import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 
 const Header: React.FC = () => {
   const location = useLocation();
   const { language, setLanguage } = useLanguage();
-  const { user, logout } = useAuth();
+  const { user, profile, logout } = useAuth();
   const [open, setOpen] = React.useState(false);
 
   const navLinks = [
@@ -23,6 +24,9 @@ const Header: React.FC = () => {
     setLanguage(lang);
     setOpen(false);
   };
+
+  const avatarUrl = profile?.avatarUrl ? `${profile.avatarUrl}?v=${new Date(profile.updatedAt ?? Date.now()).getTime()}` : undefined;
+  const fallbackInitial = user?.username?.[0]?.toUpperCase();
 
   return (
     <header className="bg-white shadow-sm border-b border-slate-100 sticky top-0 z-20">
@@ -56,7 +60,15 @@ const Header: React.FC = () => {
         <div className="flex items-center gap-3">
           {user && (
             <div className="hidden sm:flex items-center gap-2 text-sm text-slate-700">
-              <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 font-semibold">{user.username}</span>
+              <Link to="/profile" className="flex items-center gap-2">
+                <Avatar className="h-9 w-9 border border-slate-200">
+                  <AvatarImage src={avatarUrl} alt="Avatar" />
+                  <AvatarFallback className="bg-emerald-50 text-emerald-700 font-semibold">
+                    {fallbackInitial}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 font-semibold">{user.username}</span>
+              </Link>
               <button
                 type="button"
                 onClick={() => logout()}
@@ -138,16 +150,27 @@ const Header: React.FC = () => {
               ))}
             </div>
             {user && (
-              <button
-                type="button"
-                onClick={() => {
-                  void logout();
-                  setOpen(false);
-                }}
-                className="w-full text-center border border-slate-200 rounded-xl py-2 text-sm font-semibold text-slate-700"
-              >
-                Se déconnecter
-              </button>
+              <div className="flex items-center gap-3">
+                <Avatar className="h-10 w-10 border border-slate-200">
+                  <AvatarImage src={avatarUrl} alt="Avatar" />
+                  <AvatarFallback className="bg-emerald-50 text-emerald-700 font-semibold">
+                    {fallbackInitial}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1">
+                  <p className="font-semibold text-slate-800">{user.username}</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void logout();
+                      setOpen(false);
+                    }}
+                    className="text-sm text-slate-600 font-semibold"
+                  >
+                    Se déconnecter
+                  </button>
+                </div>
+              </div>
             )}
           </div>
         </div>

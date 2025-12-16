@@ -13,6 +13,7 @@ export interface ApiUser {
   username: string;
   role?: string;
   emailVerified?: boolean;
+  avatarUrl?: string;
 }
 
 export interface Profile {
@@ -26,6 +27,9 @@ export interface Profile {
   languages?: string[];
   bio?: string;
   avatarUrl?: string;
+  avatarFileId?: string;
+  _id?: string;
+  updatedAt?: string;
 }
 
 export interface PostPayload {

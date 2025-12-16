@@ -448,6 +448,11 @@ After running the seed script:
 - Context API for global state
 - Responsive design with Tailwind CSS
 
+### Avatar upload quick test (Android Chrome)
+- Ouvrir Profil > Modifier puis appuyer sur « Choisir une photo » pour voir l'option Caméra ou Galerie.
+- Prendre une photo et choisir une image existante : l'aperçu doit se mettre à jour immédiatement dans l'avatar.
+- Enregistrer puis actualiser / se reconnecter pour vérifier que l'avatar persiste sur toutes les vues (en-tête, profil).
+
 ## 🧪 Testing
 
 ### Backend Testing
