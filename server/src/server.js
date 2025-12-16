@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import connectDB from './config/database.js';
 import authRoutes from './routes/authRoutes.js';
@@ -62,15 +63,28 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/admin', adminRoutes);
 
 if (isProduction) {
-  const frontendDist = path.resolve(__dirname, '../../dist');
+  const frontendDist = process.env.FRONTEND_DIST || path.resolve(__dirname, '../../dist');
+  const indexHtml = path.join(frontendDist, 'index.html');
 
-  app.use(express.static(frontendDist));
+  if (!fs.existsSync(indexHtml)) {
+    console.error(`⚠️  Frontend bundle missing at: ${indexHtml}`);
+  } else {
+    const stats = fs.statSync(indexHtml);
+    console.log(`✅ Serving frontend from ${frontendDist} (index built ${stats.mtime.toISOString()})`);
+  }
+
+  app.use(express.static(frontendDist, { fallthrough: false }));
   app.get('*', (req, res, next) => {
     if (req.path.startsWith('/api')) {
       return next();
     }
 
-    res.sendFile(path.join(frontendDist, 'index.html'));
+    res.sendFile(indexHtml, (err) => {
+      if (err) {
+        console.error(`Error sending index from ${indexHtml}:`, err);
+        res.status(500).send('Frontend build not found.');
+      }
+    });
   });
 }
 
