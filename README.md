@@ -43,7 +43,7 @@ Follow these steps to spin up the project locally without digging through the en
 ### What gets built
 - **Frontend**: Vite (`pnpm build`) outputs static assets to `dist/`.
 - **Backend**: Express entry file is `server/src/server.js` (port `5000` by default via `PORT`).
-- In production, the backend can serve the compiled frontend (it mounts `dist/` when `NODE_ENV=production`; override with `FRONTEND_DIST` if your build lives elsewhere), and Nginx can handle TLS/static delivery while proxying `/api` to the Node server.
+- In production, the backend can serve the compiled frontend (it mounts `dist/` when `NODE_ENV=production`), and Nginx can handle TLS/static delivery while proxying `/api` to the Node server.
 
 ### One-time server setup
 ```bash
@@ -77,7 +77,7 @@ pm2 save                           # persist across restarts
 sudo cp /opt/multaqa/docs/nginx.conf.example /etc/nginx/sites-available/multaqa
 sudo nano /etc/nginx/sites-available/multaqa
 # - set server_name to your domain
-# - ensure root points to /opt/multaqa/dist (or your chosen path that matches FRONTEND_DIST)
+# - ensure root points to /opt/multaqa/dist (or your chosen path)
 
 sudo ln -sf /etc/nginx/sites-available/multaqa /etc/nginx/sites-enabled/multaqa
 sudo nginx -t && sudo systemctl reload nginx
