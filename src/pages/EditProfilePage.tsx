@@ -13,8 +13,10 @@ const EditProfilePage: React.FC = () => {
   const [avatarPreview, setAvatarPreview] = useState<string | undefined>(undefined);
   const [avatarError, setAvatarError] = useState('');
   const [avatarUploading, setAvatarUploading] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const uploadTracker = useRef<number | null>(null);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const cameraInputRef = useRef<HTMLInputElement | null>(null);
+  const galleryInputRef = useRef<HTMLInputElement | null>(null);
   const previousObjectUrl = useRef<string | null>(null);
   const { user, profile, setProfile } = useAuth();
 
@@ -74,6 +76,8 @@ const EditProfilePage: React.FC = () => {
 
   const handleAvatarSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
+    setPickerOpen(false);
+    event.target.value = '';
     if (!file) return;
 
     const uploadId = Date.now();
@@ -120,7 +124,16 @@ const EditProfilePage: React.FC = () => {
 
   const openPicker = () => {
     setAvatarError('');
-    fileInputRef.current?.click();
+    setPickerOpen(true);
+  };
+
+  const handleSourceChoice = (source: 'camera' | 'gallery') => {
+    setPickerOpen(false);
+    if (source === 'camera') {
+      cameraInputRef.current?.click();
+    } else {
+      galleryInputRef.current?.click();
+    }
   };
 
   useEffect(() => revokePreview, []);
@@ -149,19 +162,61 @@ const EditProfilePage: React.FC = () => {
                 {avatarUploading ? <Loader2 className="me-1 h-4 w-4 animate-spin" /> : <Camera className="me-1" />} Choisir une photo
               </button>
               <input
-                ref={fileInputRef}
+                ref={cameraInputRef}
                 type="file"
-                accept="image/jpeg,image/png,image/webp"
+                accept="image/*"
                 capture="environment"
                 className="hidden"
                 onChange={handleAvatarSelect}
               />
+              <input
+                ref={galleryInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleAvatarSelect}
+              />
             </div>
-            <p className="text-xs text-slate-500">JPG/PNG/WebP · Taille max 3MB. Caméra ou galerie.</p>
             {avatarUploading && <p className="text-xs text-emerald-700">Compression et envoi en cours...</p>}
             {avatarError && <p className="text-xs text-red-600">{avatarError}</p>}
           </div>
         </div>
+        {pickerOpen && (
+          <div
+            className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4"
+            onClick={() => setPickerOpen(false)}
+          >
+            <div
+              className="w-full max-w-md rounded-2xl bg-white p-4 shadow-xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <p className="text-center text-sm font-semibold text-slate-800">Choisir une option</p>
+              <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <button
+                  type="button"
+                  className="secondary-btn w-full"
+                  onClick={() => handleSourceChoice('camera')}
+                >
+                  Prendre une photo
+                </button>
+                <button
+                  type="button"
+                  className="secondary-btn w-full"
+                  onClick={() => handleSourceChoice('gallery')}
+                >
+                  Choisir depuis la galerie
+                </button>
+              </div>
+              <button
+                type="button"
+                className="mt-3 w-full text-sm text-slate-500"
+                onClick={() => setPickerOpen(false)}
+              >
+                Annuler
+              </button>
+            </div>
+          </div>
+        )}
         <div className="grid md:grid-cols-2 gap-3">
           <div>
             <label className="text-sm font-semibold text-slate-700">Nom d'affichage</label>

@@ -50,7 +50,11 @@ app.get('/api/health', (req, res) => {
 app.get('/api/imagekit-auth', authenticate, (req, res) => {
   try {
     const authenticationParameters = imagekit.getAuthenticationParameters();
-    res.json(authenticationParameters);
+    res.json({
+      ...authenticationParameters,
+      publicKey: process.env.IMAGEKIT_PUBLIC_KEY,
+      urlEndpoint: process.env.IMAGEKIT_URL_ENDPOINT
+    });
   } catch (error) {
     console.error('ImageKit auth error:', error);
     res.status(500).json({ error: 'Failed to generate ImageKit auth parameters' });
