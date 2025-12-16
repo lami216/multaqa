@@ -19,7 +19,9 @@ import chatRoutes from './routes/chatRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import { authenticate } from './middleware/auth.js';
-import imagekit from './config/imagekit.js';
+
+// مهم: لا تستخدم static import هنا لأن ESM ينفّذ imports قبل dotenv.config
+const { default: imagekit } = await import('./config/imagekit.js');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
