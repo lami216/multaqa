@@ -8,10 +8,10 @@ const PORT = Number(process.env.PORT) || 5173;
 const PREVIEW_PORT = Number(process.env.PREVIEW_PORT || process.env.PORT) || 4173;
 
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   plugins: [
     react(),
-    miaodaDevPlugin(),
+    ...(command === "serve" ? [miaodaDevPlugin()] : []),
     svgr({
       svgrOptions: {
         icon: true,
@@ -33,4 +33,4 @@ export default defineConfig({
     host: "0.0.0.0",
     port: PREVIEW_PORT,
   },
-});
+}));
