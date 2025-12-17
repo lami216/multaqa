@@ -1,22 +1,25 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Camera, Loader2 } from 'lucide-react';
 import {
-  fetchFaculties,
-  fetchMajors,
-  fetchSubjects,
-  http,
-  type FacultyItem,
-  type MajorItem,
-  type Profile,
-  type SubjectItem
-} from '../lib/http';
+  getFaculties,
+  getLevelsByFaculty,
+  getMajorsByFacultyAndLevel,
+  getSemestersByMajorAndLevel,
+  getSubjectsByMajorAndSemester,
+  type CatalogFaculty,
+  type CatalogLevel,
+  type CatalogMajor,
+  type CatalogSemester,
+  type CatalogSubject
+} from '../lib/catalog';
+import { http, type Profile } from '../lib/http';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { useAuth } from '../context/AuthContext';
 import { processImageFile } from '../lib/imageProcessing';
 import { uploadToImageKit } from '../lib/imagekitClient';
 
 const EditProfilePage: React.FC = () => {
-  const [form, setForm] = useState<Profile>({ subjects: [] });
+  const [form, setForm] = useState<Profile>({ subjects: [], subjectCodes: [] });
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -24,12 +27,10 @@ const EditProfilePage: React.FC = () => {
   const [majorsError, setMajorsError] = useState('');
   const [subjectsError, setSubjectsError] = useState('');
   const [loadingProfile, setLoadingProfile] = useState(true);
-  const [faculties, setFaculties] = useState<FacultyItem[]>([]);
-  const [majors, setMajors] = useState<MajorItem[]>([]);
-  const [subjects, setSubjects] = useState<SubjectItem[]>([]);
-  const [loadingFaculties, setLoadingFaculties] = useState(false);
-  const [loadingMajors, setLoadingMajors] = useState(false);
-  const [loadingSubjects, setLoadingSubjects] = useState(false);
+  const [faculties, setFaculties] = useState<CatalogFaculty[]>([]);
+  const [majors, setMajors] = useState<CatalogMajor[]>([]);
+  const [semesters, setSemesters] = useState<CatalogSemester[]>([]);
+  const [subjects, setSubjects] = useState<CatalogSubject[]>([]);
   const [avatarPreview, setAvatarPreview] = useState<string | undefined>(undefined);
   const [avatarError, setAvatarError] = useState('');
   const [avatarUploading, setAvatarUploading] = useState(false);
@@ -48,12 +49,9 @@ const EditProfilePage: React.FC = () => {
   ];
 
   const getAvailableLevels = (facultyId?: string) => {
-    if (!facultyId) return defaultLevelOptions;
-    const faculty = faculties.find((item) => item._id === facultyId);
-    if (faculty?.levels?.length) {
-      return faculty.levels
-        .map((value) => defaultLevelOptions.find((option) => option.value === value) ?? { value, label: value })
-        .filter((option): option is { value: string; label: string } => Boolean(option));
+    const catalogLevels = facultyId ? getLevelsByFaculty(facultyId) : [];
+    if (catalogLevels.length) {
+      return catalogLevels.map((level: CatalogLevel) => ({ value: level.id, label: level.nameFr }));
     }
     return defaultLevelOptions;
   };
@@ -68,30 +66,27 @@ const EditProfilePage: React.FC = () => {
     const load = async () => {
       try {
         setLoadingProfile(true);
-        setLoadingFaculties(true);
         setFacultiesError('');
-        const [{ data: meData }, { data: facultyData }] = await Promise.all([
-          http.get<{ user: unknown; profile: Profile }>('/auth/me'),
-          fetchFaculties(),
-        ]);
+        const { data: meData } = await http.get<{ user: unknown; profile: Profile }>('/auth/me');
 
         const nextProfile = {
           ...meData.profile,
-          subjects: meData.profile?.subjects ?? [],
+          subjects: meData.profile?.subjects ?? meData.profile?.subjectCodes ?? [],
+          subjectCodes: meData.profile?.subjectCodes ?? meData.profile?.subjects ?? [],
+          semesterId: meData.profile?.semesterId ?? meData.profile?.semester
         } as Profile;
 
         setForm(nextProfile);
         setProfile(nextProfile ?? null);
-        setFaculties(facultyData.faculties);
+        setFaculties(getFaculties());
         setAvatarPreview(cacheBustedUrl(meData.profile?.avatarUrl, meData.profile?.updatedAt));
       } catch (err) {
         console.error('Failed to load profile or faculties', err);
-        setFaculties([]);
-        setFacultiesError('Échec du chargement des facultés. Merci de réessayer.');
+        setFaculties(getFaculties());
+        setFacultiesError('Échec du chargement de votre profil. Le catalogue local a été chargé.');
         setError("Impossible de charger votre profil. Veuillez réessayer.");
       } finally {
         setLoadingProfile(false);
-        setLoadingFaculties(false);
       }
     };
 
@@ -102,14 +97,24 @@ const EditProfilePage: React.FC = () => {
     if (!faculties.length) return;
     if (!form.facultyId) return;
 
-    const hasFaculty = faculties.some((faculty) => faculty._id === form.facultyId);
+    const hasFaculty = faculties.some((faculty) => faculty.id === form.facultyId);
     const availableLevels = getAvailableLevels(form.facultyId);
     const levelStillValid = availableLevels.some((option) => option.value === form.level);
 
     if (!hasFaculty || !levelStillValid) {
-      setForm((prev) => ({ ...prev, facultyId: undefined, level: undefined, majorId: undefined, subjects: [], courses: [] }));
+      setForm((prev) => ({
+        ...prev,
+        facultyId: undefined,
+        level: undefined,
+        majorId: undefined,
+        semesterId: undefined,
+        subjectCodes: [],
+        subjects: [],
+        courses: []
+      }));
       setSubjects([]);
       setMajors([]);
+      setSemesters([]);
       setError('La faculté ou le niveau enregistré n’est plus disponible. Merci de le sélectionner à nouveau.');
     }
   }, [faculties, form.facultyId, form.level]);
@@ -123,73 +128,60 @@ const EditProfilePage: React.FC = () => {
   useEffect(() => {
     if (!form.facultyId || !form.level) {
       setMajors([]);
+      setSemesters([]);
       setSubjects([]);
-      setForm((prev) => ({ ...prev, majorId: undefined, subjects: [], courses: [] }));
+      setForm((prev) => ({ ...prev, majorId: undefined, semesterId: undefined, subjectCodes: [], subjects: [], courses: [] }));
       return;
     }
 
-    const loadMajors = async () => {
-      setLoadingMajors(true);
-      setMajorsError('');
-      try {
-        const { data } = await fetchMajors({ facultyId: form.facultyId, level: form.level });
-        const filteredMajors = data.majors.filter((major) => {
-          if (!form.level) return true;
-          if (major.levels?.length) return major.levels.includes(form.level);
-          if (major.level) return major.level === form.level;
-          return true;
-        });
-
-        setMajors(filteredMajors);
-        const hasMajor = filteredMajors.some((major) => major._id === form.majorId);
-        if (!hasMajor) {
-          setForm((prev) => ({ ...prev, majorId: undefined, subjects: [], courses: [] }));
-        }
-      } catch (err) {
-        console.error('Failed to load majors', err);
-        setMajors([]);
-        setMajorsError('Impossible de charger les filières. Réessayez ou contactez un admin.');
-      } finally {
-        setLoadingMajors(false);
-      }
-    };
-
-    void loadMajors();
+    setMajorsError('');
+    const availableMajors = getMajorsByFacultyAndLevel(form.facultyId, form.level);
+    setMajors(availableMajors);
+    const hasMajor = availableMajors.some((major) => major.id === form.majorId);
+    if (!hasMajor) {
+      setForm((prev) => ({ ...prev, majorId: undefined, semesterId: undefined, subjectCodes: [], subjects: [], courses: [] }));
+      setSemesters([]);
+      setSubjects([]);
+    }
+    if (!availableMajors.length) {
+      setMajorsError('Aucune filière active pour cette combinaison.');
+    }
   }, [form.facultyId, form.level, form.majorId]);
 
   useEffect(() => {
-    if (!form.majorId) {
+    if (!form.majorId || !form.level || !form.facultyId) {
+      setSemesters([]);
       setSubjects([]);
-      setForm((prev) => ({ ...prev, subjects: [], courses: [] }));
+      setForm((prev) => ({ ...prev, semesterId: undefined, subjectCodes: [], subjects: [], courses: [] }));
       return;
     }
 
-    const loadSubjects = async () => {
-      setLoadingSubjects(true);
-      setSubjectsError('');
-      try {
-        const { data } = await fetchSubjects({
-          facultyId: form.facultyId ?? '',
-          majorId: form.majorId,
-          level: form.level,
-        });
-        setSubjects(data.subjects);
-        setForm((prev) => ({
-          ...prev,
-          subjects: data.subjects.map((subject) => subject._id),
-          courses: data.subjects.map((subject) => subject.nameFr),
-        }));
-      } catch (err) {
-        console.error('Failed to load subjects', err);
-        setSubjects([]);
-        setSubjectsError('Impossible de charger les matières. Merci de réessayer.');
-      } finally {
-        setLoadingSubjects(false);
-      }
-    };
+    const availableSemesters = getSemestersByMajorAndLevel(form.facultyId, form.level, form.majorId);
+    setSemesters(availableSemesters);
+    const hasSemester = availableSemesters.some((semester) => semester.id === form.semesterId);
+    if (!hasSemester) {
+      setForm((prev) => ({ ...prev, semesterId: undefined, subjectCodes: [], subjects: [], courses: [] }));
+      setSubjects([]);
+    }
+  }, [form.majorId, form.facultyId, form.level, form.semesterId]);
 
-    void loadSubjects();
-  }, [form.majorId, form.facultyId, form.level]);
+  useEffect(() => {
+    if (!form.majorId || !form.facultyId || !form.level || !form.semesterId) {
+      setSubjects([]);
+      setForm((prev) => ({ ...prev, subjectCodes: [], subjects: [], courses: [] }));
+      return;
+    }
+
+    const nextSubjects = getSubjectsByMajorAndSemester(form.facultyId, form.level, form.majorId, form.semesterId);
+    setSubjects(nextSubjects);
+    setSubjectsError(nextSubjects.length ? '' : 'Aucune matière définie pour ce semestre.');
+    setForm((prev) => ({
+      ...prev,
+      subjectCodes: nextSubjects.map((subject) => subject.code),
+      subjects: nextSubjects.map((subject) => subject.code),
+      courses: nextSubjects.map((subject) => subject.nameFr),
+    }));
+  }, [form.majorId, form.facultyId, form.level, form.semesterId]);
 
   const handleChange = (field: keyof Profile, value: unknown) => {
     setError('');
@@ -205,16 +197,17 @@ const EditProfilePage: React.FC = () => {
     setMessage('');
     setError('');
 
-    if (!form.facultyId || !form.level || !form.majorId || !(form.subjects?.length ?? 0)) {
-      setError('Merci de sélectionner une faculté, un niveau, une filière et les matières associées.');
+    if (!form.facultyId || !form.level || !form.majorId || !form.semesterId || !(form.subjectCodes?.length ?? 0)) {
+      setError('Merci de sélectionner une faculté, un niveau, une filière, un semestre et les matières associées.');
       setSaving(false);
       return;
     }
 
     try {
-      const selectedFaculty = faculties.find((item) => item._id === form.facultyId);
-      const selectedMajor = majors.find((item) => item._id === form.majorId);
-      const selectedSubjects = subjects.filter((subject) => (form.subjects ?? []).includes(subject._id));
+      const selectedFaculty = faculties.find((item) => item.id === form.facultyId);
+      const selectedMajor = majors.find((item) => item.id === form.majorId);
+      const selectedSemester = semesters.find((item) => item.id === form.semesterId);
+      const selectedSubjects = subjects;
 
       const { data } = await http.patch<{ profile: Profile }>('/users/me', {
         displayName: form.displayName,
@@ -223,7 +216,10 @@ const EditProfilePage: React.FC = () => {
         level: form.level,
         majorId: form.majorId,
         major: selectedMajor?.nameFr ?? '',
-        subjects: form.subjects,
+        semesterId: form.semesterId,
+        semester: selectedSemester?.nameFr ?? '',
+        subjects: form.subjectCodes,
+        subjectCodes: form.subjectCodes,
         courses: selectedSubjects.map((subject) => subject.nameFr),
         availability: form.availability,
         languages: form.languages ?? [],
@@ -307,7 +303,9 @@ const EditProfilePage: React.FC = () => {
     }
   };
 
-  const selectedSubjectItems = subjects.filter((subject) => (form.subjects ?? []).includes(subject._id));
+  const uiLanguage = useMemo(() => (document.documentElement.lang?.toLowerCase().startsWith('ar') ? 'ar' : 'fr'), []);
+
+  const selectedSubjectItems = subjects;
 
   useEffect(() => revokePreview, []);
 
@@ -410,19 +408,27 @@ const EditProfilePage: React.FC = () => {
                 setError('');
                 setFacultiesError('');
                 setMessage('');
-                setForm((prev) => ({ ...prev, facultyId: value || undefined, level: undefined, majorId: undefined, subjects: [], courses: [] }));
+                setForm((prev) => ({
+                  ...prev,
+                  facultyId: value || undefined,
+                  level: undefined,
+                  majorId: undefined,
+                  semesterId: undefined,
+                  subjectCodes: [],
+                  subjects: [],
+                  courses: []
+                }));
               }}
               className="w-full mt-1"
-              disabled={loadingFaculties || saving || loadingProfile}
+              disabled={saving || loadingProfile}
             >
               <option value="">Choisir</option>
               {faculties.map((faculty) => (
-                <option key={faculty._id} value={faculty._id}>
+                <option key={faculty.id} value={faculty.id}>
                   {faculty.nameFr}
                 </option>
               ))}
             </select>
-            {loadingFaculties && <p className="text-xs text-slate-500">Chargement des facultés...</p>}
             {facultiesError && <p className="text-xs text-red-600">{facultiesError}</p>}
           </div>
           <div>
@@ -435,7 +441,15 @@ const EditProfilePage: React.FC = () => {
                 setMajorsError('');
                 setSubjectsError('');
                 setMessage('');
-                setForm((prev) => ({ ...prev, level: value || undefined, majorId: undefined, subjects: [], courses: [] }));
+                setForm((prev) => ({
+                  ...prev,
+                  level: value || undefined,
+                  majorId: undefined,
+                  semesterId: undefined,
+                  subjectCodes: [],
+                  subjects: [],
+                  courses: []
+                }));
               }}
               className="w-full mt-1"
               disabled={!form.facultyId || saving || loadingProfile}
@@ -458,41 +472,82 @@ const EditProfilePage: React.FC = () => {
                 setError('');
                 setMajorsError('');
                 setMessage('');
-                setForm((prev) => ({ ...prev, majorId: value || undefined, subjects: [], courses: [] }));
+                setForm((prev) => ({
+                  ...prev,
+                  majorId: value || undefined,
+                  semesterId: undefined,
+                  subjectCodes: [],
+                  subjects: [],
+                  courses: []
+                }));
               }}
               className="w-full mt-1"
-              disabled={!form.facultyId || !form.level || saving || loadingMajors || loadingProfile}
+              disabled={!form.facultyId || !form.level || saving || loadingProfile}
             >
               <option value="">Choisir</option>
               {majors.map((major) => (
-                <option key={major._id} value={major._id}>
+                <option key={major.id} value={major.id}>
                   {major.nameFr}
                 </option>
               ))}
             </select>
-            {loadingMajors && <p className="text-xs text-slate-500">Chargement des filières...</p>}
             {majorsError && <p className="text-xs text-red-600">{majorsError}</p>}
-            {!loadingMajors && form.facultyId && form.level && !majors.length && (
-              <p className="text-xs text-amber-600">Aucune filière active pour cette combinaison. Contactez un admin.</p>
+            {form.facultyId && form.level && !majors.length && (
+              <p className="text-xs text-amber-600">Aucune filière active pour cette combinaison.</p>
             )}
+          </div>
+          <div>
+            <label className="text-sm font-semibold text-slate-700">Semestre</label>
+            <select
+              value={form.semesterId ?? ''}
+              onChange={(e) => {
+                const value = e.target.value;
+                setError('');
+                setSubjectsError('');
+                setMessage('');
+                setForm((prev) => ({
+                  ...prev,
+                  semesterId: value || undefined,
+                  subjectCodes: [],
+                  subjects: [],
+                  courses: []
+                }));
+              }}
+              className="w-full mt-1"
+              disabled={!form.majorId || !form.level || saving || loadingProfile}
+            >
+              <option value="">Choisir</option>
+              {semesters.map((semester) => (
+                <option key={semester.id} value={semester.id}>
+                  {semester.nameFr}
+                </option>
+              ))}
+            </select>
+            {!form.majorId && <p className="text-xs text-slate-500">Sélectionnez d'abord une filière.</p>}
           </div>
           <div className="md:col-span-2">
             <label className="text-sm font-semibold text-slate-700">Matières</label>
             <div className="mt-1 min-h-[42px] rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-              {loadingSubjects && <p className="text-sm text-slate-600">Chargement des matières...</p>}
-              {!loadingSubjects && !!selectedSubjectItems.length && (
+              {!!selectedSubjectItems.length && (
                 <div className="flex flex-wrap gap-2">
                   {selectedSubjectItems.map((subject) => (
-                    <span key={subject._id} className="badge-soft">
-                      {subject.nameFr}
+                    <span
+                      key={subject.code}
+                      className="badge-soft"
+                      title={uiLanguage === 'ar' ? subject.nameAr : subject.nameFr}
+                    >
+                      {subject.code}
                     </span>
                   ))}
                 </div>
               )}
-              {!loadingSubjects && !selectedSubjectItems.length && (
-                <p className="text-sm text-slate-500">Choisissez une filière pour récupérer automatiquement les matières.</p>
+              {!selectedSubjectItems.length && (
+                <p className="text-sm text-slate-500">Choisissez d'abord la filière et le semestre pour récupérer automatiquement les matières.</p>
               )}
               {subjectsError && <p className="text-xs text-red-600">{subjectsError}</p>}
+              {!!selectedSubjectItems.length && (
+                <p className="mt-1 text-xs text-slate-500">Les matières sont générées automatiquement à partir du catalogue académique.</p>
+              )}
             </div>
           </div>
         </div>
@@ -510,7 +565,7 @@ const EditProfilePage: React.FC = () => {
         <button
           type="submit"
           className="primary-btn w-full sm:w-auto"
-          disabled={saving || loadingProfile || loadingSubjects || loadingMajors || loadingFaculties}
+          disabled={saving || loadingProfile}
         >
           {saving ? 'Enregistrement...' : 'Enregistrer'}
         </button>

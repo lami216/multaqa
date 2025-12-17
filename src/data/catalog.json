@@ -1,0 +1,130 @@
+{
+  "faculties": [
+    {
+      "id": "FST",
+      "nameAr": "كلية العلوم والتقنيات",
+      "nameFr": "Faculté des Sciences et Techniques",
+      "levels": [
+        {
+          "id": "L1",
+          "nameAr": "السنة الأولى إجازة",
+          "nameFr": "Licence 1",
+          "majors": [
+            {
+              "id": "TRONC",
+              "nameAr": "جذع مشترك علوم وتقنيات",
+              "nameFr": "Tronc commun Sciences et Techniques",
+              "semesters": [
+                {
+                  "id": "S1",
+                  "nameAr": "السداسي 1",
+                  "nameFr": "Semestre 1",
+                  "subjects": []
+                },
+                {
+                  "id": "S2",
+                  "nameAr": "السداسي 2",
+                  "nameFr": "Semestre 2",
+                  "subjects": []
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "L2",
+          "nameAr": "السنة الثانية إجازة",
+          "nameFr": "Licence 2",
+          "majors": [
+            {
+              "id": "BIO",
+              "nameAr": "بيولوجيا",
+              "nameFr": "Biologie",
+              "semesters": [
+                {
+                  "id": "S3",
+                  "nameAr": "السداسي 3",
+                  "nameFr": "Semestre 3",
+                  "subjects": []
+                },
+                {
+                  "id": "S4",
+                  "nameAr": "السداسي 4",
+                  "nameFr": "Semestre 4",
+                  "subjects": [
+                    {
+                      "code": "PV1",
+                      "nameAr": "فسيولوجيا نباتية 1",
+                      "nameFr": "Physiologie végétale I"
+                    },
+                    {
+                      "code": "HV",
+                      "nameAr": "أنسجة نباتية",
+                      "nameFr": "Histologie Végétale"
+                    },
+                    {
+                      "code": "PA1",
+                      "nameAr": "فسيولوجيا حيوانية 1",
+                      "nameFr": "Physiologie animale I"
+                    },
+                    {
+                      "code": "BM",
+                      "nameAr": "كيمياء حيوية أيضية",
+                      "nameFr": "Biochimie Métabolique"
+                    },
+                    {
+                      "code": "EA1",
+                      "nameAr": "إيكولوجيا حيوانية 1",
+                      "nameFr": "Ecologie Animale I"
+                    },
+                    {
+                      "code": "GP",
+                      "nameAr": "علم الوراثة السكانية",
+                      "nameFr": "Génétique des populations"
+                    },
+                    {
+                      "code": "AN1",
+                      "nameAr": "اللغة الإنجليزية 1",
+                      "nameFr": "Anglais I"
+                    },
+                    {
+                      "code": "PPE",
+                      "nameAr": "مشروع شخصي للطالب",
+                      "nameFr": "Projet Personnel de l’Étudiant"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "L3",
+          "nameAr": "السنة الثالثة إجازة",
+          "nameFr": "Licence 3",
+          "majors": [
+            {
+              "id": "BIO-ENV",
+              "nameAr": "بيولوجيا بيئية",
+              "nameFr": "Biologie Environnementale",
+              "semesters": [
+                {
+                  "id": "S5",
+                  "nameAr": "السداسي 5",
+                  "nameFr": "Semestre 5",
+                  "subjects": []
+                },
+                {
+                  "id": "S6",
+                  "nameAr": "السداسي 6",
+                  "nameFr": "Semestre 6",
+                  "subjects": []
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
