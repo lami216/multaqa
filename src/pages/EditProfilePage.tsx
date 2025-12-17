@@ -86,6 +86,7 @@ const EditProfilePage: React.FC = () => {
         setAvatarPreview(cacheBustedUrl(meData.profile?.avatarUrl, meData.profile?.updatedAt));
       } catch (err) {
         console.error('Failed to load profile or faculties', err);
+        setFaculties([]);
         setFacultiesError('Échec du chargement des facultés. Merci de réessayer.');
         setError("Impossible de charger votre profil. Veuillez réessayer.");
       } finally {
@@ -146,6 +147,7 @@ const EditProfilePage: React.FC = () => {
         }
       } catch (err) {
         console.error('Failed to load majors', err);
+        setMajors([]);
         setMajorsError('Impossible de charger les filières. Réessayez ou contactez un admin.');
       } finally {
         setLoadingMajors(false);
@@ -179,6 +181,7 @@ const EditProfilePage: React.FC = () => {
         }));
       } catch (err) {
         console.error('Failed to load subjects', err);
+        setSubjects([]);
         setSubjectsError('Impossible de charger les matières. Merci de réessayer.');
       } finally {
         setLoadingSubjects(false);
