@@ -36,13 +36,24 @@ const EditProfilePage: React.FC = () => {
   const galleryInputRef = useRef<HTMLInputElement | null>(null);
   const previousObjectUrl = useRef<string | null>(null);
   const { user, profile, setProfile } = useAuth();
-  const levelOptions = [
+  const defaultLevelOptions = [
     { value: 'L1', label: 'Licence 1' },
     { value: 'L2', label: 'Licence 2' },
     { value: 'L3', label: 'Licence 3' },
     { value: 'M1', label: 'Master 1' },
     { value: 'M2', label: 'Master 2' }
   ];
+
+  const getAvailableLevels = (facultyId?: string) => {
+    if (!facultyId) return defaultLevelOptions;
+    const faculty = faculties.find((item) => item._id === facultyId);
+    if (faculty?.levels?.length) {
+      return faculty.levels
+        .map((value) => defaultLevelOptions.find((option) => option.value === value) ?? { value, label: value })
+        .filter((option): option is { value: string; label: string } => Boolean(option));
+    }
+    return defaultLevelOptions;
+  };
 
   const cacheBustedUrl = (url?: string, version?: string | number) => {
     if (!url) return undefined;
@@ -81,13 +92,20 @@ const EditProfilePage: React.FC = () => {
   }, [setProfile]);
 
   useEffect(() => {
-    if (!faculties.length || !form.facultyId) return;
+    if (!faculties.length) return;
+    if (!form.facultyId) return;
+
     const hasFaculty = faculties.some((faculty) => faculty._id === form.facultyId);
-    if (!hasFaculty) {
+    const availableLevels = getAvailableLevels(form.facultyId);
+    const levelStillValid = availableLevels.some((option) => option.value === form.level);
+
+    if (!hasFaculty || !levelStillValid) {
       setForm((prev) => ({ ...prev, facultyId: undefined, level: undefined, majorId: undefined, subjects: [], courses: [] }));
-      setError('La faculté enregistrée n’est plus disponible. Merci de la sélectionner à nouveau.');
+      setSubjects([]);
+      setMajors([]);
+      setError('La faculté ou le niveau enregistré n’est plus disponible. Merci de le sélectionner à nouveau.');
     }
-  }, [faculties, form.facultyId]);
+  }, [faculties, form.facultyId, form.level]);
 
   useEffect(() => {
     if (profile?.avatarUrl) {
@@ -106,9 +124,16 @@ const EditProfilePage: React.FC = () => {
     const loadMajors = async () => {
       setLoadingMajors(true);
       try {
-        const { data } = await fetchMajors({ facultyId: form.facultyId });
-        setMajors(data.majors);
-        const hasMajor = data.majors.some((major) => major._id === form.majorId);
+        const { data } = await fetchMajors({ facultyId: form.facultyId, level: form.level });
+        const filteredMajors = data.majors.filter((major) => {
+          if (!form.level) return true;
+          if (major.levels?.length) return major.levels.includes(form.level);
+          if (major.level) return major.level === form.level;
+          return true;
+        });
+
+        setMajors(filteredMajors);
+        const hasMajor = filteredMajors.some((major) => major._id === form.majorId);
         if (!hasMajor) {
           setForm((prev) => ({ ...prev, majorId: undefined, subjects: [], courses: [] }));
         }
@@ -135,6 +160,7 @@ const EditProfilePage: React.FC = () => {
         const { data } = await fetchSubjects({
           facultyId: form.facultyId ?? '',
           majorId: form.majorId,
+          level: form.level,
         });
         setSubjects(data.subjects);
         setForm((prev) => ({
@@ -150,7 +176,7 @@ const EditProfilePage: React.FC = () => {
     };
 
     void loadSubjects();
-  }, [form.majorId, form.facultyId]);
+  }, [form.majorId, form.facultyId, form.level]);
 
   const handleChange = (field: keyof Profile, value: unknown) => {
     setError('');
@@ -184,7 +210,6 @@ const EditProfilePage: React.FC = () => {
         major: selectedMajor?.nameFr ?? '',
         subjects: form.subjects,
         courses: selectedSubjects.map((subject) => subject.nameFr),
-        skills: form.skills ?? [],
         availability: form.availability,
         languages: form.languages ?? [],
         bio: form.bio,
@@ -277,7 +302,7 @@ const EditProfilePage: React.FC = () => {
         <div>
           <p className="text-xs uppercase font-semibold text-emerald-600">Profil</p>
           <h1 className="section-title">Mettre à jour mon profil</h1>
-          <p className="helper-text">Ajoutez vos compétences, matières et disponibilités pour de meilleurs matchs.</p>
+          <p className="helper-text">Mettez à jour votre parcours académique et vos disponibilités.</p>
         </div>
       </div>
 
@@ -397,22 +422,13 @@ const EditProfilePage: React.FC = () => {
               disabled={!form.facultyId || saving || loadingProfile}
             >
               <option value="">Choisir</option>
-              {levelOptions.map((level) => (
+              {getAvailableLevels(form.facultyId).map((level) => (
                 <option key={level.value} value={level.value}>
                   {level.label}
                 </option>
               ))}
             </select>
             {!form.facultyId && <p className="text-xs text-slate-500">Sélectionnez d'abord une faculté.</p>}
-          </div>
-          <div>
-            <label className="text-sm font-semibold text-slate-700">Compétences</label>
-            <input
-              value={(form.skills ?? []).join(', ')}
-              onChange={(e) => handleChange('skills', e.target.value.split(',').map((v) => v.trim()))}
-              className="w-full mt-1"
-              disabled={saving}
-            />
           </div>
           <div className="md:col-span-2">
             <label className="text-sm font-semibold text-slate-700">Filière</label>
