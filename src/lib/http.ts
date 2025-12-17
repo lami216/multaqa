@@ -1,6 +1,7 @@
-import axios from 'axios';
+import axios, { type AxiosError, type AxiosRequestConfig } from 'axios';
 
-const rawBase = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/+$/, '') ?? '';
+const rawBase = ((import.meta as unknown as { env?: Record<string, string | undefined> }).env?.VITE_API_BASE_URL ?? '')
+  .replace(/\/+$/, '') ?? '';
 const apiBase = rawBase
   ? rawBase.endsWith('/api')
     ? rawBase
@@ -11,6 +12,54 @@ export const http = axios.create({
   baseURL: apiBase,
   withCredentials: true
 });
+
+type RequestMetadata = {
+  start: number;
+  id: string;
+};
+
+type RetriableConfig = AxiosRequestConfig & {
+  metadata?: RequestMetadata;
+  _retry?: boolean;
+};
+
+const logEndpoint = (config: AxiosRequestConfig, suffix = '') => {
+  const method = config.method?.toUpperCase() ?? 'GET';
+  const base = config.baseURL ?? '';
+  const url = config.url ?? '';
+  console.info(`[http] ${method} ${base}${url}${suffix}`);
+};
+
+http.interceptors.request.use((config) => {
+  const metadata: RequestMetadata = { start: Date.now(), id: Math.random().toString(36).slice(2, 8) };
+  (config as RetriableConfig).metadata = metadata;
+  logEndpoint(config, ` (id=${metadata.id}, start=${new Date(metadata.start).toISOString()})`);
+  return config;
+});
+
+http.interceptors.response.use(
+  (response) => {
+    const metadata = (response.config as RetriableConfig).metadata;
+    const duration = metadata ? `${Date.now() - metadata.start}ms` : 'n/a';
+    console.info(`[http] ${response.status} ${response.config.url} (id=${metadata?.id ?? 'n/a'}, duration=${duration})`);
+    return response;
+  },
+  async (error: AxiosError) => {
+    const config = error.config as RetriableConfig;
+    const metadata = config?.metadata;
+    const duration = metadata ? `${Date.now() - metadata.start}ms` : 'n/a';
+    const status = error.response?.status ?? 'no-response';
+    logEndpoint(config ?? {}, ` -> error status=${status} (id=${metadata?.id ?? 'n/a'}, duration=${duration})`);
+
+    if (status === 401 && !config?._retry) {
+      config._retry = true;
+      await new Promise((resolve) => setTimeout(resolve, 350));
+      return http(config);
+    }
+
+    return Promise.reject(error);
+  }
+);
 
 export interface ApiUser {
   id: string;
@@ -28,6 +77,7 @@ export interface Profile {
   major?: string;
   majorId?: string;
   level?: string;
+  semester?: string;
   semesterId?: string;
   subjects?: string[];
   subjectCodes?: string[];
@@ -59,6 +109,7 @@ export interface PostResponse extends PostPayload {
   status: string;
   createdAt: string;
   updatedAt: string;
+  language?: string;
   author?: { username: string; profile?: Profile };
 }
 
