@@ -41,9 +41,12 @@ export const postSchema = z.object({
 
 export const profileSchema = z.object({
   displayName: z.string().optional(),
+  facultyId: z.string().min(1),
+  majorId: z.string().min(1),
+  level: z.enum(['L1', 'L2', 'L3', 'M1', 'M2']),
+  subjects: z.array(z.string().min(1)).min(1),
   faculty: z.string().optional(),
   major: z.string().optional(),
-  level: z.enum(['L1', 'L2', 'L3', 'M1', 'M2']).optional(),
   skills: z.array(z.string()).optional(),
   courses: z.array(z.string()).optional(),
   availability: z.string().optional(),

@@ -15,9 +15,17 @@ const profileSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  facultyId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Faculty'
+  },
   major: {
     type: String,
     trim: true
+  },
+  majorId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Major'
   },
   level: {
     type: String,
@@ -31,6 +39,10 @@ const profileSchema = new mongoose.Schema({
   courses: [{
     type: String,
     trim: true
+  }],
+  subjects: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Subject'
   }],
   availability: {
     type: String,

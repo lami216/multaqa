@@ -18,6 +18,7 @@ import postRoutes from './routes/postRoutes.js';
 import chatRoutes from './routes/chatRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
+import lookupRoutes from './routes/lookupRoutes.js';
 import { authenticate } from './middleware/auth.js';
 
 // مهم: لا تستخدم static import هنا لأن ESM ينفّذ imports قبل dotenv.config
@@ -67,6 +68,7 @@ app.use('/api/posts', postRoutes);
 app.use('/api/chats', chatRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/lookups', lookupRoutes);
 
 if (isProduction) {
   const frontendDist = path.resolve(__dirname, '../../dist');
