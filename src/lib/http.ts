@@ -59,6 +59,7 @@ export interface FacultyItem {
   _id: string;
   nameAr: string;
   nameFr: string;
+  levels?: string[];
 }
 
 export interface MajorItem {
@@ -67,6 +68,8 @@ export interface MajorItem {
   nameFr: string;
   facultyId: FacultyItem;
   active: boolean;
+  levels?: string[];
+  level?: string;
 }
 
 export interface SubjectItem {
