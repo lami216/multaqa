@@ -20,6 +20,7 @@ import { uploadToImageKit } from '../lib/imagekitClient';
 
 const EditProfilePage: React.FC = () => {
   const [form, setForm] = useState<Profile>({ subjects: [], subjectCodes: [] });
+  const [serverProfile, setServerProfile] = useState<Profile | null>(null);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -35,6 +36,8 @@ const EditProfilePage: React.FC = () => {
   const [avatarError, setAvatarError] = useState('');
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const initializedRef = useRef(false);
+  const isDirtyRef = useRef(false);
   const uploadTracker = useRef<number | null>(null);
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
   const galleryInputRef = useRef<HTMLInputElement | null>(null);
@@ -115,12 +118,29 @@ const EditProfilePage: React.FC = () => {
     return `${url}?v=${v}`;
   };
 
+  const syncServerProfile = (nextProfile: Profile, options?: { resetDirty?: boolean }) => {
+    const shouldResetDirty = options?.resetDirty ?? false;
+    setServerProfile(nextProfile);
+    if (!initializedRef.current || !isDirtyRef.current || shouldResetDirty) {
+      setForm((prev) => ({ ...prev, ...nextProfile }));
+      if (shouldResetDirty) {
+        isDirtyRef.current = false;
+      }
+    } else {
+      console.info('[profile] skipped applying server profile because form is dirty');
+    }
+    initializedRef.current = true;
+  };
+
   useEffect(() => {
     const load = async () => {
       try {
         setLoadingProfile(true);
         setFacultiesError('');
+        const meStartedAt = Date.now();
+        console.info('[profile] fetching /auth/me', { startedAt: new Date(meStartedAt).toISOString() });
         const { data: meData } = await http.get<{ user: unknown; profile: Profile }>('/auth/me');
+        console.info('[profile] fetched /auth/me', { durationMs: Date.now() - meStartedAt });
 
         const nextProfile = {
           ...meData.profile,
@@ -133,7 +153,7 @@ const EditProfilePage: React.FC = () => {
         const normalizedProfile = normalizeProfileWithCatalog(nextProfile);
 
         setFaculties(catalogFaculties);
-        setForm(normalizedProfile);
+        syncServerProfile(normalizedProfile);
         setProfile(normalizedProfile ?? null);
         if (
           (nextProfile.facultyId || nextProfile.faculty || nextProfile.level) &&
@@ -156,6 +176,18 @@ const EditProfilePage: React.FC = () => {
 
     void load();
   }, [setProfile]);
+
+  useEffect(() => {
+    if (serverProfile) {
+      console.info('[profile] server profile synced', {
+        facultyId: serverProfile.facultyId,
+        level: serverProfile.level,
+        majorId: serverProfile.majorId,
+        semesterId: serverProfile.semesterId,
+        updatedAt: serverProfile.updatedAt,
+      });
+    }
+  }, [serverProfile]);
 
   useEffect(() => {
     if (!faculties.length || !form.facultyId) return;
@@ -263,6 +295,7 @@ const EditProfilePage: React.FC = () => {
   }, [form.majorId, form.facultyId, form.level, form.semesterId]);
 
   const handleChange = (field: keyof Profile, value: unknown) => {
+    isDirtyRef.current = true;
     setError('');
     setMessage('');
     setMajorsError('');
@@ -304,6 +337,9 @@ const EditProfilePage: React.FC = () => {
         languages: form.languages ?? [],
         bio: form.bio,
       });
+      if (data.profile) {
+        syncServerProfile(data.profile, { resetDirty: true });
+      }
       setProfile(data.profile ?? null);
       setMessage('Profil mis à jour');
     } catch (err) {
@@ -353,7 +389,11 @@ const EditProfilePage: React.FC = () => {
         avatarFileId: uploadResponse.fileId
       });
 
+      isDirtyRef.current = true;
       setForm((prev) => ({ ...prev, avatarUrl: uploadResponse.url, avatarFileId: uploadResponse.fileId }));
+      if (data.profile) {
+        syncServerProfile(data.profile, { resetDirty: true });
+      }
       setProfile(data.profile ?? null);
       revokePreview();
       setAvatarPreview(cacheBustedUrl(uploadResponse.url, Date.now()));
@@ -484,6 +524,7 @@ const EditProfilePage: React.FC = () => {
               value={form.facultyId ?? ''}
               onChange={(e) => {
                 const value = e.target.value;
+                isDirtyRef.current = true;
                 setError('');
                 setFacultiesError('');
                 setMessage('');
@@ -516,6 +557,7 @@ const EditProfilePage: React.FC = () => {
               value={form.level ?? ''}
               onChange={(e) => {
                 const value = e.target.value;
+                isDirtyRef.current = true;
                 setError('');
                 setMajorsError('');
                 setSubjectsError('');
@@ -548,6 +590,7 @@ const EditProfilePage: React.FC = () => {
               value={form.majorId ?? ''}
               onChange={(e) => {
                 const value = e.target.value;
+                isDirtyRef.current = true;
                 setError('');
                 setMajorsError('');
                 setMessage('');
@@ -581,6 +624,7 @@ const EditProfilePage: React.FC = () => {
               value={form.semesterId ?? ''}
               onChange={(e) => {
                 const value = e.target.value;
+                isDirtyRef.current = true;
                 setError('');
                 setSubjectsError('');
                 setMessage('');
