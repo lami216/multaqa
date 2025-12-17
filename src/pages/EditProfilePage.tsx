@@ -40,20 +40,73 @@ const EditProfilePage: React.FC = () => {
   const galleryInputRef = useRef<HTMLInputElement | null>(null);
   const previousObjectUrl = useRef<string | null>(null);
   const { user, profile, setProfile } = useAuth();
-  const defaultLevelOptions = [
-    { value: 'L1', label: 'Licence 1' },
-    { value: 'L2', label: 'Licence 2' },
-    { value: 'L3', label: 'Licence 3' },
-    { value: 'M1', label: 'Master 1' },
-    { value: 'M2', label: 'Master 2' }
-  ];
+  const getAvailableLevels = (facultyId?: string) =>
+    (facultyId ? getLevelsByFaculty(facultyId) : []).map((level: CatalogLevel) => ({
+      value: level.id,
+      label: level.nameFr
+    }));
 
-  const getAvailableLevels = (facultyId?: string) => {
-    const catalogLevels = facultyId ? getLevelsByFaculty(facultyId) : [];
-    if (catalogLevels.length) {
-      return catalogLevels.map((level: CatalogLevel) => ({ value: level.id, label: level.nameFr }));
-    }
-    return defaultLevelOptions;
+  const matchByIdOrName = <T extends { id: string; nameFr: string; nameAr: string }>(
+    items: T[],
+    value?: string
+  ) => {
+    if (!value) return undefined;
+    const normalized = value.trim().toLowerCase();
+    return items.find(
+      (item) =>
+        item.id === value || item.nameFr.toLowerCase() === normalized || item.nameAr.toLowerCase() === normalized
+    );
+  };
+
+  const normalizeProfileWithCatalog = (rawProfile?: Profile): Profile => {
+    const catalogFaculties = getFaculties();
+    const facultyMatch = matchByIdOrName(catalogFaculties, rawProfile?.facultyId ?? rawProfile?.faculty);
+
+    const levels = facultyMatch ? getLevelsByFaculty(facultyMatch.id) : [];
+    const levelMatch = matchByIdOrName(levels, rawProfile?.level);
+
+    const majors = facultyMatch && levelMatch ? getMajorsByFacultyAndLevel(facultyMatch.id, levelMatch.id) : [];
+    const majorMatch = matchByIdOrName(majors, rawProfile?.majorId ?? rawProfile?.major);
+
+    const semesters =
+      facultyMatch && levelMatch && majorMatch
+        ? getSemestersByMajorAndLevel(facultyMatch.id, levelMatch.id, majorMatch.id)
+        : [];
+    const semesterMatch = matchByIdOrName(semesters, rawProfile?.semesterId ?? rawProfile?.semester);
+
+    const catalogSubjects =
+      facultyMatch && levelMatch && majorMatch && semesterMatch
+        ? getSubjectsByMajorAndSemester(facultyMatch.id, levelMatch.id, majorMatch.id, semesterMatch.id)
+        : [];
+
+    const subjectCandidates = [...(rawProfile?.subjectCodes ?? []), ...(rawProfile?.subjects ?? [])].filter(Boolean);
+    const matchedSubjectCodes = catalogSubjects
+      .filter((subject) =>
+        subjectCandidates.some(
+          (candidate) =>
+            candidate === subject.code ||
+            candidate?.toLowerCase?.() === subject.nameFr.toLowerCase() ||
+            candidate?.toLowerCase?.() === subject.nameAr.toLowerCase()
+        )
+      )
+      .map((subject) => subject.code);
+
+    const resolvedSubjectCodes = catalogSubjects.length
+      ? matchedSubjectCodes.length
+        ? matchedSubjectCodes
+        : catalogSubjects.map((s) => s.code)
+      : [];
+
+    return {
+      ...rawProfile,
+      facultyId: facultyMatch?.id,
+      level: levelMatch?.id,
+      majorId: majorMatch?.id,
+      semesterId: semesterMatch?.id,
+      subjectCodes: resolvedSubjectCodes.length ? resolvedSubjectCodes : catalogSubjects.map((s) => s.code),
+      subjects: resolvedSubjectCodes.length ? resolvedSubjectCodes : catalogSubjects.map((s) => s.code),
+      courses: catalogSubjects.map((subject) => subject.nameFr)
+    } as Profile;
   };
 
   const cacheBustedUrl = (url?: string, version?: string | number) => {
@@ -76,9 +129,20 @@ const EditProfilePage: React.FC = () => {
           semesterId: meData.profile?.semesterId ?? meData.profile?.semester
         } as Profile;
 
-        setForm(nextProfile);
-        setProfile(nextProfile ?? null);
-        setFaculties(getFaculties());
+        const catalogFaculties = getFaculties();
+        const normalizedProfile = normalizeProfileWithCatalog(nextProfile);
+
+        setFaculties(catalogFaculties);
+        setForm(normalizedProfile);
+        setProfile(normalizedProfile ?? null);
+        if (
+          (nextProfile.facultyId || nextProfile.faculty || nextProfile.level) &&
+          (!normalizedProfile.facultyId || !normalizedProfile.level)
+        ) {
+          setError(
+            'Les informations enregistrées ne correspondent plus au catalogue académique. Merci de sélectionner vos données à nouveau.'
+          );
+        }
         setAvatarPreview(cacheBustedUrl(meData.profile?.avatarUrl, meData.profile?.updatedAt));
       } catch (err) {
         console.error('Failed to load profile or faculties', err);
@@ -94,14 +158,10 @@ const EditProfilePage: React.FC = () => {
   }, [setProfile]);
 
   useEffect(() => {
-    if (!faculties.length) return;
-    if (!form.facultyId) return;
+    if (!faculties.length || !form.facultyId) return;
 
-    const hasFaculty = faculties.some((faculty) => faculty.id === form.facultyId);
-    const availableLevels = getAvailableLevels(form.facultyId);
-    const levelStillValid = availableLevels.some((option) => option.value === form.level);
-
-    if (!hasFaculty || !levelStillValid) {
+    const faculty = faculties.find((item) => item.id === form.facultyId);
+    if (!faculty) {
       setForm((prev) => ({
         ...prev,
         facultyId: undefined,
@@ -115,7 +175,26 @@ const EditProfilePage: React.FC = () => {
       setSubjects([]);
       setMajors([]);
       setSemesters([]);
-      setError('La faculté ou le niveau enregistré n’est plus disponible. Merci de le sélectionner à nouveau.');
+      setError('La faculté sélectionnée n’est plus disponible dans le catalogue. Merci de choisir une autre faculté.');
+      return;
+    }
+
+    const availableLevels = getAvailableLevels(form.facultyId);
+    const levelStillValid = !form.level || availableLevels.some((option) => option.value === form.level);
+    if (!levelStillValid) {
+      setForm((prev) => ({
+        ...prev,
+        level: undefined,
+        majorId: undefined,
+        semesterId: undefined,
+        subjectCodes: [],
+        subjects: [],
+        courses: []
+      }));
+      setSubjects([]);
+      setMajors([]);
+      setSemesters([]);
+      setError('Le niveau enregistré n’est plus disponible pour cette faculté. Merci de le sélectionner à nouveau.');
     }
   }, [faculties, form.facultyId, form.level]);
 
