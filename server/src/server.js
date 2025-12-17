@@ -29,6 +29,8 @@ const PORT = process.env.PORT || 5000;
 const isProduction = process.env.NODE_ENV === 'production';
 const corsOrigin = process.env.CORS_ORIGIN || 'http://localhost:5173';
 
+app.set('etag', false);
+
 if (isProduction) {
   app.set('trust proxy', 1);
 }
@@ -40,6 +42,13 @@ app.use(cors({
   origin: corsOrigin,
   credentials: true
 }));
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api')) {
+    res.setHeader('Cache-Control', 'no-store, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+  }
+  next();
+});
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
