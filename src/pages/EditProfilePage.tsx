@@ -20,6 +20,9 @@ const EditProfilePage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [facultiesError, setFacultiesError] = useState('');
+  const [majorsError, setMajorsError] = useState('');
+  const [subjectsError, setSubjectsError] = useState('');
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [faculties, setFaculties] = useState<FacultyItem[]>([]);
   const [majors, setMajors] = useState<MajorItem[]>([]);
@@ -66,6 +69,7 @@ const EditProfilePage: React.FC = () => {
       try {
         setLoadingProfile(true);
         setLoadingFaculties(true);
+        setFacultiesError('');
         const [{ data: meData }, { data: facultyData }] = await Promise.all([
           http.get<{ user: unknown; profile: Profile }>('/auth/me'),
           fetchFaculties(),
@@ -81,6 +85,8 @@ const EditProfilePage: React.FC = () => {
         setFaculties(facultyData.faculties);
         setAvatarPreview(cacheBustedUrl(meData.profile?.avatarUrl, meData.profile?.updatedAt));
       } catch (err) {
+        console.error('Failed to load profile or faculties', err);
+        setFacultiesError('Échec du chargement des facultés. Merci de réessayer.');
         setError("Impossible de charger votre profil. Veuillez réessayer.");
       } finally {
         setLoadingProfile(false);
@@ -123,6 +129,7 @@ const EditProfilePage: React.FC = () => {
 
     const loadMajors = async () => {
       setLoadingMajors(true);
+      setMajorsError('');
       try {
         const { data } = await fetchMajors({ facultyId: form.facultyId, level: form.level });
         const filteredMajors = data.majors.filter((major) => {
@@ -138,7 +145,8 @@ const EditProfilePage: React.FC = () => {
           setForm((prev) => ({ ...prev, majorId: undefined, subjects: [], courses: [] }));
         }
       } catch (err) {
-        setError('Impossible de charger les filières.');
+        console.error('Failed to load majors', err);
+        setMajorsError('Impossible de charger les filières. Réessayez ou contactez un admin.');
       } finally {
         setLoadingMajors(false);
       }
@@ -156,6 +164,7 @@ const EditProfilePage: React.FC = () => {
 
     const loadSubjects = async () => {
       setLoadingSubjects(true);
+      setSubjectsError('');
       try {
         const { data } = await fetchSubjects({
           facultyId: form.facultyId ?? '',
@@ -169,7 +178,8 @@ const EditProfilePage: React.FC = () => {
           courses: data.subjects.map((subject) => subject.nameFr),
         }));
       } catch (err) {
-        setError('Impossible de charger les matières.');
+        console.error('Failed to load subjects', err);
+        setSubjectsError('Impossible de charger les matières. Merci de réessayer.');
       } finally {
         setLoadingSubjects(false);
       }
@@ -181,6 +191,8 @@ const EditProfilePage: React.FC = () => {
   const handleChange = (field: keyof Profile, value: unknown) => {
     setError('');
     setMessage('');
+    setMajorsError('');
+    setSubjectsError('');
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -393,6 +405,7 @@ const EditProfilePage: React.FC = () => {
               onChange={(e) => {
                 const value = e.target.value;
                 setError('');
+                setFacultiesError('');
                 setMessage('');
                 setForm((prev) => ({ ...prev, facultyId: value || undefined, level: undefined, majorId: undefined, subjects: [], courses: [] }));
               }}
@@ -407,6 +420,7 @@ const EditProfilePage: React.FC = () => {
               ))}
             </select>
             {loadingFaculties && <p className="text-xs text-slate-500">Chargement des facultés...</p>}
+            {facultiesError && <p className="text-xs text-red-600">{facultiesError}</p>}
           </div>
           <div>
             <label className="text-sm font-semibold text-slate-700">Niveau</label>
@@ -415,6 +429,8 @@ const EditProfilePage: React.FC = () => {
               onChange={(e) => {
                 const value = e.target.value;
                 setError('');
+                setMajorsError('');
+                setSubjectsError('');
                 setMessage('');
                 setForm((prev) => ({ ...prev, level: value || undefined, majorId: undefined, subjects: [], courses: [] }));
               }}
@@ -437,6 +453,7 @@ const EditProfilePage: React.FC = () => {
               onChange={(e) => {
                 const value = e.target.value;
                 setError('');
+                setMajorsError('');
                 setMessage('');
                 setForm((prev) => ({ ...prev, majorId: value || undefined, subjects: [], courses: [] }));
               }}
@@ -451,6 +468,7 @@ const EditProfilePage: React.FC = () => {
               ))}
             </select>
             {loadingMajors && <p className="text-xs text-slate-500">Chargement des filières...</p>}
+            {majorsError && <p className="text-xs text-red-600">{majorsError}</p>}
             {!loadingMajors && form.facultyId && form.level && !majors.length && (
               <p className="text-xs text-amber-600">Aucune filière active pour cette combinaison. Contactez un admin.</p>
             )}
@@ -471,6 +489,7 @@ const EditProfilePage: React.FC = () => {
               {!loadingSubjects && !selectedSubjectItems.length && (
                 <p className="text-sm text-slate-500">Choisissez une filière pour récupérer automatiquement les matières.</p>
               )}
+              {subjectsError && <p className="text-xs text-red-600">{subjectsError}</p>}
             </div>
           </div>
         </div>
