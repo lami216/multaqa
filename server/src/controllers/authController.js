@@ -227,15 +227,18 @@ export const resetPassword = async (req, res) => {
 
 export const getMe = async (req, res) => {
   try {
-    const profile = await Profile.findOne({ userId: req.user._id });
+    const user = await User.findById(req.user._id)
+      .select('-passwordHash -refreshToken')
+      .lean();
+    const profile = await Profile.findOne({ userId: req.user._id }).lean();
 
     res.json({
       user: {
-        id: req.user._id,
-        email: req.user.email,
-        username: req.user.username,
-        role: req.user.role,
-        emailVerified: req.user.emailVerified
+        id: user?._id,
+        email: user?.email,
+        username: user?.username,
+        role: user?.role,
+        emailVerified: user?.emailVerified
       },
       profile
     });

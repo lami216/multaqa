@@ -38,6 +38,10 @@ Follow these steps to spin up the project locally without digging through the en
    - Frontend: http://localhost:5173
    - Backend API: http://localhost:5000
 
+### Quick verification after profile edits
+- After saving your profile, the next `GET /api/auth/me` should return **200** (not **304**) and reflect the updated data.
+- Reloading `/profile` should still show the saved profile information without requiring a hard refresh.
+
 ## 🚀 Production deployment (PM2 + Nginx on a VPS)
 
 ### What gets built

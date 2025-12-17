@@ -165,7 +165,13 @@ export interface NotificationItem {
   createdAt: string;
 }
 
-export const fetchMe = () => http.get<{ user: ApiUser; profile?: Profile }>('/auth/me');
+export const fetchMe = () =>
+  http.get<{ user: ApiUser; profile?: Profile }>('/auth/me', {
+    headers: {
+      'Cache-Control': 'no-cache',
+      Pragma: 'no-cache'
+    }
+  });
 export const loginRequest = (payload: { email: string; password: string }) => http.post('/auth/login', payload);
 export const signupRequest = (payload: { email: string; password: string; username: string }) => http.post('/auth/register', payload);
 export const logoutRequest = () => http.post('/auth/logout');

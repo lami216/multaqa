@@ -42,7 +42,7 @@ const EditProfilePage: React.FC = () => {
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
   const galleryInputRef = useRef<HTMLInputElement | null>(null);
   const previousObjectUrl = useRef<string | null>(null);
-  const { user, profile, setProfile } = useAuth();
+  const { user, profile, setProfile, refresh } = useAuth();
   const getAvailableLevels = (facultyId?: string) =>
     (facultyId ? getLevelsByFaculty(facultyId) : []).map((level: CatalogLevel) => ({
       value: level.id,
@@ -341,6 +341,7 @@ const EditProfilePage: React.FC = () => {
         syncServerProfile(data.profile, { resetDirty: true });
       }
       setProfile(data.profile ?? null);
+      await refresh();
       setMessage('Profil mis à jour');
     } catch (err) {
       setError("Impossible d'enregistrer le profil. Veuillez réessayer.");
