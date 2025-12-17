@@ -1,15 +1,32 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Camera, Loader2 } from 'lucide-react';
-import { http, type Profile } from '../lib/http';
+import {
+  fetchFaculties,
+  fetchMajors,
+  fetchSubjects,
+  http,
+  type FacultyItem,
+  type MajorItem,
+  type Profile,
+  type SubjectItem
+} from '../lib/http';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { useAuth } from '../context/AuthContext';
 import { processImageFile } from '../lib/imageProcessing';
 import { uploadToImageKit } from '../lib/imagekitClient';
 
 const EditProfilePage: React.FC = () => {
-  const [form, setForm] = useState<Profile>({});
+  const [form, setForm] = useState<Profile>({ subjects: [] });
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [faculties, setFaculties] = useState<FacultyItem[]>([]);
+  const [majors, setMajors] = useState<MajorItem[]>([]);
+  const [subjects, setSubjects] = useState<SubjectItem[]>([]);
+  const [loadingFaculties, setLoadingFaculties] = useState(false);
+  const [loadingMajors, setLoadingMajors] = useState(false);
+  const [loadingSubjects, setLoadingSubjects] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState<string | undefined>(undefined);
   const [avatarError, setAvatarError] = useState('');
   const [avatarUploading, setAvatarUploading] = useState(false);
@@ -19,6 +36,13 @@ const EditProfilePage: React.FC = () => {
   const galleryInputRef = useRef<HTMLInputElement | null>(null);
   const previousObjectUrl = useRef<string | null>(null);
   const { user, profile, setProfile } = useAuth();
+  const levelOptions = [
+    { value: 'L1', label: 'Licence 1' },
+    { value: 'L2', label: 'Licence 2' },
+    { value: 'L3', label: 'Licence 3' },
+    { value: 'M1', label: 'Master 1' },
+    { value: 'M2', label: 'Master 2' }
+  ];
 
   const cacheBustedUrl = (url?: string, version?: string | number) => {
     if (!url) return undefined;
@@ -28,14 +52,42 @@ const EditProfilePage: React.FC = () => {
 
   useEffect(() => {
     const load = async () => {
-      const { data } = await http.get<{ user: unknown; profile: Profile }>('/auth/me');
-      setForm(data.profile ?? {});
-      setProfile(data.profile ?? null);
-      setAvatarPreview(cacheBustedUrl(data.profile?.avatarUrl, data.profile?.updatedAt));
+      try {
+        setLoadingProfile(true);
+        setLoadingFaculties(true);
+        const [{ data: meData }, { data: facultyData }] = await Promise.all([
+          http.get<{ user: unknown; profile: Profile }>('/auth/me'),
+          fetchFaculties(),
+        ]);
+
+        const nextProfile = {
+          ...meData.profile,
+          subjects: meData.profile?.subjects ?? [],
+        } as Profile;
+
+        setForm(nextProfile);
+        setProfile(nextProfile ?? null);
+        setFaculties(facultyData.faculties);
+        setAvatarPreview(cacheBustedUrl(meData.profile?.avatarUrl, meData.profile?.updatedAt));
+      } catch (err) {
+        setError("Impossible de charger votre profil. Veuillez réessayer.");
+      } finally {
+        setLoadingProfile(false);
+        setLoadingFaculties(false);
+      }
     };
 
     void load();
   }, [setProfile]);
+
+  useEffect(() => {
+    if (!faculties.length || !form.facultyId) return;
+    const hasFaculty = faculties.some((faculty) => faculty._id === form.facultyId);
+    if (!hasFaculty) {
+      setForm((prev) => ({ ...prev, facultyId: undefined, level: undefined, majorId: undefined, subjects: [], courses: [] }));
+      setError('La faculté enregistrée n’est plus disponible. Merci de la sélectionner à nouveau.');
+    }
+  }, [faculties, form.facultyId]);
 
   useEffect(() => {
     if (profile?.avatarUrl) {
@@ -43,7 +95,66 @@ const EditProfilePage: React.FC = () => {
     }
   }, [profile?.avatarUrl, profile?.updatedAt]);
 
+  useEffect(() => {
+    if (!form.facultyId || !form.level) {
+      setMajors([]);
+      setSubjects([]);
+      setForm((prev) => ({ ...prev, majorId: undefined, subjects: [], courses: [] }));
+      return;
+    }
+
+    const loadMajors = async () => {
+      setLoadingMajors(true);
+      try {
+        const { data } = await fetchMajors({ facultyId: form.facultyId });
+        setMajors(data.majors);
+        const hasMajor = data.majors.some((major) => major._id === form.majorId);
+        if (!hasMajor) {
+          setForm((prev) => ({ ...prev, majorId: undefined, subjects: [], courses: [] }));
+        }
+      } catch (err) {
+        setError('Impossible de charger les filières.');
+      } finally {
+        setLoadingMajors(false);
+      }
+    };
+
+    void loadMajors();
+  }, [form.facultyId, form.level, form.majorId]);
+
+  useEffect(() => {
+    if (!form.majorId) {
+      setSubjects([]);
+      setForm((prev) => ({ ...prev, subjects: [], courses: [] }));
+      return;
+    }
+
+    const loadSubjects = async () => {
+      setLoadingSubjects(true);
+      try {
+        const { data } = await fetchSubjects({
+          facultyId: form.facultyId ?? '',
+          majorId: form.majorId,
+        });
+        setSubjects(data.subjects);
+        setForm((prev) => ({
+          ...prev,
+          subjects: data.subjects.map((subject) => subject._id),
+          courses: data.subjects.map((subject) => subject.nameFr),
+        }));
+      } catch (err) {
+        setError('Impossible de charger les matières.');
+      } finally {
+        setLoadingSubjects(false);
+      }
+    };
+
+    void loadSubjects();
+  }, [form.majorId, form.facultyId]);
+
   const handleChange = (field: keyof Profile, value: unknown) => {
+    setError('');
+    setMessage('');
     setForm((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -51,20 +162,40 @@ const EditProfilePage: React.FC = () => {
     event.preventDefault();
     setSaving(true);
     setMessage('');
-    const { data } = await http.patch<{ profile: Profile }>('/users/me', {
-      displayName: form.displayName,
-      faculty: form.faculty,
-      major: form.major,
-      level: form.level,
-      skills: form.skills ?? [],
-      courses: form.courses ?? [],
-      availability: form.availability,
-      languages: form.languages ?? [],
-      bio: form.bio,
-    });
-    setProfile(data.profile ?? null);
-    setMessage('Profil mis à jour');
-    setSaving(false);
+    setError('');
+
+    if (!form.facultyId || !form.level || !form.majorId || !(form.subjects?.length ?? 0)) {
+      setError('Merci de sélectionner une faculté, un niveau, une filière et les matières associées.');
+      setSaving(false);
+      return;
+    }
+
+    try {
+      const selectedFaculty = faculties.find((item) => item._id === form.facultyId);
+      const selectedMajor = majors.find((item) => item._id === form.majorId);
+      const selectedSubjects = subjects.filter((subject) => (form.subjects ?? []).includes(subject._id));
+
+      const { data } = await http.patch<{ profile: Profile }>('/users/me', {
+        displayName: form.displayName,
+        facultyId: form.facultyId,
+        faculty: selectedFaculty?.nameFr ?? '',
+        level: form.level,
+        majorId: form.majorId,
+        major: selectedMajor?.nameFr ?? '',
+        subjects: form.subjects,
+        courses: selectedSubjects.map((subject) => subject.nameFr),
+        skills: form.skills ?? [],
+        availability: form.availability,
+        languages: form.languages ?? [],
+        bio: form.bio,
+      });
+      setProfile(data.profile ?? null);
+      setMessage('Profil mis à jour');
+    } catch (err) {
+      setError("Impossible d'enregistrer le profil. Veuillez réessayer.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const revokePreview = () => {
@@ -135,6 +266,8 @@ const EditProfilePage: React.FC = () => {
       galleryInputRef.current?.click();
     }
   };
+
+  const selectedSubjectItems = subjects.filter((subject) => (form.subjects ?? []).includes(subject._id));
 
   useEffect(() => revokePreview, []);
 
@@ -217,41 +350,132 @@ const EditProfilePage: React.FC = () => {
             </div>
           </div>
         )}
+        {error && <div className="text-sm text-red-700 bg-red-50 border border-red-100 rounded-lg p-2">{error}</div>}
         <div className="grid md:grid-cols-2 gap-3">
           <div>
             <label className="text-sm font-semibold text-slate-700">Nom d'affichage</label>
-            <input value={form.displayName ?? ''} onChange={(e) => handleChange('displayName', e.target.value)} className="w-full mt-1" />
+            <input
+              value={form.displayName ?? ''}
+              onChange={(e) => handleChange('displayName', e.target.value)}
+              className="w-full mt-1"
+              disabled={saving || loadingProfile}
+            />
           </div>
           <div>
             <label className="text-sm font-semibold text-slate-700">Faculté</label>
-            <input value={form.faculty ?? ''} onChange={(e) => handleChange('faculty', e.target.value)} className="w-full mt-1" />
+            <select
+              value={form.facultyId ?? ''}
+              onChange={(e) => {
+                const value = e.target.value;
+                setError('');
+                setMessage('');
+                setForm((prev) => ({ ...prev, facultyId: value || undefined, level: undefined, majorId: undefined, subjects: [], courses: [] }));
+              }}
+              className="w-full mt-1"
+              disabled={loadingFaculties || saving || loadingProfile}
+            >
+              <option value="">Choisir</option>
+              {faculties.map((faculty) => (
+                <option key={faculty._id} value={faculty._id}>
+                  {faculty.nameFr}
+                </option>
+              ))}
+            </select>
+            {loadingFaculties && <p className="text-xs text-slate-500">Chargement des facultés...</p>}
           </div>
           <div>
             <label className="text-sm font-semibold text-slate-700">Niveau</label>
-            <select value={form.level ?? ''} onChange={(e) => handleChange('level', e.target.value)} className="w-full mt-1">
+            <select
+              value={form.level ?? ''}
+              onChange={(e) => {
+                const value = e.target.value;
+                setError('');
+                setMessage('');
+                setForm((prev) => ({ ...prev, level: value || undefined, majorId: undefined, subjects: [], courses: [] }));
+              }}
+              className="w-full mt-1"
+              disabled={!form.facultyId || saving || loadingProfile}
+            >
               <option value="">Choisir</option>
-              <option value="L1">Licence 1</option>
-              <option value="L2">Licence 2</option>
-              <option value="L3">Licence 3</option>
-              <option value="M1">Master 1</option>
-              <option value="M2">Master 2</option>
+              {levelOptions.map((level) => (
+                <option key={level.value} value={level.value}>
+                  {level.label}
+                </option>
+              ))}
             </select>
+            {!form.facultyId && <p className="text-xs text-slate-500">Sélectionnez d'abord une faculté.</p>}
           </div>
           <div>
             <label className="text-sm font-semibold text-slate-700">Compétences</label>
-            <input value={(form.skills ?? []).join(', ')} onChange={(e) => handleChange('skills', e.target.value.split(',').map((v) => v.trim()))} className="w-full mt-1" />
+            <input
+              value={(form.skills ?? []).join(', ')}
+              onChange={(e) => handleChange('skills', e.target.value.split(',').map((v) => v.trim()))}
+              className="w-full mt-1"
+              disabled={saving}
+            />
           </div>
-          <div>
+          <div className="md:col-span-2">
+            <label className="text-sm font-semibold text-slate-700">Filière</label>
+            <select
+              value={form.majorId ?? ''}
+              onChange={(e) => {
+                const value = e.target.value;
+                setError('');
+                setMessage('');
+                setForm((prev) => ({ ...prev, majorId: value || undefined, subjects: [], courses: [] }));
+              }}
+              className="w-full mt-1"
+              disabled={!form.facultyId || !form.level || saving || loadingMajors || loadingProfile}
+            >
+              <option value="">Choisir</option>
+              {majors.map((major) => (
+                <option key={major._id} value={major._id}>
+                  {major.nameFr}
+                </option>
+              ))}
+            </select>
+            {loadingMajors && <p className="text-xs text-slate-500">Chargement des filières...</p>}
+            {!loadingMajors && form.facultyId && form.level && !majors.length && (
+              <p className="text-xs text-amber-600">Aucune filière active pour cette combinaison. Contactez un admin.</p>
+            )}
+          </div>
+          <div className="md:col-span-2">
             <label className="text-sm font-semibold text-slate-700">Matières</label>
-            <input value={(form.courses ?? []).join(', ')} onChange={(e) => handleChange('courses', e.target.value.split(',').map((v) => v.trim()))} className="w-full mt-1" />
+            <div className="mt-1 min-h-[42px] rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+              {loadingSubjects && <p className="text-sm text-slate-600">Chargement des matières...</p>}
+              {!loadingSubjects && !!selectedSubjectItems.length && (
+                <div className="flex flex-wrap gap-2">
+                  {selectedSubjectItems.map((subject) => (
+                    <span key={subject._id} className="badge-soft">
+                      {subject.nameFr}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {!loadingSubjects && !selectedSubjectItems.length && (
+                <p className="text-sm text-slate-500">Choisissez une filière pour récupérer automatiquement les matières.</p>
+              )}
+            </div>
           </div>
         </div>
         <div>
           <label className="text-sm font-semibold text-slate-700">Bio</label>
-          <textarea value={form.bio ?? ''} onChange={(e) => handleChange('bio', e.target.value)} rows={4} className="w-full mt-1" />
+          <textarea
+            value={form.bio ?? ''}
+            onChange={(e) => handleChange('bio', e.target.value)}
+            rows={4}
+            className="w-full mt-1"
+            disabled={saving || loadingProfile}
+          />
         </div>
         {message && <div className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg p-2">{message}</div>}
-        <button type="submit" className="primary-btn w-full sm:w-auto" disabled={saving}>{saving ? 'Enregistrement...' : 'Enregistrer'}</button>
+        <button
+          type="submit"
+          className="primary-btn w-full sm:w-auto"
+          disabled={saving || loadingProfile || loadingSubjects || loadingMajors || loadingFaculties}
+        >
+          {saving ? 'Enregistrement...' : 'Enregistrer'}
+        </button>
       </form>
     </div>
   );

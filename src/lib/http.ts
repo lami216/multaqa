@@ -19,10 +19,13 @@ export interface ApiUser {
 export interface Profile {
   displayName?: string;
   faculty?: string;
+  facultyId?: string;
   major?: string;
+  majorId?: string;
   level?: string;
   skills?: string[];
   courses?: string[];
+  subjects?: string[];
   availability?: string;
   languages?: string[];
   bio?: string;
@@ -112,9 +115,9 @@ export const fetchChats = () => http.get<{ chats: ChatSummary[] }>('/chats');
 export const fetchMessages = (chatId: string) => http.get<{ messages: ChatMessageItem[] }>(`/chats/${chatId}/messages`);
 export const sendMessage = (chatId: string, body: string) => http.post(`/chats/${chatId}/messages`, { body });
 export const fetchNotifications = () => http.get<{ notifications: NotificationItem[]; unread: number }>('/notifications');
-export const fetchFaculties = () => http.get<{ faculties: FacultyItem[] }>('/admin/faculties');
-export const fetchMajors = (params?: Record<string, string>) => http.get<{ majors: MajorItem[] }>('/admin/majors', { params });
-export const fetchSubjects = (params?: Record<string, string>) => http.get<{ subjects: SubjectItem[] }>('/admin/subjects', { params });
+export const fetchFaculties = () => http.get<{ faculties: FacultyItem[] }>('/lookups/faculties');
+export const fetchMajors = (params?: Record<string, string>) => http.get<{ majors: MajorItem[] }>('/lookups/majors', { params });
+export const fetchSubjects = (params?: Record<string, string>) => http.get<{ subjects: SubjectItem[] }>('/lookups/subjects', { params });
 export const createFaculty = (payload: { nameAr: string; nameFr: string }) => http.post('/admin/faculties', payload);
 export const createMajor = (payload: { nameAr: string; nameFr: string; facultyId: string }) => http.post('/admin/majors', payload);
 export const createSubject = (payload: { nameAr: string; nameFr: string; facultyId: string; majorId: string }) => http.post('/admin/subjects', payload);
