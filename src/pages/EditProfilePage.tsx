@@ -396,7 +396,7 @@ const EditProfilePage: React.FC = () => {
               value={form.displayName ?? ''}
               onChange={(e) => handleChange('displayName', e.target.value)}
               className="w-full mt-1"
-              disabled={saving || loadingProfile}
+              disabled={saving}
             />
           </div>
           <div>
@@ -420,7 +420,7 @@ const EditProfilePage: React.FC = () => {
                 }));
               }}
               className="w-full mt-1"
-              disabled={saving || loadingProfile}
+              disabled={saving}
             >
               <option value="">Choisir</option>
               {faculties.map((faculty) => (
@@ -452,7 +452,7 @@ const EditProfilePage: React.FC = () => {
                 }));
               }}
               className="w-full mt-1"
-              disabled={!form.facultyId || saving || loadingProfile}
+              disabled={!form.facultyId || saving}
             >
               <option value="">Choisir</option>
               {getAvailableLevels(form.facultyId).map((level) => (
@@ -482,7 +482,7 @@ const EditProfilePage: React.FC = () => {
                 }));
               }}
               className="w-full mt-1"
-              disabled={!form.facultyId || !form.level || saving || loadingProfile}
+              disabled={!form.facultyId || !form.level || saving}
             >
               <option value="">Choisir</option>
               {majors.map((major) => (
@@ -514,7 +514,7 @@ const EditProfilePage: React.FC = () => {
                 }));
               }}
               className="w-full mt-1"
-              disabled={!form.majorId || !form.level || saving || loadingProfile}
+              disabled={!form.majorId || !form.level || saving}
             >
               <option value="">Choisir</option>
               {semesters.map((semester) => (
@@ -558,14 +558,14 @@ const EditProfilePage: React.FC = () => {
             onChange={(e) => handleChange('bio', e.target.value)}
             rows={4}
             className="w-full mt-1"
-            disabled={saving || loadingProfile}
+            disabled={saving}
           />
         </div>
         {message && <div className="text-sm text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg p-2">{message}</div>}
         <button
           type="submit"
           className="primary-btn w-full sm:w-auto"
-          disabled={saving || loadingProfile}
+          disabled={saving}
         >
           {saving ? 'Enregistrement...' : 'Enregistrer'}
         </button>
