@@ -28,9 +28,11 @@ export interface Profile {
   major?: string;
   majorId?: string;
   level?: string;
+  semesterId?: string;
+  subjects?: string[];
+  subjectCodes?: string[];
   skills?: string[];
   courses?: string[];
-  subjects?: string[];
   availability?: string;
   languages?: string[];
   bio?: string;

@@ -16,20 +16,28 @@ const profileSchema = new mongoose.Schema({
     trim: true
   },
   facultyId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Faculty'
+    type: String,
+    trim: true
   },
   major: {
     type: String,
     trim: true
   },
   majorId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Major'
+    type: String,
+    trim: true
   },
   level: {
     type: String,
     enum: ['L1', 'L2', 'L3', 'M1', 'M2'],
+    trim: true
+  },
+  semesterId: {
+    type: String,
+    trim: true
+  },
+  semester: {
+    type: String,
     trim: true
   },
   skills: [{
@@ -41,8 +49,12 @@ const profileSchema = new mongoose.Schema({
     trim: true
   }],
   subjects: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Subject'
+    type: String,
+    trim: true
+  }],
+  subjectCodes: [{
+    type: String,
+    trim: true
   }],
   availability: {
     type: String,
