@@ -28,16 +28,40 @@ export const loginSchema = z.object({
   password: z.string()
 });
 
-export const postSchema = z.object({
+const studyPartnerCreateSchema = z.object({
+  category: z.literal('study_partner'),
+  subjectCodes: z.array(z.string().min(1)).min(1).max(2),
+  studentRole: z.enum(['helper', 'partner', 'learner']),
+  durationHours: z.number().int().min(1).max(168),
+  description: z.string().max(500).optional()
+}).strict();
+
+const standardPostCreateSchema = z.object({
+  category: z.enum(['project_team', 'tutor_offer']),
   title: z.string().min(1).max(200),
   description: z.string().min(1).max(2000),
-  category: z.enum(['study_partner', 'project_team', 'tutor_offer']),
   tags: z.array(z.string()).optional(),
   faculty: z.string().optional(),
   level: z.enum(['L1', 'L2', 'L3', 'M1', 'M2']).optional(),
   languagePref: z.enum(['Arabic', 'French']).optional(),
   location: z.enum(['campus', 'online']).optional()
-});
+}).strict();
+
+export const createPostSchema = z.union([studyPartnerCreateSchema, standardPostCreateSchema]);
+
+export const updatePostSchema = z.object({
+  title: z.string().min(1).max(200).optional(),
+  description: z.string().min(1).max(2000).optional(),
+  tags: z.array(z.string()).optional(),
+  faculty: z.string().optional(),
+  level: z.enum(['L1', 'L2', 'L3', 'M1', 'M2']).optional(),
+  languagePref: z.enum(['Arabic', 'French']).optional(),
+  location: z.enum(['campus', 'online']).optional(),
+  subjectCodes: z.array(z.string().min(1)).min(1).max(2).optional(),
+  studentRole: z.enum(['helper', 'partner', 'learner']).optional(),
+  extendHours: z.number().int().min(1).max(168).optional(),
+  status: z.enum(['active', 'matched', 'expired']).optional()
+}).strict();
 
 const subjectArraySchema = z.array(z.string().min(1)).min(1);
 

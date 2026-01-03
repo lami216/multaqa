@@ -30,7 +30,8 @@ const PostsFeedPage: React.FC = () => {
       const matchesLevel = level ? post.level === level : true;
       const matchesCategory = category ? post.category === category : true;
       const matchesSearch = search
-        ? post.title.toLowerCase().includes(search.toLowerCase()) || post.description.toLowerCase().includes(search.toLowerCase())
+        ? post.title.toLowerCase().includes(search.toLowerCase()) ||
+          (post.description ?? '').toLowerCase().includes(search.toLowerCase())
         : true;
       return matchesLevel && matchesCategory && matchesSearch;
     });
@@ -102,8 +103,26 @@ const PostsFeedPage: React.FC = () => {
                   <Link to={`/posts/${post._id}`} className="text-xl font-semibold text-slate-900 hover:text-emerald-700">
                     {post.title}
                   </Link>
-                  <p className="text-sm text-slate-600">{post.faculty ?? 'Faculté non renseignée'}</p>
-                  <p className="text-sm text-slate-700 leading-relaxed">{post.description}</p>
+                  {post.category === 'study_partner' ? (
+                    <div className="space-y-2">
+                      <div className="flex flex-wrap gap-2">
+                        {(post.subjectCodes ?? []).map((subject) => (
+                          <span key={subject} className="badge-soft bg-emerald-50 text-emerald-700">{subject}</span>
+                        ))}
+                      </div>
+                      <p className="text-sm text-slate-600">
+                        Rôle: {post.studentRole ?? 'Non précisé'}
+                      </p>
+                      {post.description ? (
+                        <p className="text-sm text-slate-700 leading-relaxed">{post.description}</p>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <>
+                      <p className="text-sm text-slate-600">{post.faculty ?? 'Faculté non renseignée'}</p>
+                      <p className="text-sm text-slate-700 leading-relaxed">{post.description}</p>
+                    </>
+                  )}
                 </div>
                 <div className="text-right text-sm text-slate-500">
                   <p className="font-semibold text-slate-800">{post.author?.username ?? 'Auteur'}</p>

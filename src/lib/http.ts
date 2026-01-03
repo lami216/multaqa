@@ -94,20 +94,26 @@ export interface Profile {
 }
 
 export interface PostPayload {
-  title: string;
-  description: string;
   category: 'study_partner' | 'project_team' | 'tutor_offer';
+  title?: string;
+  description?: string;
   tags?: string[];
   faculty?: string;
   level?: 'L1' | 'L2' | 'L3' | 'M1' | 'M2';
   languagePref?: 'Arabic' | 'French';
   location?: 'campus' | 'online';
+  subjectCodes?: string[];
+  studentRole?: 'helper' | 'partner' | 'learner';
+  durationHours?: number;
+  extendHours?: number;
+  status?: 'active' | 'matched' | 'expired';
 }
 
 export interface PostResponse extends PostPayload {
   _id: string;
   authorId: string;
-  status: string;
+  status: 'active' | 'matched' | 'expired';
+  expiresAt?: string;
   createdAt: string;
   updatedAt: string;
   language?: string;
@@ -178,6 +184,7 @@ export const signupRequest = (payload: { email: string; password: string; userna
 export const logoutRequest = () => http.post('/auth/logout');
 export const fetchPosts = (params?: Record<string, string>) => http.get<{ posts: PostResponse[] }>('/posts', { params });
 export const createPost = (payload: PostPayload) => http.post('/posts', payload);
+export const updatePost = (id: string, payload: Partial<PostPayload>) => http.patch(`/posts/${id}`, payload);
 export const fetchPost = (id: string) => http.get<{ post: PostResponse; author: { username: string; profile?: Profile } }>(`/posts/${id}`);
 export const fetchChats = () => http.get<{ chats: ChatSummary[] }>('/chats');
 export const fetchMessages = (chatId: string) => http.get<{ messages: ChatMessageItem[] }>(`/chats/${chatId}/messages`);
