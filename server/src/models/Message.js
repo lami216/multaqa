@@ -1,9 +1,9 @@
 import mongoose from 'mongoose';
 
 const messageSchema = new mongoose.Schema({
-  chatId: {
+  conversationId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Chat',
+    ref: 'Conversation',
     required: true
   },
   senderId: {
@@ -11,25 +11,24 @@ const messageSchema = new mongoose.Schema({
     ref: 'User',
     required: true
   },
-  body: {
+  text: {
     type: String,
     required: true,
     maxlength: 2000
   },
-  type: {
-    type: String,
-    enum: ['text'],
-    default: 'text'
+  deliveredAt: {
+    type: Date,
+    default: null
   },
-  read: {
-    type: Boolean,
-    default: false
+  readAt: {
+    type: Date,
+    default: null
   }
 }, {
   timestamps: true
 });
 
-messageSchema.index({ chatId: 1, createdAt: -1 });
+messageSchema.index({ conversationId: 1, createdAt: -1 });
 messageSchema.index({ senderId: 1 });
 
 const Message = mongoose.model('Message', messageSchema);

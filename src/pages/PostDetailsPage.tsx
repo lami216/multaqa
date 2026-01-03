@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Calendar, Clock3, Globe, MessageCircle, Users } from 'lucide-react';
-import { fetchPost, updatePost, type PostResponse } from '../lib/http';
+import { createConversation, fetchPost, updatePost, type PostResponse } from '../lib/http';
 import { useAuth } from '../context/AuthContext';
 
 const roleLabels: Record<string, string> = {
@@ -13,6 +13,7 @@ const roleLabels: Record<string, string> = {
 const PostDetailsPage: React.FC = () => {
   const { id } = useParams();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [post, setPost] = useState<PostResponse | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [actionError, setActionError] = useState('');
@@ -35,9 +36,29 @@ const PostDetailsPage: React.FC = () => {
     void load();
   }, [id]);
 
-  const isAuthor = useMemo(() => (post?.authorId ? post.authorId === user?.id : false), [post?.authorId, user?.id]);
   const isStudyPartner = post?.category === 'study_partner';
   const extendHours = extendChoice === 'custom' ? Number(customExtend) : Number(extendChoice);
+  const authorId = useMemo(() => {
+    if (!post?.authorId) return '';
+    if (typeof post.authorId === 'string') return post.authorId;
+    if (post.authorId && typeof post.authorId === 'object' && '_id' in post.authorId) {
+      return (post.authorId as { _id: string })._id;
+    }
+    return '';
+  }, [post?.authorId]);
+  const isAuthor = useMemo(() => (authorId ? authorId === user?.id : false), [authorId, user?.id]);
+
+  const handleContact = async () => {
+    if (!post || !authorId) return;
+    const { data } = await createConversation({ type: 'post', postId: post._id, otherUserId: authorId });
+    navigate(`/messages/${data.conversationId}`);
+  };
+
+  const handleDirect = async () => {
+    if (!post || !authorId || authorId === user?.id) return;
+    const { data } = await createConversation({ type: 'direct', otherUserId: authorId });
+    navigate(`/messages/${data.conversationId}`);
+  };
 
   const handleStatusUpdate = async () => {
     if (!id) return;
@@ -215,8 +236,11 @@ const PostDetailsPage: React.FC = () => {
         <button className="primary-btn">
           <Users size={16} className="me-1" /> Demander à rejoindre
         </button>
-        <button className="secondary-btn">
+        <button className="secondary-btn" type="button" onClick={handleContact} disabled={authorId === user?.id}>
           <MessageCircle size={16} className="me-1" /> Contacter
+        </button>
+        <button className="secondary-btn" type="button" onClick={handleDirect} disabled={authorId === user?.id}>
+          <MessageCircle size={16} className="me-1" /> Message direct
         </button>
         <Link to="/posts" className="secondary-btn">Retour au fil</Link>
       </div>
