@@ -88,6 +88,7 @@ export interface Profile {
   bio?: string;
   avatarUrl?: string;
   avatarFileId?: string;
+  profileLocked?: boolean;
   _id?: string;
   updatedAt?: string;
 }
