@@ -136,6 +136,8 @@ const PostDetailsPage: React.FC = () => {
 
   const isStudyPartner = post?.category === 'study_partner';
   const extendHours = extendChoice === 'custom' ? Number(customExtend) : Number(extendChoice);
+  const authorUsername = post.author?.username ?? 'Utilisateur';
+  const isJoined = Boolean(post.acceptedUserIds?.includes(user?.id ?? ''));
 
   const handleContact = async () => {
     if (!post || !authorId) return;
@@ -147,16 +149,6 @@ const PostDetailsPage: React.FC = () => {
     }
   };
 
-  const handleDirect = async () => {
-    if (!post || !authorId || authorId === user?.id) return;
-    try {
-      const { data } = await createConversation({ type: 'direct', otherUserId: authorId });
-      navigate(`/messages/${data.conversationId}`);
-    } catch (error) {
-      reportRequestError('Failed to create direct conversation', error, 'Impossible de démarrer la conversation.');
-    }
-  };
-
   const handleStatusUpdate = async () => {
     if (!id) return;
     setSaving(true);
@@ -164,6 +156,14 @@ const PostDetailsPage: React.FC = () => {
     try {
       const { data } = await updatePost(id, { status: 'matched' });
       setPost((prev) => (prev ? { ...prev, ...data.post } : prev));
+      if (data.post.status === 'matched') {
+        const key = 'matchedPostsHidden';
+        const stored = sessionStorage.getItem(key);
+        const hiddenIds = stored ? (JSON.parse(stored) as string[]) : [];
+        if (!hiddenIds.includes(id)) {
+          sessionStorage.setItem(key, JSON.stringify([...hiddenIds, id]));
+        }
+      }
     } catch (error) {
       reportRequestError('Failed to update post status', error, "Impossible de mettre à jour l'annonce.");
       setActionError("Impossible de mettre à jour l'annonce.");
@@ -455,16 +455,18 @@ const PostDetailsPage: React.FC = () => {
               </div>
             </>
           )}
-          <div>
-            <button
-              className="secondary-btn border-rose-200 text-rose-600"
-              type="button"
-              disabled={saving}
-              onClick={handleDeletePost}
-            >
-              <Trash2 size={16} className="me-1" /> Supprimer
-            </button>
-          </div>
+          {post.status !== 'matched' && (
+            <div>
+              <button
+                className="primary-btn bg-rose-600 hover:bg-rose-700 text-white"
+                type="button"
+                disabled={saving}
+                onClick={handleDeletePost}
+              >
+                <Trash2 size={16} className="me-1" /> Supprimer
+              </button>
+            </div>
+          )}
           {actionError && <p className="text-sm text-rose-600">{actionError}</p>}
           {actionNotice && <p className="text-sm text-emerald-600">{actionNotice}</p>}
         </div>
@@ -567,14 +569,16 @@ const PostDetailsPage: React.FC = () => {
               >
                 <Lock size={16} className="me-1" /> Clôturer
               </button>
-              <button
-                className="secondary-btn border-rose-200 text-rose-600"
-                type="button"
-                disabled={saving}
-                onClick={handleDeletePost}
-              >
-                <Trash2 size={16} className="me-1" /> Supprimer
-              </button>
+              {post.status !== 'matched' && (
+                <button
+                  className="primary-btn bg-rose-600 hover:bg-rose-700 text-white"
+                  type="button"
+                  disabled={saving}
+                  onClick={handleDeletePost}
+                >
+                  <Trash2 size={16} className="me-1" /> Supprimer
+                </button>
+              )}
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-sm text-slate-600">Motif :</span>
@@ -591,16 +595,13 @@ const PostDetailsPage: React.FC = () => {
         )
       ) : (
         <div className="flex flex-wrap gap-3">
-          {isStudyPartner ? (
+          {isStudyPartner && !isJoined ? (
             <button className="primary-btn" type="button" onClick={handleJoinRequest} disabled={saving}>
               <Users size={16} className="me-1" /> Demander à rejoindre
             </button>
           ) : null}
           <button className="secondary-btn" type="button" onClick={handleContact} disabled={authorId === user?.id}>
-            <MessageCircle size={16} className="me-1" /> Contacter
-          </button>
-          <button className="secondary-btn" type="button" onClick={handleDirect} disabled={authorId === user?.id}>
-            <MessageCircle size={16} className="me-1" /> Message direct
+            <MessageCircle size={16} className="me-1" /> Message {authorUsername}
           </button>
           <Link to="/posts" className="secondary-btn">Retour au fil</Link>
           {actionError && <p className="text-sm text-rose-600 w-full">{actionError}</p>}

@@ -2,9 +2,11 @@ import React from 'react';
 import { Bell, Home, MessageCircle, Shield, User } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useConversations } from '../../context/ConversationsContext';
 
 const BottomNav: React.FC = () => {
   const { user } = useAuth();
+  const { unreadCount } = useConversations();
   const items = [
     { to: '/', label: 'Accueil', icon: Home },
     { to: '/notifications', label: 'Notifications', icon: Bell },
@@ -18,6 +20,7 @@ const BottomNav: React.FC = () => {
       <div className="flex justify-around items-center py-2">
         {items.map((item) => {
           const Icon = item.icon;
+          const unreadBadge = item.to === '/messages' ? unreadCount : 0;
           return (
             <NavLink
               key={item.to}
@@ -28,7 +31,14 @@ const BottomNav: React.FC = () => {
                 }`
               }
             >
-              <Icon size={22} className="text-current" />
+              <span className="relative inline-flex">
+                <Icon size={22} className="text-current" />
+                {unreadBadge > 0 && (
+                  <span className="absolute -top-1 -right-2 rounded-full bg-rose-500 text-white text-[10px] font-semibold px-1 min-w-[16px] h-4 flex items-center justify-center">
+                    {unreadBadge}
+                  </span>
+                )}
+              </span>
               <span>{item.label}</span>
             </NavLink>
           );

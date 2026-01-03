@@ -2,11 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { BookOpen, Plus, Search } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { fetchPosts, type PostResponse } from '../lib/http';
+import { useAuth } from '../context/AuthContext';
 
 const HomePage: React.FC = () => {
   const [query, setQuery] = useState('');
   const [posts, setPosts] = useState<PostResponse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hiddenMatchedIds, setHiddenMatchedIds] = useState<string[]>([]);
+  const { user } = useAuth();
 
   useEffect(() => {
     const load = async () => {
@@ -23,7 +26,21 @@ const HomePage: React.FC = () => {
     void load();
   }, []);
 
+  useEffect(() => {
+    const stored = sessionStorage.getItem('matchedPostsHidden');
+    setHiddenMatchedIds(stored ? (JSON.parse(stored) as string[]) : []);
+  }, []);
+
+  const resolveAuthorId = (post: PostResponse) => {
+    if (typeof post.authorId === 'string') return post.authorId;
+    if (post.authorId && typeof post.authorId === 'object' && '_id' in post.authorId) {
+      return (post.authorId as { _id: string })._id;
+    }
+    return '';
+  };
+
   const filteredPosts = posts.filter((post) => {
+    if (hiddenMatchedIds.includes(post._id)) return false;
     if (!query) return true;
     return (
       post.title.toLowerCase().includes(query.toLowerCase()) ||
@@ -86,6 +103,11 @@ const HomePage: React.FC = () => {
                     <div className="flex flex-wrap gap-2 items-center text-xs font-semibold text-emerald-700">
                       <span className="badge-soft">{post.category}</span>
                       {post.level ? <span className="badge-soft bg-blue-50 text-blue-700">{post.level}</span> : null}
+                      {resolveAuthorId(post) === user?.id && post.pendingJoinRequestsCount ? (
+                        <span className="badge-soft bg-amber-50 text-amber-700">
+                          {post.pendingJoinRequestsCount} demandes en attente
+                        </span>
+                      ) : null}
                     </div>
                     <Link to={`/posts/${post._id}`} className="text-xl font-semibold text-slate-900 hover:text-emerald-700">
                       {post.title}
