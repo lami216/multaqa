@@ -1,33 +1,47 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { MessageCircle, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { fetchConversations, type ConversationSummary } from '../lib/http';
+import { useConversations } from '../context/ConversationsContext';
+
+const POLL_INTERVAL = 20000;
 
 const MessagesPage: React.FC = () => {
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const navigate = useNavigate();
+  const { syncUnreadCounts } = useConversations();
 
-  useEffect(() => {
-    const load = async () => {
-      setLoading(true);
+  const handleLoad = useCallback(
+    async (showLoading = false) => {
+      if (showLoading) setLoading(true);
       try {
         const { data } = await fetchConversations();
         setConversations(data.conversations);
+        syncUnreadCounts(data.conversations);
       } finally {
-        setLoading(false);
+        if (showLoading) setLoading(false);
       }
-    };
+    },
+    [syncUnreadCounts]
+  );
 
-    void load();
-  }, []);
+  useEffect(() => {
+    void handleLoad(true);
+  }, [handleLoad]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      void handleLoad();
+    }, POLL_INTERVAL);
+    return () => clearInterval(interval);
+  }, [handleLoad]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
     try {
-      const { data } = await fetchConversations();
-      setConversations(data.conversations);
+      await handleLoad();
     } finally {
       setRefreshing(false);
     }

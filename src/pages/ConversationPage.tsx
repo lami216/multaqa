@@ -10,6 +10,7 @@ import {
   type ConversationSummary
 } from '../lib/http';
 import { useAuth } from '../context/AuthContext';
+import { useConversations } from '../context/ConversationsContext';
 
 const POLL_INTERVAL = 5000;
 
@@ -26,6 +27,7 @@ const ConversationPage: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const { clearUnreadCount } = useConversations();
 
   const currentUserId = user?.id ?? '';
 
@@ -87,6 +89,12 @@ const ConversationPage: React.FC = () => {
   useEffect(() => {
     void loadConversation();
   }, [loadConversation]);
+
+  useEffect(() => {
+    if (conversation?.unreadCount) {
+      clearUnreadCount(conversation.unreadCount);
+    }
+  }, [clearUnreadCount, conversation?.unreadCount]);
 
   useEffect(() => {
     void fetchInitialMessages();

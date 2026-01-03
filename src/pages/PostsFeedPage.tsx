@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Bookmark, Filter, MessageCircle, Users } from 'lucide-react';
+import { Filter, MessageCircle, Users } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { createConversation, fetchPosts, type PostResponse } from '../lib/http';
 import { useAuth } from '../context/AuthContext';
@@ -9,6 +9,7 @@ const PostsFeedPage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('');
   const [posts, setPosts] = useState<PostResponse[]>([]);
+  const [hiddenMatchedIds, setHiddenMatchedIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -28,8 +29,14 @@ const PostsFeedPage: React.FC = () => {
     void load();
   }, []);
 
+  useEffect(() => {
+    const stored = sessionStorage.getItem('matchedPostsHidden');
+    setHiddenMatchedIds(stored ? (JSON.parse(stored) as string[]) : []);
+  }, []);
+
   const filtered = useMemo(() => {
     return posts.filter((post) => {
+      if (hiddenMatchedIds.includes(post._id)) return false;
       const matchesLevel = level ? post.level === level : true;
       const matchesCategory = category ? post.category === category : true;
       const matchesSearch = search
@@ -38,7 +45,7 @@ const PostsFeedPage: React.FC = () => {
         : true;
       return matchesLevel && matchesCategory && matchesSearch;
     });
-  }, [level, category, search, posts]);
+  }, [level, category, search, posts, hiddenMatchedIds]);
 
   const resolveAuthorId = (post: PostResponse) => {
     if (typeof post.authorId === 'string') return post.authorId;
@@ -52,13 +59,6 @@ const PostsFeedPage: React.FC = () => {
     const authorId = resolveAuthorId(post);
     if (!authorId || authorId === user?.id) return;
     const { data } = await createConversation({ type: 'post', postId: post._id, otherUserId: authorId });
-    navigate(`/messages/${data.conversationId}`);
-  };
-
-  const handleDirect = async (post: PostResponse) => {
-    const authorId = resolveAuthorId(post);
-    if (!authorId || authorId === user?.id) return;
-    const { data } = await createConversation({ type: 'direct', otherUserId: authorId });
     navigate(`/messages/${data.conversationId}`);
   };
 
@@ -170,18 +170,7 @@ const PostsFeedPage: React.FC = () => {
                   onClick={() => handleContact(post)}
                   disabled={resolveAuthorId(post) === user?.id}
                 >
-                  <MessageCircle size={16} className="me-1" /> Contacter
-                </button>
-                <button
-                  type="button"
-                  className="secondary-btn"
-                  onClick={() => handleDirect(post)}
-                  disabled={resolveAuthorId(post) === user?.id}
-                >
-                  <MessageCircle size={16} className="me-1" /> Message direct
-                </button>
-                <button className="secondary-btn" type="button" disabled>
-                  <Bookmark size={16} className="me-1" /> Sauvegarder
+                  <MessageCircle size={16} className="me-1" /> Message {post.author?.username ?? 'Utilisateur'}
                 </button>
               </div>
             </div>
