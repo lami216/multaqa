@@ -19,6 +19,7 @@ import {
   type PostResponse
 } from '../lib/http';
 import { useAuth } from '../context/AuthContext';
+import { resolveAuthorId } from '../lib/postUtils';
 
 const roleLabels: Record<string, string> = {
   helper: 'Helper',
@@ -28,7 +29,7 @@ const roleLabels: Record<string, string> = {
 
 const PostDetailsPage: React.FC = () => {
   const { id } = useParams();
-  const { user } = useAuth();
+  const { currentUserId } = useAuth();
   const navigate = useNavigate();
   const [post, setPost] = useState<PostResponse | null>(null);
   const [notFound, setNotFound] = useState(false);
@@ -42,15 +43,9 @@ const PostDetailsPage: React.FC = () => {
   const [joinRequests, setJoinRequests] = useState<JoinRequestItem[]>([]);
   const [loadingRequests, setLoadingRequests] = useState(false);
   const [postConversations, setPostConversations] = useState<ConversationSummary[]>([]);
-  const authorId = useMemo(() => {
-    if (!post?.authorId) return '';
-    if (typeof post.authorId === 'string') return post.authorId;
-    if (post.authorId && typeof post.authorId === 'object' && '_id' in post.authorId) {
-      return (post.authorId as { _id: string })._id;
-    }
-    return '';
-  }, [post?.authorId]);
-  const isAuthor = useMemo(() => (authorId ? authorId === user?.id : false), [authorId, user?.id]);
+  const [joinRequestStatus, setJoinRequestStatus] = useState<'idle' | 'pending' | 'accepted'>('idle');
+  const authorId = useMemo(() => resolveAuthorId(post), [post]);
+  const isAuthor = useMemo(() => (authorId ? authorId === currentUserId : false), [authorId, currentUserId]);
 
   const reportRequestError = (label: string, error: unknown, toastMessage: string) => {
     if (axios.isAxiosError(error)) {
@@ -69,8 +64,15 @@ const PostDetailsPage: React.FC = () => {
 
     const load = async () => {
       try {
-        const { data } = await fetchPost(id);
-        setPost({ ...data.post, author: data.author });
+        const response = await fetchPost(id);
+        const { data, status } = response;
+        if (!data || typeof data !== 'object' || !('post' in data)) {
+          console.error('[PostDetailsPage] Unexpected post payload', { status, payload: data });
+          setLoadError("Impossible de charger l'annonce.");
+          setNotFound(false);
+          return;
+        }
+        setPost({ ...(data.post as PostResponse), author: data.author });
         setLoadError('');
         setNotFound(false);
       } catch (error) {
@@ -136,8 +138,20 @@ const PostDetailsPage: React.FC = () => {
 
   const isStudyPartner = post?.category === 'study_partner';
   const extendHours = extendChoice === 'custom' ? Number(customExtend) : Number(extendChoice);
-  const authorUsername = post.author?.username ?? 'Utilisateur';
-  const isJoined = Boolean(post.acceptedUserIds?.includes(user?.id ?? ''));
+  const authorUsername = post?.author?.username ?? 'Utilisateur';
+  const isJoined = Boolean(
+    currentUserId && post?.acceptedUserIds?.some((acceptedId) => String(acceptedId) === currentUserId)
+  );
+
+  useEffect(() => {
+    if (!currentUserId) {
+      setJoinRequestStatus('idle');
+      return;
+    }
+    if (isJoined) {
+      setJoinRequestStatus('accepted');
+    }
+  }, [currentUserId, isJoined]);
 
   const handleContact = async () => {
     if (!post || !authorId) return;
@@ -199,7 +213,17 @@ const PostDetailsPage: React.FC = () => {
     try {
       await requestJoinPost(id);
       setActionNotice('Demande envoyée avec succès.');
+      setJoinRequestStatus('pending');
     } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 400) {
+        const serverMessage = typeof error.response?.data === 'object' ? error.response?.data?.error : null;
+        if (typeof serverMessage === 'string' && serverMessage.toLowerCase().includes('join request already exists')) {
+          setJoinRequestStatus('pending');
+          setActionNotice('Votre demande est déjà en attente.');
+          setSaving(false);
+          return;
+        }
+      }
       reportRequestError('Failed to request join post', error, "Impossible d'envoyer la demande.");
       setActionError("Impossible d'envoyer la demande.");
     } finally {
@@ -313,7 +337,7 @@ const PostDetailsPage: React.FC = () => {
     <div className="card-surface p-5 space-y-4">
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-2">
-          <p className="badge-soft inline-flex">{post.category}</p>
+          <p className="badge-soft inline-flex">{post?.category}</p>
           <h1 className="text-2xl font-bold text-slate-900">{post.title}</h1>
           {isStudyPartner ? (
             <div className="space-y-2">
@@ -325,9 +349,9 @@ const PostDetailsPage: React.FC = () => {
                 ))}
               </div>
               <p className="text-sm text-slate-600">Rôle : {post.studentRole ? roleLabels[post.studentRole] : 'Non précisé'}</p>
-              {post.expiresAt && (
-                <p className="text-sm text-slate-500">Expire le {new Date(post.expiresAt).toLocaleString()}</p>
-              )}
+          {post?.expiresAt && (
+            <p className="text-sm text-slate-500">Expire le {new Date(post?.expiresAt).toLocaleString()}</p>
+          )}
             </div>
           ) : (
             <>
@@ -341,16 +365,16 @@ const PostDetailsPage: React.FC = () => {
           )}
         </div>
         <div className="text-right text-sm text-slate-500">
-          <p className="font-semibold text-slate-800">{post.author?.username ?? 'Auteur'}</p>
+          <p className="font-semibold text-slate-800">{post?.author?.username ?? 'Auteur'}</p>
           <p>ID annonce: {id}</p>
-          {post.status && <p className="badge-soft mt-2">{post.status}</p>}
+          {post?.status && <p className="badge-soft mt-2">{post.status}</p>}
         </div>
       </div>
 
-      {isStudyPartner && post.description ? (
+      {isStudyPartner && post?.description ? (
         <div>
           <h3 className="font-semibold text-slate-900 mb-2">Description</h3>
-          <p className="text-slate-700 leading-relaxed">{post.description}</p>
+          <p className="text-slate-700 leading-relaxed">{post?.description}</p>
         </div>
       ) : null}
 
@@ -392,9 +416,9 @@ const PostDetailsPage: React.FC = () => {
               </span>
             ) : null}
           </div>
-          {post.status === 'matched' ? (
+          {post?.status === 'matched' ? (
             <p className="text-sm text-slate-500">Annonce marquée comme matched. Elle est désormais en lecture seule.</p>
-          ) : post.status === 'closed' ? (
+          ) : post?.status === 'closed' ? (
             <p className="text-sm text-slate-500">Annonce clôturée. Vous pouvez la supprimer si besoin.</p>
           ) : (
             <>
@@ -455,7 +479,7 @@ const PostDetailsPage: React.FC = () => {
               </div>
             </>
           )}
-          {post.status !== 'matched' && (
+          {post?.status !== 'matched' && (
             <div>
               <button
                 className="primary-btn bg-rose-600 hover:bg-rose-700 text-white"
@@ -569,7 +593,7 @@ const PostDetailsPage: React.FC = () => {
               >
                 <Lock size={16} className="me-1" /> Clôturer
               </button>
-              {post.status !== 'matched' && (
+              {post?.status !== 'matched' && (
                 <button
                   className="primary-btn bg-rose-600 hover:bg-rose-700 text-white"
                   type="button"
@@ -596,11 +620,17 @@ const PostDetailsPage: React.FC = () => {
       ) : (
         <div className="flex flex-wrap gap-3">
           {isStudyPartner && !isJoined ? (
-            <button className="primary-btn" type="button" onClick={handleJoinRequest} disabled={saving}>
-              <Users size={16} className="me-1" /> Demander à rejoindre
+            <button
+              className="primary-btn"
+              type="button"
+              onClick={handleJoinRequest}
+              disabled={saving || joinRequestStatus === 'pending'}
+            >
+              <Users size={16} className="me-1" />
+              {joinRequestStatus === 'pending' ? 'Demande en attente' : 'Demander à rejoindre'}
             </button>
           ) : null}
-          <button className="secondary-btn" type="button" onClick={handleContact} disabled={authorId === user?.id}>
+          <button className="secondary-btn" type="button" onClick={handleContact}>
             <MessageCircle size={16} className="me-1" /> Message {authorUsername}
           </button>
           <Link to="/posts" className="secondary-btn">Retour au fil</Link>

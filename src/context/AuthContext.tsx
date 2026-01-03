@@ -12,6 +12,7 @@ interface AuthContextValue {
   user: ApiUser | null;
   profile: Profile | null;
   loading: boolean;
+  currentUserId: string;
   login: (email: string, password: string) => Promise<void>;
   signup: (username: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -64,8 +65,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setProfile(null);
   };
 
+  const currentUserId = user?.id ?? user?._id ?? '';
+
   return (
-    <AuthContext.Provider value={{ user, profile, loading, login, signup, logout, refresh: loadUser, setProfile: syncProfile }}>
+    <AuthContext.Provider value={{
+      user,
+      profile,
+      loading,
+      currentUserId,
+      login,
+      signup,
+      logout,
+      refresh: loadUser,
+      setProfile: syncProfile
+    }}>
       {children}
     </AuthContext.Provider>
   );
