@@ -7,6 +7,7 @@ const router = express.Router();
 router.use(authenticate, requireAdmin);
 
 router.get('/reports', adminController.getReports);
+router.get('/stats', adminController.getDashboardStats);
 router.patch('/reports/:id/resolve', adminController.resolveReport);
 router.delete('/posts/:id', adminController.deletePostAdmin);
 router.patch('/users/:id/ban', adminController.banUser);

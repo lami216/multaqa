@@ -3,6 +3,8 @@ import User from '../models/User.js';
 import Profile from '../models/Profile.js';
 import Conversation from '../models/Conversation.js';
 import Message from '../models/Message.js';
+import JoinRequest from '../models/JoinRequest.js';
+import Event from '../models/Event.js';
 import redis from '../config/redis.js';
 import { maskContactInfo } from '../utils/contentMasking.js';
 import { containsProfanity, maskProfanity } from '../utils/profanityFilter.js';
@@ -16,6 +18,19 @@ const expirePosts = async () => {
 };
 
 const buildStudyPartnerTitle = (subjectCodes) => `Study partner • ${subjectCodes.join(' & ')}`;
+
+const maxAcceptedForRole = (studentRole) => {
+  if (studentRole === 'helper') return 3;
+  return 1;
+};
+
+const recordEvent = async ({ action, actorId, postId, meta }) => {
+  try {
+    await Event.create({ action, actorId, postId, meta });
+  } catch (error) {
+    console.error('Event log error:', error);
+  }
+};
 
 export const getPosts = async (req, res) => {
   try {
@@ -50,7 +65,7 @@ export const getPosts = async (req, res) => {
       query.$text = { $search: search };
     }
 
-    const cacheKey = `posts:${JSON.stringify(query)}:${page}:${limit}`;
+    const cacheKey = `posts:${req.user._id}:${JSON.stringify(query)}:${page}:${limit}`;
     const cached = await redis.get(cacheKey);
     if (cached) {
       return res.json(JSON.parse(cached));
@@ -69,8 +84,31 @@ export const getPosts = async (req, res) => {
     const postsWithProfiles = await Promise.all(
       posts.map(async (post) => {
         const profile = await Profile.findOne({ userId: post.authorId._id });
+        const isAuthor = post.authorId._id.toString() === req.user._id.toString();
+        let pendingJoinRequestsCount = 0;
+        let unreadPostMessagesCount = 0;
+
+        if (isAuthor) {
+          pendingJoinRequestsCount = await JoinRequest.countDocuments({
+            postId: post._id,
+            status: 'pending'
+          });
+
+          const conversations = await Conversation.find({ type: 'post', postId: post._id }).select('_id');
+          const conversationIds = conversations.map((conversation) => conversation._id);
+          if (conversationIds.length) {
+            unreadPostMessagesCount = await Message.countDocuments({
+              conversationId: { $in: conversationIds },
+              senderId: { $ne: req.user._id },
+              readAt: null
+            });
+          }
+        }
+
         return {
           ...post.toObject(),
+          pendingJoinRequestsCount,
+          unreadPostMessagesCount,
           author: {
             username: post.authorId.username,
             profile
@@ -109,19 +147,43 @@ export const getPost = async (req, res) => {
     }
 
     const isAuthor = post.authorId._id.toString() === req.user._id.toString();
+    const isAdmin = req.user.role === 'admin';
     if (post.expiresAt && post.expiresAt <= now && post.status === 'active') {
       post.status = 'expired';
       await post.save();
     }
 
-    if (!isAuthor && post.status !== 'active') {
+    if (!isAuthor && !isAdmin && post.status !== 'active') {
       return res.status(404).json({ error: 'Post not found' });
     }
 
     const profile = await Profile.findOne({ userId: post.authorId._id });
+    let pendingJoinRequestsCount = 0;
+    let unreadPostMessagesCount = 0;
+
+    if (isAuthor) {
+      pendingJoinRequestsCount = await JoinRequest.countDocuments({
+        postId: post._id,
+        status: 'pending'
+      });
+
+      const conversations = await Conversation.find({ type: 'post', postId: post._id }).select('_id');
+      const conversationIds = conversations.map((conversation) => conversation._id);
+      if (conversationIds.length) {
+        unreadPostMessagesCount = await Message.countDocuments({
+          conversationId: { $in: conversationIds },
+          senderId: { $ne: req.user._id },
+          readAt: null
+        });
+      }
+    }
 
     res.json({
-      post: post.toObject(),
+      post: {
+        ...post.toObject(),
+        pendingJoinRequestsCount,
+        unreadPostMessagesCount
+      },
       author: {
         username: post.authorId.username,
         profile
@@ -180,6 +242,13 @@ export const createPost = async (req, res) => {
         languagePref: profile.languages?.[0]
       });
 
+      await recordEvent({
+        action: 'post_created',
+        actorId: req.user._id,
+        postId: post._id,
+        meta: { category }
+      });
+
       await redis.del('posts:*');
 
       return res.status(201).json({ message: 'Post created successfully', post });
@@ -199,6 +268,13 @@ export const createPost = async (req, res) => {
       title,
       description,
       ...rest
+    });
+
+    await recordEvent({
+      action: 'post_created',
+      actorId: req.user._id,
+      postId: post._id,
+      meta: { category: post.category }
     });
 
     await redis.del('posts:*');
@@ -222,6 +298,10 @@ export const updatePost = async (req, res) => {
 
     if (post.authorId.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
       return res.status(403).json({ error: 'Not authorized to edit this post' });
+    }
+
+    if (post.status === 'closed') {
+      return res.status(400).json({ error: 'Closed posts cannot be edited.' });
     }
 
     if (post.category === 'study_partner') {
@@ -319,6 +399,13 @@ export const deletePost = async (req, res) => {
 
     await Post.findByIdAndDelete(id);
 
+    await recordEvent({
+      action: 'post_deleted',
+      actorId: req.user._id,
+      postId: id,
+      meta: { category: post.category }
+    });
+
     await redis.del('posts:*');
 
     res.json({ message: 'Post deleted successfully' });
@@ -351,5 +438,220 @@ export const reportPost = async (req, res) => {
   } catch (error) {
     console.error('Report post error:', error);
     res.status(500).json({ error: 'Failed to report post' });
+  }
+};
+
+export const createJoinRequest = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const post = await Post.findById(id);
+    if (!post) {
+      return res.status(404).json({ error: 'Post not found' });
+    }
+
+    if (post.category !== 'study_partner') {
+      return res.status(400).json({ error: 'Join requests are only available for study partner posts.' });
+    }
+
+    if (post.authorId.toString() === req.user._id.toString()) {
+      return res.status(400).json({ error: 'Cannot request to join your own post.' });
+    }
+
+    const now = new Date();
+    if (post.expiresAt && post.expiresAt <= now && post.status === 'active') {
+      post.status = 'expired';
+      await post.save();
+    }
+
+    if (post.status !== 'active') {
+      return res.status(400).json({ error: 'Post is not accepting join requests.' });
+    }
+
+    const acceptedCount = post.acceptedUserIds?.length ?? 0;
+    const maxAccepted = maxAcceptedForRole(post.studentRole);
+    if (acceptedCount >= maxAccepted) {
+      return res.status(400).json({ error: 'Capacity reached for this post.' });
+    }
+
+    const joinRequest = await JoinRequest.create({
+      postId: post._id,
+      requesterId: req.user._id,
+      status: 'pending'
+    });
+
+    await recordEvent({
+      action: 'join_requested',
+      actorId: req.user._id,
+      postId: post._id,
+      meta: { studentRole: post.studentRole }
+    });
+
+    await redis.del('posts:*');
+
+    res.status(201).json({ joinRequest });
+  } catch (error) {
+    if (error?.code === 11000) {
+      return res.status(400).json({ error: 'Join request already exists.' });
+    }
+    console.error('Create join request error:', error);
+    res.status(500).json({ error: 'Failed to create join request' });
+  }
+};
+
+export const getJoinRequests = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const post = await Post.findById(id);
+    if (!post) {
+      return res.status(404).json({ error: 'Post not found' });
+    }
+
+    const isAuthor = post.authorId.toString() === req.user._id.toString();
+    const isAdmin = req.user.role === 'admin';
+    if (!isAuthor && !isAdmin) {
+      return res.status(403).json({ error: 'Not authorized to view join requests' });
+    }
+
+    const joinRequests = await JoinRequest.find({ postId: id })
+      .sort({ createdAt: -1 })
+      .populate('requesterId', 'username');
+
+    res.json({ joinRequests });
+  } catch (error) {
+    console.error('Get join requests error:', error);
+    res.status(500).json({ error: 'Failed to fetch join requests' });
+  }
+};
+
+export const acceptJoinRequest = async (req, res) => {
+  try {
+    const { id, requestId } = req.params;
+
+    const post = await Post.findById(id);
+    if (!post) {
+      return res.status(404).json({ error: 'Post not found' });
+    }
+
+    if (post.authorId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ error: 'Not authorized to accept join requests' });
+    }
+
+    const joinRequest = await JoinRequest.findOne({ _id: requestId, postId: id });
+    if (!joinRequest) {
+      return res.status(404).json({ error: 'Join request not found' });
+    }
+
+    if (joinRequest.status === 'accepted') {
+      return res.status(400).json({ error: 'Join request already accepted.' });
+    }
+
+    if (joinRequest.status === 'rejected') {
+      return res.status(400).json({ error: 'Join request already rejected.' });
+    }
+
+    const acceptedCount = post.acceptedUserIds?.length ?? 0;
+    const maxAccepted = maxAcceptedForRole(post.studentRole);
+    if (acceptedCount >= maxAccepted) {
+      return res.status(400).json({ error: 'Capacity reached for this post.' });
+    }
+
+    joinRequest.status = 'accepted';
+    await joinRequest.save();
+
+    post.acceptedUserIds = post.acceptedUserIds ?? [];
+    post.acceptedUserIds.addToSet(joinRequest.requesterId);
+    await post.save();
+
+    await recordEvent({
+      action: 'join_accepted',
+      actorId: req.user._id,
+      postId: post._id,
+      meta: { requesterId: joinRequest.requesterId }
+    });
+
+    await redis.del('posts:*');
+
+    res.json({ joinRequest, post });
+  } catch (error) {
+    console.error('Accept join request error:', error);
+    res.status(500).json({ error: 'Failed to accept join request' });
+  }
+};
+
+export const rejectJoinRequest = async (req, res) => {
+  try {
+    const { id, requestId } = req.params;
+
+    const post = await Post.findById(id);
+    if (!post) {
+      return res.status(404).json({ error: 'Post not found' });
+    }
+
+    if (post.authorId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ error: 'Not authorized to reject join requests' });
+    }
+
+    const joinRequest = await JoinRequest.findOne({ _id: requestId, postId: id });
+    if (!joinRequest) {
+      return res.status(404).json({ error: 'Join request not found' });
+    }
+
+    joinRequest.status = 'rejected';
+    await joinRequest.save();
+
+    await recordEvent({
+      action: 'join_rejected',
+      actorId: req.user._id,
+      postId: post._id,
+      meta: { requesterId: joinRequest.requesterId }
+    });
+
+    await redis.del('posts:*');
+
+    res.json({ joinRequest });
+  } catch (error) {
+    console.error('Reject join request error:', error);
+    res.status(500).json({ error: 'Failed to reject join request' });
+  }
+};
+
+export const closePost = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { closeReason } = req.body;
+
+    const post = await Post.findById(id);
+    if (!post) {
+      return res.status(404).json({ error: 'Post not found' });
+    }
+
+    if (post.authorId.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Not authorized to close this post' });
+    }
+
+    if (post.status === 'closed') {
+      return res.status(400).json({ error: 'Post already closed.' });
+    }
+
+    post.status = 'closed';
+    post.closedAt = new Date();
+    post.closeReason = closeReason?.trim() || '';
+    await post.save();
+
+    await recordEvent({
+      action: 'post_closed',
+      actorId: req.user._id,
+      postId: post._id,
+      meta: { closeReason: post.closeReason }
+    });
+
+    await redis.del('posts:*');
+
+    res.json({ message: 'Post closed successfully', post });
+  } catch (error) {
+    console.error('Close post error:', error);
+    res.status(500).json({ error: 'Failed to close post' });
   }
 };

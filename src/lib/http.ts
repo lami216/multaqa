@@ -106,14 +106,19 @@ export interface PostPayload {
   studentRole?: 'helper' | 'partner' | 'learner';
   durationHours?: number;
   extendHours?: number;
-  status?: 'active' | 'matched' | 'expired';
+  status?: 'active' | 'matched' | 'expired' | 'closed';
 }
 
 export interface PostResponse extends PostPayload {
   _id: string;
   authorId: string | { _id: string; username?: string };
-  status: 'active' | 'matched' | 'expired';
+  status: 'active' | 'matched' | 'expired' | 'closed';
   expiresAt?: string;
+  closedAt?: string | null;
+  closeReason?: string;
+  acceptedUserIds?: string[];
+  pendingJoinRequestsCount?: number;
+  unreadPostMessagesCount?: number;
   createdAt: string;
   updatedAt: string;
   language?: string;
@@ -175,6 +180,36 @@ export interface NotificationItem {
   createdAt: string;
 }
 
+export interface JoinRequestItem {
+  _id: string;
+  postId: string;
+  requesterId: { _id: string; username: string } | string;
+  status: 'pending' | 'accepted' | 'rejected';
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminEventItem {
+  _id: string;
+  action: string;
+  actorId?: { _id: string; username: string; role?: string } | string;
+  postId?: { _id: string; title?: string; category?: string } | string;
+  meta?: Record<string, unknown>;
+  createdAt: string;
+}
+
+export interface AdminStatsResponse {
+  stats: {
+    activePosts: number;
+    matchedOrClosedPosts: number;
+    expiredPosts: number;
+    postsWithAccepted: number;
+    closedWithoutAccepted: number;
+    usersByRole: Record<string, number>;
+  };
+  events: AdminEventItem[];
+}
+
 export const fetchMe = () =>
   http.get<{ user: ApiUser; profile?: Profile }>('/auth/me', {
     headers: {
@@ -191,6 +226,15 @@ export const updatePost = (id: string, payload: Partial<PostPayload>) => http.pa
 export const fetchPost = (id: string) => http.get<{ post: PostResponse; author: { username: string; profile?: Profile } }>(`/posts/${id}`);
 export const createConversation = (payload: { type: 'post' | 'direct'; postId?: string; otherUserId: string }) =>
   http.post<{ conversationId: string }>('/conversations', payload);
+export const requestJoinPost = (postId: string) => http.post<{ joinRequest: JoinRequestItem }>(`/posts/${postId}/join`);
+export const fetchJoinRequests = (postId: string) => http.get<{ joinRequests: JoinRequestItem[] }>(`/posts/${postId}/join-requests`);
+export const acceptJoinRequest = (postId: string, requestId: string) =>
+  http.post<{ joinRequest: JoinRequestItem; post: PostResponse }>(`/posts/${postId}/join-requests/${requestId}/accept`);
+export const rejectJoinRequest = (postId: string, requestId: string) =>
+  http.post<{ joinRequest: JoinRequestItem }>(`/posts/${postId}/join-requests/${requestId}/reject`);
+export const closePost = (postId: string, payload: { closeReason?: string }) =>
+  http.post<{ message: string; post: PostResponse }>(`/posts/${postId}/close`, payload);
+export const deletePost = (postId: string) => http.delete<{ message: string }>(`/posts/${postId}`);
 export const fetchConversations = () => http.get<{ conversations: ConversationSummary[] }>('/conversations');
 export const fetchConversationMessages = (conversationId: string, params?: { after?: string; limit?: number }) =>
   http.get<{ messages: ConversationMessageItem[]; nextCursor: string | null }>(
@@ -212,3 +256,5 @@ export const updateSubject = (id: string, payload: Partial<SubjectItem>) => http
 export const deleteFaculty = (id: string) => http.delete(`/admin/faculties/${id}`);
 export const deleteMajor = (id: string) => http.delete(`/admin/majors/${id}`);
 export const deleteSubject = (id: string) => http.delete(`/admin/subjects/${id}`);
+export const fetchAdminStats = (params?: { action?: string; limit?: number }) =>
+  http.get<AdminStatsResponse>('/admin/stats', { params });

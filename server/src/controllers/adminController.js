@@ -4,6 +4,7 @@ import Post from '../models/Post.js';
 import Faculty from '../models/Faculty.js';
 import Major from '../models/Major.js';
 import Subject from '../models/Subject.js';
+import Event from '../models/Event.js';
 import redis from '../config/redis.js';
 
 export const getReports = async (req, res) => {
@@ -70,12 +71,95 @@ export const deletePostAdmin = async (req, res) => {
       return res.status(404).json({ error: 'Post not found' });
     }
 
+    await Event.create({
+      action: 'post_deleted',
+      actorId: req.user._id,
+      postId: id,
+      meta: { category: post.category }
+    });
+
     await redis.del('posts:*');
 
     res.json({ message: 'Post deleted successfully' });
   } catch (error) {
     console.error('Delete post admin error:', error);
     res.status(500).json({ error: 'Failed to delete post' });
+  }
+};
+
+export const getDashboardStats = async (req, res) => {
+  try {
+    const { action, limit = 10 } = req.query;
+    const now = new Date();
+
+    const activePosts = await Post.countDocuments({
+      status: 'active',
+      $or: [{ expiresAt: { $exists: false } }, { expiresAt: { $gt: now } }]
+    });
+
+    const expiredPosts = await Post.countDocuments({
+      $or: [
+        { status: 'expired' },
+        { status: 'active', expiresAt: { $lte: now } }
+      ]
+    });
+
+    const matchedOrClosedPosts = await Post.countDocuments({
+      status: { $in: ['matched', 'closed'] }
+    });
+
+    const acceptedAggregate = await Post.aggregate([
+      {
+        $project: {
+          acceptedCount: { $size: { $ifNull: ['$acceptedUserIds', []] } }
+        }
+      },
+      { $match: { acceptedCount: { $gt: 0 } } },
+      { $count: 'count' }
+    ]);
+    const postsWithAccepted = acceptedAggregate[0]?.count ?? 0;
+
+    const closedWithoutAcceptedAggregate = await Post.aggregate([
+      {
+        $project: {
+          status: 1,
+          acceptedCount: { $size: { $ifNull: ['$acceptedUserIds', []] } }
+        }
+      },
+      { $match: { status: 'closed', acceptedCount: 0 } },
+      { $count: 'count' }
+    ]);
+    const closedWithoutAccepted = closedWithoutAcceptedAggregate[0]?.count ?? 0;
+
+    const userRoleCounts = await User.aggregate([
+      { $group: { _id: '$role', count: { $sum: 1 } } }
+    ]);
+    const usersByRole = userRoleCounts.reduce((acc, item) => {
+      acc[item._id] = item.count;
+      return acc;
+    }, {});
+
+    const eventQuery = action ? { action } : {};
+    const events = await Event.find(eventQuery)
+      .sort({ createdAt: -1 })
+      .limit(Math.min(parseInt(limit, 10) || 10, 50))
+      .populate('actorId', 'username role')
+      .populate('postId', 'title category');
+
+    res.json({
+      stats: {
+        activePosts,
+        matchedOrClosedPosts,
+        expiredPosts,
+        postsWithAccepted,
+        closedWithoutAccepted,
+        usersByRole
+      },
+      events
+    });
+  } catch (error) {
+    console.error('Get dashboard stats error:', error);
+    res.status(500).json({ error: 'Failed to fetch dashboard stats' });
   }
 };
 

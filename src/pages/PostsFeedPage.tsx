@@ -124,6 +124,12 @@ const PostsFeedPage: React.FC = () => {
                     <span className="badge-soft">{post.category}</span>
                     {post.level ? <span className="badge-soft bg-blue-50 text-blue-700">{post.level}</span> : null}
                     {post.languagePref ? <span className="badge-soft bg-emerald-50 text-emerald-700">{post.languagePref}</span> : null}
+                    {resolveAuthorId(post) === user?.id && (post.pendingJoinRequestsCount || post.unreadPostMessagesCount) ? (
+                      <span className="badge-soft bg-amber-50 text-amber-700">
+                        {post.pendingJoinRequestsCount ? `${post.pendingJoinRequestsCount} demandes` : '0 demandes'}
+                        {post.unreadPostMessagesCount ? ` · ${post.unreadPostMessagesCount} messages` : ''}
+                      </span>
+                    ) : null}
                   </div>
                   <Link to={`/posts/${post._id}`} className="text-xl font-semibold text-slate-900 hover:text-emerald-700">
                     {post.title}

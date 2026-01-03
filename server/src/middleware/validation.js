@@ -63,6 +63,10 @@ export const updatePostSchema = z.object({
   status: z.enum(['active', 'matched', 'expired']).optional()
 }).strict();
 
+export const closePostSchema = z.object({
+  closeReason: z.string().max(500).optional()
+}).strict();
+
 const subjectArraySchema = z.array(z.string().min(1)).min(1);
 
 export const profileSchema = z.object({

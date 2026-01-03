@@ -54,9 +54,21 @@ const postSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['active', 'matched', 'expired'],
+    enum: ['active', 'matched', 'expired', 'closed'],
     default: 'active'
-  }
+  },
+  closedAt: {
+    type: Date,
+    default: null
+  },
+  closeReason: {
+    type: String,
+    maxlength: 500
+  },
+  acceptedUserIds: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }]
 }, {
   timestamps: true
 });
