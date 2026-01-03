@@ -5,20 +5,36 @@ import redis from '../config/redis.js';
 import { maskContactInfo } from '../utils/contentMasking.js';
 import { containsProfanity, maskProfanity } from '../utils/profanityFilter.js';
 
+const expirePosts = async () => {
+  const now = new Date();
+  await Post.updateMany(
+    { status: 'active', expiresAt: { $lte: now } },
+    { $set: { status: 'expired' } }
+  );
+};
+
+const buildStudyPartnerTitle = (subjectCodes) => `Study partner • ${subjectCodes.join(' & ')}`;
+
 export const getPosts = async (req, res) => {
   try {
-    const { 
-      category, 
-      faculty, 
-      level, 
-      tags, 
-      languagePref, 
-      search, 
-      page = 1, 
-      limit = 20 
+    const {
+      category,
+      faculty,
+      level,
+      tags,
+      languagePref,
+      search,
+      page = 1,
+      limit = 20
     } = req.query;
 
-    const query = { status: 'active' };
+    await expirePosts();
+    const now = new Date();
+
+    const query = {
+      status: 'active',
+      $or: [{ expiresAt: { $exists: false } }, { expiresAt: { $gt: now } }]
+    };
 
     if (category) query.category = category;
     if (faculty) query.faculty = faculty;
@@ -83,9 +99,20 @@ export const getPosts = async (req, res) => {
 export const getPost = async (req, res) => {
   try {
     const { id } = req.params;
+    const now = new Date();
 
     const post = await Post.findById(id).populate('authorId', 'username');
-    if (!post || post.status !== 'active') {
+    if (!post) {
+      return res.status(404).json({ error: 'Post not found' });
+    }
+
+    const isAuthor = post.authorId._id.toString() === req.user._id.toString();
+    if (post.expiresAt && post.expiresAt <= now && post.status === 'active') {
+      post.status = 'expired';
+      await post.save();
+    }
+
+    if (!isAuthor && post.status !== 'active') {
       return res.status(404).json({ error: 'Post not found' });
     }
 
@@ -106,6 +133,56 @@ export const getPost = async (req, res) => {
 
 export const createPost = async (req, res) => {
   try {
+    const { category } = req.body;
+
+    if (category === 'study_partner') {
+      const { subjectCodes, studentRole, durationHours, description } = req.body;
+      const profile = await Profile.findOne({ userId: req.user._id });
+
+      if (!profile?.subjectCodes?.length) {
+        return res.status(400).json({ error: 'Profile subject codes are required for study partner posts.' });
+      }
+
+      const normalizedCodes = subjectCodes.map((code) => code.trim()).filter(Boolean);
+      if (normalizedCodes.length < 1 || normalizedCodes.length > 2) {
+        return res.status(400).json({ error: 'Select between 1 and 2 subjects for study partner posts.' });
+      }
+
+      const allowedCodes = new Set(profile.subjectCodes.map((code) => code.trim()));
+      const invalidCodes = normalizedCodes.filter((code) => !allowedCodes.has(code));
+      if (invalidCodes.length) {
+        return res.status(400).json({ error: 'Selected subjects must exist in your profile.' });
+      }
+
+      let sanitizedDescription = description?.trim() ?? '';
+      if (sanitizedDescription) {
+        if (containsProfanity(sanitizedDescription)) {
+          sanitizedDescription = maskProfanity(sanitizedDescription);
+        }
+        sanitizedDescription = maskContactInfo(sanitizedDescription);
+      }
+
+      const title = buildStudyPartnerTitle(normalizedCodes);
+      const expiresAt = new Date(Date.now() + durationHours * 60 * 60 * 1000);
+
+      const post = await Post.create({
+        authorId: req.user._id,
+        title,
+        description: sanitizedDescription,
+        category,
+        subjectCodes: normalizedCodes,
+        studentRole,
+        expiresAt,
+        faculty: profile.faculty,
+        level: profile.level,
+        languagePref: profile.languages?.[0]
+      });
+
+      await redis.del('posts:*');
+
+      return res.status(201).json({ message: 'Post created successfully', post });
+    }
+
     let { title, description, ...rest } = req.body;
 
     if (containsProfanity(title) || containsProfanity(description)) {
@@ -134,7 +211,7 @@ export const createPost = async (req, res) => {
 export const updatePost = async (req, res) => {
   try {
     const { id } = req.params;
-    let updates = req.body;
+    const updates = { ...req.body };
 
     const post = await Post.findById(id);
     if (!post) {
@@ -145,14 +222,65 @@ export const updatePost = async (req, res) => {
       return res.status(403).json({ error: 'Not authorized to edit this post' });
     }
 
-    if (updates.title && containsProfanity(updates.title)) {
-      updates.title = maskProfanity(updates.title);
-    }
-    if (updates.description) {
-      if (containsProfanity(updates.description)) {
-        updates.description = maskProfanity(updates.description);
+    if (post.category === 'study_partner') {
+      const allowedFields = ['description', 'subjectCodes', 'studentRole', 'status', 'extendHours'];
+      const invalidFields = Object.keys(updates).filter((key) => !allowedFields.includes(key));
+      if (invalidFields.length) {
+        return res.status(400).json({ error: 'Study partner posts accept only subjects, role, status, and duration updates.' });
       }
-      updates.description = maskContactInfo(updates.description);
+
+      if (post.status === 'matched' && updates.status !== 'matched') {
+        return res.status(400).json({ error: 'Matched study partner posts are read-only.' });
+      }
+
+      if (updates.subjectCodes) {
+        const profile = await Profile.findOne({ userId: req.user._id });
+        if (!profile?.subjectCodes?.length) {
+          return res.status(400).json({ error: 'Profile subject codes are required for study partner posts.' });
+        }
+        const normalizedCodes = updates.subjectCodes.map((code) => code.trim()).filter(Boolean);
+        if (normalizedCodes.length < 1 || normalizedCodes.length > 2) {
+          return res.status(400).json({ error: 'Select between 1 and 2 subjects for study partner posts.' });
+        }
+        const allowedCodes = new Set(profile.subjectCodes.map((code) => code.trim()));
+        const invalidCodes = normalizedCodes.filter((code) => !allowedCodes.has(code));
+        if (invalidCodes.length) {
+          return res.status(400).json({ error: 'Selected subjects must exist in your profile.' });
+        }
+        updates.subjectCodes = normalizedCodes;
+        updates.title = buildStudyPartnerTitle(normalizedCodes);
+      }
+
+      if (updates.description !== undefined) {
+        if (updates.description && containsProfanity(updates.description)) {
+          updates.description = maskProfanity(updates.description);
+        }
+        updates.description = updates.description ? maskContactInfo(updates.description) : '';
+      }
+
+      if (updates.extendHours) {
+        const now = new Date();
+        const base = post.expiresAt && post.expiresAt > now ? post.expiresAt : now;
+        post.expiresAt = new Date(base.getTime() + updates.extendHours * 60 * 60 * 1000);
+        post.status = 'active';
+        delete updates.extendHours;
+      }
+
+      if (updates.status) {
+        if (updates.status !== 'matched') {
+          return res.status(400).json({ error: 'Study partner posts can only be marked as matched.' });
+        }
+      }
+    } else {
+      if (updates.title && containsProfanity(updates.title)) {
+        updates.title = maskProfanity(updates.title);
+      }
+      if (updates.description) {
+        if (containsProfanity(updates.description)) {
+          updates.description = maskProfanity(updates.description);
+        }
+        updates.description = maskContactInfo(updates.description);
+      }
     }
 
     Object.assign(post, updates);

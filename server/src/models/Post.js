@@ -14,7 +14,6 @@ const postSchema = new mongoose.Schema({
   },
   description: {
     type: String,
-    required: true,
     maxlength: 2000
   },
   category: {
@@ -26,6 +25,14 @@ const postSchema = new mongoose.Schema({
     type: String,
     trim: true
   }],
+  subjectCodes: [{
+    type: String,
+    trim: true
+  }],
+  studentRole: {
+    type: String,
+    enum: ['helper', 'partner', 'learner']
+  },
   faculty: {
     type: String,
     trim: true
@@ -42,9 +49,12 @@ const postSchema = new mongoose.Schema({
     type: String,
     enum: ['campus', 'online']
   },
+  expiresAt: {
+    type: Date
+  },
   status: {
     type: String,
-    enum: ['active', 'hidden'],
+    enum: ['active', 'matched', 'expired'],
     default: 'active'
   }
 }, {
@@ -55,6 +65,7 @@ postSchema.index({ title: 'text', description: 'text', tags: 'text' });
 postSchema.index({ authorId: 1 });
 postSchema.index({ category: 1 });
 postSchema.index({ status: 1 });
+postSchema.index({ expiresAt: 1 });
 postSchema.index({ createdAt: -1 });
 
 const Post = mongoose.model('Post', postSchema);
