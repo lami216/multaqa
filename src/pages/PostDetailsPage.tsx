@@ -42,6 +42,15 @@ const PostDetailsPage: React.FC = () => {
   const [joinRequests, setJoinRequests] = useState<JoinRequestItem[]>([]);
   const [loadingRequests, setLoadingRequests] = useState(false);
   const [postConversations, setPostConversations] = useState<ConversationSummary[]>([]);
+  const authorId = useMemo(() => {
+    if (!post?.authorId) return '';
+    if (typeof post.authorId === 'string') return post.authorId;
+    if (post.authorId && typeof post.authorId === 'object' && '_id' in post.authorId) {
+      return (post.authorId as { _id: string })._id;
+    }
+    return '';
+  }, [post?.authorId]);
+  const isAuthor = useMemo(() => (authorId ? authorId === user?.id : false), [authorId, user?.id]);
 
   const reportRequestError = (label: string, error: unknown, toastMessage: string) => {
     if (axios.isAxiosError(error)) {
@@ -127,15 +136,6 @@ const PostDetailsPage: React.FC = () => {
 
   const isStudyPartner = post?.category === 'study_partner';
   const extendHours = extendChoice === 'custom' ? Number(customExtend) : Number(extendChoice);
-  const authorId = useMemo(() => {
-    if (!post?.authorId) return '';
-    if (typeof post.authorId === 'string') return post.authorId;
-    if (post.authorId && typeof post.authorId === 'object' && '_id' in post.authorId) {
-      return (post.authorId as { _id: string })._id;
-    }
-    return '';
-  }, [post?.authorId]);
-  const isAuthor = useMemo(() => (authorId ? authorId === user?.id : false), [authorId, user?.id]);
 
   const handleContact = async () => {
     if (!post || !authorId) return;
