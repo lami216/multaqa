@@ -63,6 +63,7 @@ http.interceptors.response.use(
 
 export interface ApiUser {
   id: string;
+  _id?: string;
   email: string;
   username: string;
   role?: string;

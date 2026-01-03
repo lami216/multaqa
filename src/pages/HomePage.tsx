@@ -1,15 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import { BookOpen, Plus, Search } from 'lucide-react';
-import { Link } from 'react-router-dom';
-import { fetchPosts, type PostResponse } from '../lib/http';
+import { Link, useNavigate } from 'react-router-dom';
+import { createConversation, fetchPosts, type PostResponse } from '../lib/http';
 import { useAuth } from '../context/AuthContext';
+import { resolveAuthorId } from '../lib/postUtils';
 
 const HomePage: React.FC = () => {
   const [query, setQuery] = useState('');
   const [posts, setPosts] = useState<PostResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [hiddenMatchedIds, setHiddenMatchedIds] = useState<string[]>([]);
-  const { user } = useAuth();
+  const { currentUserId } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const load = async () => {
@@ -31,12 +33,11 @@ const HomePage: React.FC = () => {
     setHiddenMatchedIds(stored ? (JSON.parse(stored) as string[]) : []);
   }, []);
 
-  const resolveAuthorId = (post: PostResponse) => {
-    if (typeof post.authorId === 'string') return post.authorId;
-    if (post.authorId && typeof post.authorId === 'object' && '_id' in post.authorId) {
-      return (post.authorId as { _id: string })._id;
-    }
-    return '';
+  const handleContact = async (post: PostResponse) => {
+    const authorId = resolveAuthorId(post);
+    if (!authorId || authorId === currentUserId) return;
+    const { data } = await createConversation({ type: 'post', postId: post._id, otherUserId: authorId });
+    navigate(`/messages/${data.conversationId}`);
   };
 
   const filteredPosts = posts.filter((post) => {
@@ -103,7 +104,7 @@ const HomePage: React.FC = () => {
                     <div className="flex flex-wrap gap-2 items-center text-xs font-semibold text-emerald-700">
                       <span className="badge-soft">{post.category}</span>
                       {post.level ? <span className="badge-soft bg-blue-50 text-blue-700">{post.level}</span> : null}
-                      {resolveAuthorId(post) === user?.id && post.pendingJoinRequestsCount ? (
+                      {resolveAuthorId(post) === currentUserId && post.pendingJoinRequestsCount ? (
                         <span className="badge-soft bg-amber-50 text-amber-700">
                           {post.pendingJoinRequestsCount} demandes en attente
                         </span>
@@ -143,7 +144,15 @@ const HomePage: React.FC = () => {
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <Link to={`/posts/${post._id}`} className="primary-btn">Consulter</Link>
-                  <Link to="/messages" className="secondary-btn">Contacter</Link>
+                  {resolveAuthorId(post) !== currentUserId ? (
+                    <button
+                      type="button"
+                      className="secondary-btn"
+                      onClick={() => handleContact(post)}
+                    >
+                      Message {post.author?.username ?? 'Utilisateur'}
+                    </button>
+                  ) : null}
                 </div>
               </div>
             ))

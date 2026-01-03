@@ -3,6 +3,7 @@ import { Filter, MessageCircle, Users } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { createConversation, fetchPosts, type PostResponse } from '../lib/http';
 import { useAuth } from '../context/AuthContext';
+import { resolveAuthorId } from '../lib/postUtils';
 
 const PostsFeedPage: React.FC = () => {
   const [level, setLevel] = useState('');
@@ -12,7 +13,7 @@ const PostsFeedPage: React.FC = () => {
   const [hiddenMatchedIds, setHiddenMatchedIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { currentUserId } = useAuth();
 
   useEffect(() => {
     const load = async () => {
@@ -47,17 +48,9 @@ const PostsFeedPage: React.FC = () => {
     });
   }, [level, category, search, posts, hiddenMatchedIds]);
 
-  const resolveAuthorId = (post: PostResponse) => {
-    if (typeof post.authorId === 'string') return post.authorId;
-    if (post.authorId && typeof post.authorId === 'object' && '_id' in post.authorId) {
-      return (post.authorId as { _id: string })._id;
-    }
-    return '';
-  };
-
   const handleContact = async (post: PostResponse) => {
     const authorId = resolveAuthorId(post);
-    if (!authorId || authorId === user?.id) return;
+    if (!authorId || authorId === currentUserId) return;
     const { data } = await createConversation({ type: 'post', postId: post._id, otherUserId: authorId });
     navigate(`/messages/${data.conversationId}`);
   };
@@ -124,7 +117,7 @@ const PostsFeedPage: React.FC = () => {
                     <span className="badge-soft">{post.category}</span>
                     {post.level ? <span className="badge-soft bg-blue-50 text-blue-700">{post.level}</span> : null}
                     {post.languagePref ? <span className="badge-soft bg-emerald-50 text-emerald-700">{post.languagePref}</span> : null}
-                    {resolveAuthorId(post) === user?.id && (post.pendingJoinRequestsCount || post.unreadPostMessagesCount) ? (
+                    {resolveAuthorId(post) === currentUserId && (post.pendingJoinRequestsCount || post.unreadPostMessagesCount) ? (
                       <span className="badge-soft bg-amber-50 text-amber-700">
                         {post.pendingJoinRequestsCount ? `${post.pendingJoinRequestsCount} demandes` : '0 demandes'}
                         {post.unreadPostMessagesCount ? ` · ${post.unreadPostMessagesCount} messages` : ''}
@@ -164,14 +157,15 @@ const PostsFeedPage: React.FC = () => {
                 <Link to={`/posts/${post._id}`} className="primary-btn">
                   <Users size={16} className="me-1" /> Consulter
                 </Link>
-                <button
-                  type="button"
-                  className="secondary-btn"
-                  onClick={() => handleContact(post)}
-                  disabled={resolveAuthorId(post) === user?.id}
-                >
-                  <MessageCircle size={16} className="me-1" /> Message {post.author?.username ?? 'Utilisateur'}
-                </button>
+                {resolveAuthorId(post) !== currentUserId ? (
+                  <button
+                    type="button"
+                    className="secondary-btn"
+                    onClick={() => handleContact(post)}
+                  >
+                    <MessageCircle size={16} className="me-1" /> Message {post.author?.username ?? 'Utilisateur'}
+                  </button>
+                ) : null}
               </div>
             </div>
           ))
