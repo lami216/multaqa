@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Camera, Loader2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import {
   getFaculties,
   getLevelsByFaculty,
@@ -43,6 +45,8 @@ const EditProfilePage: React.FC = () => {
   const galleryInputRef = useRef<HTMLInputElement | null>(null);
   const previousObjectUrl = useRef<string | null>(null);
   const { user, profile, setProfile, refresh } = useAuth();
+  const navigate = useNavigate();
+  const isProfileLocked = Boolean(profile?.profileLocked);
   const getAvailableLevels = (facultyId?: string) =>
     (facultyId ? getLevelsByFaculty(facultyId) : []).map((level: CatalogLevel) => ({
       value: level.id,
@@ -178,6 +182,13 @@ const EditProfilePage: React.FC = () => {
   }, [setProfile]);
 
   useEffect(() => {
+    if (!loadingProfile && isProfileLocked) {
+      toast.error('Votre profil est verrouillé.');
+      navigate('/profile', { replace: true });
+    }
+  }, [isProfileLocked, loadingProfile, navigate]);
+
+  useEffect(() => {
     if (serverProfile) {
       console.info('[profile] server profile synced', {
         facultyId: serverProfile.facultyId,
@@ -308,6 +319,12 @@ const EditProfilePage: React.FC = () => {
     setSaving(true);
     setMessage('');
     setError('');
+
+    if (isProfileLocked) {
+      setError('Votre profil est verrouillé.');
+      setSaving(false);
+      return;
+    }
 
     if (!form.facultyId || !form.level || !form.majorId || !form.semesterId || !(form.subjectCodes?.length ?? 0)) {
       setError('Merci de sélectionner une faculté, un niveau, une filière, un semestre et les matières associées.');

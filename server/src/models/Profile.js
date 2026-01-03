@@ -69,7 +69,11 @@ const profileSchema = new mongoose.Schema({
     maxlength: 500
   },
   avatarUrl: String,
-  avatarFileId: String
+  avatarFileId: String,
+  profileLocked: {
+    type: Boolean,
+    default: false
+  }
 }, {
   timestamps: true
 });

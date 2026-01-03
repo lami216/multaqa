@@ -44,11 +44,33 @@ export const getPublicProfile = async (req, res) => {
 
 export const updateProfile = async (req, res) => {
   try {
-    const updates = req.body;
+    const { profileLocked: _ignored, ...updates } = req.body;
+    const existingProfile = await Profile.findOne({ userId: req.user._id });
+
+    if (!existingProfile) {
+      return res.status(404).json({ error: 'Profile not found' });
+    }
+
+    if (existingProfile.profileLocked) {
+      return res.status(409).json({ error: 'Profile is locked' });
+    }
+
+    const hasRequiredFields = Boolean(
+      updates.facultyId &&
+        updates.majorId &&
+        updates.level &&
+        updates.semesterId &&
+        Array.isArray(updates.subjectCodes) &&
+        updates.subjectCodes.length
+    );
+    const nextUpdates =
+      hasRequiredFields && !existingProfile.profileLocked
+        ? { ...updates, profileLocked: true }
+        : updates;
 
     const profile = await Profile.findOneAndUpdate(
       { userId: req.user._id },
-      { $set: updates },
+      { $set: nextUpdates },
       { new: true, runValidators: true }
     );
 
