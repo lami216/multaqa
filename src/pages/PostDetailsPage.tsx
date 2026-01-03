@@ -1,7 +1,21 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Calendar, Clock3, Globe, MessageCircle, Users } from 'lucide-react';
-import { createConversation, fetchPost, updatePost, type PostResponse } from '../lib/http';
+import { Calendar, Clock3, Globe, Lock, MessageCircle, Trash2, Users } from 'lucide-react';
+import {
+  acceptJoinRequest,
+  closePost,
+  createConversation,
+  deletePost,
+  fetchConversations,
+  fetchJoinRequests,
+  fetchPost,
+  rejectJoinRequest,
+  requestJoinPost,
+  updatePost,
+  type ConversationSummary,
+  type JoinRequestItem,
+  type PostResponse
+} from '../lib/http';
 import { useAuth } from '../context/AuthContext';
 
 const roleLabels: Record<string, string> = {
@@ -17,9 +31,14 @@ const PostDetailsPage: React.FC = () => {
   const [post, setPost] = useState<PostResponse | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [actionError, setActionError] = useState('');
+  const [actionNotice, setActionNotice] = useState('');
   const [saving, setSaving] = useState(false);
   const [extendChoice, setExtendChoice] = useState<'24' | '48' | '72' | 'custom'>('24');
   const [customExtend, setCustomExtend] = useState('');
+  const [closeReason, setCloseReason] = useState('');
+  const [joinRequests, setJoinRequests] = useState<JoinRequestItem[]>([]);
+  const [loadingRequests, setLoadingRequests] = useState(false);
+  const [postConversations, setPostConversations] = useState<ConversationSummary[]>([]);
 
   useEffect(() => {
     if (!id) return;
@@ -35,6 +54,39 @@ const PostDetailsPage: React.FC = () => {
 
     void load();
   }, [id]);
+
+  useEffect(() => {
+    if (!id || !isAuthor) return;
+
+    const loadRequestsAndMessages = async () => {
+      setLoadingRequests(true);
+      try {
+        const [{ data: joinData }, { data: conversationsData }] = await Promise.all([
+          fetchJoinRequests(id),
+          fetchConversations()
+        ]);
+        setJoinRequests(joinData.joinRequests);
+        setPostConversations(
+          conversationsData.conversations.filter(
+            (conversation) => conversation.type === 'post' && conversation.postId === id
+          )
+        );
+      } catch (error) {
+        setJoinRequests([]);
+        setPostConversations([]);
+      } finally {
+        setLoadingRequests(false);
+      }
+    };
+
+    void loadRequestsAndMessages();
+  }, [id, isAuthor]);
+
+  useEffect(() => {
+    if (!isAuthor) return;
+    const pendingCount = joinRequests.filter((request) => request.status === 'pending').length;
+    setPost((prev) => (prev ? { ...prev, pendingJoinRequestsCount: pendingCount } : prev));
+  }, [joinRequests, isAuthor]);
 
   const isStudyPartner = post?.category === 'study_partner';
   const extendHours = extendChoice === 'custom' ? Number(customExtend) : Number(extendChoice);
@@ -87,6 +139,86 @@ const PostDetailsPage: React.FC = () => {
       setPost((prev) => (prev ? { ...prev, ...data.post } : prev));
     } catch (error) {
       setActionError("Impossible de prolonger l'annonce.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleJoinRequest = async () => {
+    if (!id) return;
+    setSaving(true);
+    setActionError('');
+    setActionNotice('');
+    try {
+      await requestJoinPost(id);
+      setActionNotice('Demande envoyée avec succès.');
+    } catch (error) {
+      setActionError("Impossible d'envoyer la demande.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleAccept = async (requestId: string) => {
+    if (!id) return;
+    setSaving(true);
+    setActionError('');
+    setActionNotice('');
+    try {
+      const { data } = await acceptJoinRequest(id, requestId);
+      setJoinRequests((prev) =>
+        prev.map((item) => (item._id === requestId ? data.joinRequest : item))
+      );
+      setPost((prev) => (prev ? { ...prev, ...data.post } : prev));
+    } catch (error) {
+      setActionError('Impossible de valider la demande.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleReject = async (requestId: string) => {
+    if (!id) return;
+    setSaving(true);
+    setActionError('');
+    setActionNotice('');
+    try {
+      const { data } = await rejectJoinRequest(id, requestId);
+      setJoinRequests((prev) =>
+        prev.map((item) => (item._id === requestId ? data.joinRequest : item))
+      );
+    } catch (error) {
+      setActionError('Impossible de refuser la demande.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleClosePost = async () => {
+    if (!id) return;
+    setSaving(true);
+    setActionError('');
+    setActionNotice('');
+    try {
+      const { data } = await closePost(id, { closeReason });
+      setPost((prev) => (prev ? { ...prev, ...data.post } : prev));
+    } catch (error) {
+      setActionError("Impossible de clôturer l'annonce.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeletePost = async () => {
+    if (!id) return;
+    setSaving(true);
+    setActionError('');
+    setActionNotice('');
+    try {
+      await deletePost(id);
+      navigate('/posts');
+    } catch (error) {
+      setActionError("Impossible de supprimer l'annonce.");
     } finally {
       setSaving(false);
     }
@@ -183,9 +315,18 @@ const PostDetailsPage: React.FC = () => {
 
       {isStudyPartner && isAuthor && (
         <div className="card-surface p-4 space-y-3">
-          <h3 className="font-semibold text-slate-900">Gérer votre annonce</h3>
+          <div className="flex items-start justify-between gap-2">
+            <h3 className="font-semibold text-slate-900">Gérer votre annonce</h3>
+            {(post.pendingJoinRequestsCount || post.unreadPostMessagesCount) ? (
+              <span className="badge-soft bg-amber-50 text-amber-700">
+                {post.pendingJoinRequestsCount ?? 0} demandes · {post.unreadPostMessagesCount ?? 0} messages
+              </span>
+            ) : null}
+          </div>
           {post.status === 'matched' ? (
             <p className="text-sm text-slate-500">Annonce marquée comme matched. Elle est désormais en lecture seule.</p>
+          ) : post.status === 'closed' ? (
+            <p className="text-sm text-slate-500">Annonce clôturée. Vous pouvez la supprimer si besoin.</p>
           ) : (
             <>
               <div className="flex flex-wrap gap-2">
@@ -197,6 +338,23 @@ const PostDetailsPage: React.FC = () => {
                 >
                   Marquer comme matched
                 </button>
+                <button
+                  className="secondary-btn"
+                  type="button"
+                  disabled={saving}
+                  onClick={handleClosePost}
+                >
+                  <Lock size={16} className="me-1" /> Clôturer
+                </button>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm text-slate-600">Motif :</span>
+                <input
+                  value={closeReason}
+                  onChange={(e) => setCloseReason(e.target.value)}
+                  placeholder="Optionnel"
+                  className="w-56"
+                />
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-sm text-slate-600">Prolonger :</span>
@@ -228,22 +386,158 @@ const PostDetailsPage: React.FC = () => {
               </div>
             </>
           )}
+          <div>
+            <button
+              className="secondary-btn border-rose-200 text-rose-600"
+              type="button"
+              disabled={saving}
+              onClick={handleDeletePost}
+            >
+              <Trash2 size={16} className="me-1" /> Supprimer
+            </button>
+          </div>
           {actionError && <p className="text-sm text-rose-600">{actionError}</p>}
+          {actionNotice && <p className="text-sm text-emerald-600">{actionNotice}</p>}
         </div>
       )}
 
-      <div className="flex flex-wrap gap-3">
-        <button className="primary-btn">
-          <Users size={16} className="me-1" /> Demander à rejoindre
-        </button>
-        <button className="secondary-btn" type="button" onClick={handleContact} disabled={authorId === user?.id}>
-          <MessageCircle size={16} className="me-1" /> Contacter
-        </button>
-        <button className="secondary-btn" type="button" onClick={handleDirect} disabled={authorId === user?.id}>
-          <MessageCircle size={16} className="me-1" /> Message direct
-        </button>
-        <Link to="/posts" className="secondary-btn">Retour au fil</Link>
-      </div>
+      {isAuthor ? (
+        isStudyPartner ? (
+          <div className="grid md:grid-cols-2 gap-4">
+            <div className="card-surface p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-slate-900">Demandes de participation</h3>
+                <span className="badge-soft">{joinRequests.length}</span>
+              </div>
+              {loadingRequests ? (
+                <p className="text-sm text-slate-500">Chargement...</p>
+              ) : joinRequests.length ? (
+                <div className="space-y-2">
+                  {joinRequests.map((request) => (
+                    <div key={request._id} className="card-surface p-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-semibold text-slate-900">
+                          {typeof request.requesterId === 'string'
+                            ? request.requesterId
+                            : request.requesterId.username}
+                        </p>
+                        <span className="badge-soft">{request.status}</span>
+                      </div>
+                      {request.status === 'pending' ? (
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            className="primary-btn"
+                            type="button"
+                            disabled={saving}
+                            onClick={() => handleAccept(request._id)}
+                          >
+                            Accepter
+                          </button>
+                          <button
+                            className="secondary-btn"
+                            type="button"
+                            disabled={saving}
+                            onClick={() => handleReject(request._id)}
+                          >
+                            Refuser
+                          </button>
+                        </div>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-slate-500">Aucune demande pour le moment.</p>
+              )}
+            </div>
+            <div className="card-surface p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-slate-900">Messages liés au post</h3>
+                <span className="badge-soft">{postConversations.length}</span>
+              </div>
+              {loadingRequests ? (
+                <p className="text-sm text-slate-500">Chargement...</p>
+              ) : postConversations.length ? (
+                <div className="space-y-2">
+                  {postConversations.map((conversation) => (
+                    <Link
+                      key={conversation._id}
+                      to={`/messages/${conversation._id}`}
+                      className="card-surface p-3 flex items-center justify-between"
+                    >
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">
+                          {conversation.otherParticipant?.username ?? 'Utilisateur'}
+                        </p>
+                        {conversation.lastMessage ? (
+                          <p className="text-xs text-slate-500 line-clamp-1">{conversation.lastMessage.text}</p>
+                        ) : (
+                          <p className="text-xs text-slate-500">Aucun message.</p>
+                        )}
+                      </div>
+                      {conversation.unreadCount > 0 && (
+                        <span className="badge-soft bg-amber-50 text-amber-700">{conversation.unreadCount}</span>
+                      )}
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-slate-500">Aucune conversation liée pour le moment.</p>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="card-surface p-4 space-y-3">
+            <h3 className="font-semibold text-slate-900">Gérer votre annonce</h3>
+            <div className="flex flex-wrap gap-2">
+              <button
+                className="secondary-btn"
+                type="button"
+                disabled={saving}
+                onClick={handleClosePost}
+              >
+                <Lock size={16} className="me-1" /> Clôturer
+              </button>
+              <button
+                className="secondary-btn border-rose-200 text-rose-600"
+                type="button"
+                disabled={saving}
+                onClick={handleDeletePost}
+              >
+                <Trash2 size={16} className="me-1" /> Supprimer
+              </button>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm text-slate-600">Motif :</span>
+              <input
+                value={closeReason}
+                onChange={(e) => setCloseReason(e.target.value)}
+                placeholder="Optionnel"
+                className="w-56"
+              />
+            </div>
+            {actionError && <p className="text-sm text-rose-600">{actionError}</p>}
+            {actionNotice && <p className="text-sm text-emerald-600">{actionNotice}</p>}
+          </div>
+        )
+      ) : (
+        <div className="flex flex-wrap gap-3">
+          {isStudyPartner ? (
+            <button className="primary-btn" type="button" onClick={handleJoinRequest} disabled={saving}>
+              <Users size={16} className="me-1" /> Demander à rejoindre
+            </button>
+          ) : null}
+          <button className="secondary-btn" type="button" onClick={handleContact} disabled={authorId === user?.id}>
+            <MessageCircle size={16} className="me-1" /> Contacter
+          </button>
+          <button className="secondary-btn" type="button" onClick={handleDirect} disabled={authorId === user?.id}>
+            <MessageCircle size={16} className="me-1" /> Message direct
+          </button>
+          <Link to="/posts" className="secondary-btn">Retour au fil</Link>
+          {actionError && <p className="text-sm text-rose-600 w-full">{actionError}</p>}
+          {actionNotice && <p className="text-sm text-emerald-600 w-full">{actionNotice}</p>}
+        </div>
+      )}
     </div>
   );
 };

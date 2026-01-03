@@ -1,65 +1,41 @@
-import React, { useEffect, useState } from 'react';
-import { Plus, Shield, Trash2 } from 'lucide-react';
-import {
-  createFaculty,
-  createMajor,
-  createSubject,
-  deleteFaculty,
-  deleteMajor,
-  deleteSubject,
-  fetchFaculties,
-  fetchMajors,
-  fetchSubjects,
-  type FacultyItem,
-  type MajorItem,
-  type SubjectItem
-} from '../lib/http';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Activity, Shield, Users } from 'lucide-react';
+import { fetchAdminStats, type AdminEventItem, type AdminStatsResponse } from '../lib/http';
 
 const AdminDashboardPage: React.FC = () => {
-  const [faculties, setFaculties] = useState<FacultyItem[]>([]);
-  const [majors, setMajors] = useState<MajorItem[]>([]);
-  const [subjects, setSubjects] = useState<SubjectItem[]>([]);
-  const [newFaculty, setNewFaculty] = useState({ nameAr: '', nameFr: '' });
-  const [newMajor, setNewMajor] = useState({ nameAr: '', nameFr: '', facultyId: '' });
-  const [newSubject, setNewSubject] = useState({ nameAr: '', nameFr: '', facultyId: '', majorId: '' });
+  const [stats, setStats] = useState<AdminStatsResponse['stats'] | null>(null);
+  const [events, setEvents] = useState<AdminEventItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filterAction, setFilterAction] = useState<string>('');
 
-  const loadLookups = async () => {
-    const [{ data: facultyData }, { data: majorData }, { data: subjectData }] = await Promise.all([
-      fetchFaculties(),
-      fetchMajors(),
-      fetchSubjects(),
-    ]);
-
-    setFaculties(facultyData.faculties);
-    setMajors(majorData.majors);
-    setSubjects(subjectData.subjects);
+  const loadDashboard = async (action?: string) => {
+    setLoading(true);
+    const { data } = await fetchAdminStats(action ? { action } : undefined);
+    setStats(data.stats);
+    setEvents(data.events);
+    setLoading(false);
   };
 
   useEffect(() => {
-    void loadLookups();
+    void loadDashboard();
   }, []);
 
-  const addFaculty = async (event: React.FormEvent) => {
-    event.preventDefault();
-    await createFaculty(newFaculty);
-    setNewFaculty({ nameAr: '', nameFr: '' });
-    await loadLookups();
-  };
+  const actionOptions = useMemo(
+    () => [
+      { value: '', label: 'Tous les évènements' },
+      { value: 'post_created', label: 'Post créé' },
+      { value: 'join_requested', label: 'Join demandé' },
+      { value: 'join_accepted', label: 'Join accepté' },
+      { value: 'join_rejected', label: 'Join rejeté' },
+      { value: 'post_closed', label: 'Post clôturé' },
+      { value: 'post_deleted', label: 'Post supprimé' }
+    ],
+    []
+  );
 
-  const addMajor = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!newMajor.facultyId) return;
-    await createMajor(newMajor);
-    setNewMajor({ nameAr: '', nameFr: '', facultyId: '' });
-    await loadLookups();
-  };
-
-  const addSubject = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!newSubject.facultyId || !newSubject.majorId) return;
-    await createSubject(newSubject);
-    setNewSubject({ nameAr: '', nameFr: '', facultyId: '', majorId: '' });
-    await loadLookups();
+  const handleFilterChange = async (value: string) => {
+    setFilterAction(value);
+    await loadDashboard(value || undefined);
   };
 
   return (
@@ -68,166 +44,109 @@ const AdminDashboardPage: React.FC = () => {
         <Shield className="text-emerald-600" />
         <div>
           <h1 className="section-title">Console admin</h1>
-          <p className="helper-text">Gérez les données réelles : facultés, filières et matières.</p>
+          <p className="helper-text">Vue d'ensemble sur les annonces, utilisateurs et évènements récents.</p>
         </div>
       </div>
 
-      <div className="grid md:grid-cols-3 gap-4">
-        <div className="card-surface p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="font-semibold text-slate-900">Facultés</h3>
-            <span className="badge-soft">{faculties.length}</span>
-          </div>
-          <form className="space-y-2" onSubmit={addFaculty}>
-            <input
-              className="w-full"
-              placeholder="Nom en Ar"
-              value={newFaculty.nameAr}
-              onChange={(e) => setNewFaculty((prev) => ({ ...prev, nameAr: e.target.value }))}
-              required
-            />
-            <input
-              className="w-full"
-              placeholder="Nom en Fr"
-              value={newFaculty.nameFr}
-              onChange={(e) => setNewFaculty((prev) => ({ ...prev, nameFr: e.target.value }))}
-              required
-            />
-            <button type="submit" className="primary-btn w-full">
-              <Plus size={16} className="me-1" /> Ajouter
-            </button>
-          </form>
-          <div className="space-y-2">
-            {faculties.map((faculty) => (
-              <div key={faculty._id} className="card-surface p-3 flex items-center justify-between">
-                <div>
-                  <p className="font-semibold text-slate-900">{faculty.nameFr}</p>
-                  <p className="text-sm text-slate-600">{faculty.nameAr}</p>
-                </div>
-                <button className="secondary-btn" onClick={() => deleteFaculty(faculty._id).then(loadLookups)}>
-                  <Trash2 size={16} />
-                </button>
+      {loading ? (
+        <div className="card-surface p-6 text-sm text-slate-600">Chargement des statistiques...</div>
+      ) : (
+        <>
+          <div className="grid md:grid-cols-3 gap-4">
+            <div className="card-surface p-4 space-y-2">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-slate-900">Posts actifs</h3>
+                <Activity className="text-emerald-600" />
               </div>
-            ))}
-            {!faculties.length && <p className="text-sm text-slate-500">Aucune faculté enregistrée.</p>}
-          </div>
-        </div>
-
-        <div className="card-surface p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="font-semibold text-slate-900">Filières</h3>
-            <span className="badge-soft">{majors.length}</span>
-          </div>
-          <form className="space-y-2" onSubmit={addMajor}>
-            <select
-              className="w-full"
-              value={newMajor.facultyId}
-              onChange={(e) => setNewMajor((prev) => ({ ...prev, facultyId: e.target.value }))}
-              required
-            >
-              <option value="">Choisir une faculté</option>
-              {faculties.map((faculty) => (
-                <option key={faculty._id} value={faculty._id}>{faculty.nameFr}</option>
-              ))}
-            </select>
-            <input
-              className="w-full"
-              placeholder="Nom en Ar"
-              value={newMajor.nameAr}
-              onChange={(e) => setNewMajor((prev) => ({ ...prev, nameAr: e.target.value }))}
-              required
-            />
-            <input
-              className="w-full"
-              placeholder="Nom en Fr"
-              value={newMajor.nameFr}
-              onChange={(e) => setNewMajor((prev) => ({ ...prev, nameFr: e.target.value }))}
-              required
-            />
-            <button type="submit" className="primary-btn w-full">
-              <Plus size={16} className="me-1" /> Ajouter
-            </button>
-          </form>
-          <div className="space-y-2">
-            {majors.map((major) => (
-              <div key={major._id} className="card-surface p-3 flex items-center justify-between">
-                <div>
-                  <p className="font-semibold text-slate-900">{major.nameFr}</p>
-                  <p className="text-sm text-slate-600">{major.facultyId?.nameFr}</p>
-                </div>
-                <button className="secondary-btn" onClick={() => deleteMajor(major._id).then(loadLookups)}>
-                  <Trash2 size={16} />
-                </button>
+              <p className="text-3xl font-semibold text-slate-900">{stats?.activePosts ?? 0}</p>
+              <p className="text-sm text-slate-500">Annonces visibles sur le fil public.</p>
+            </div>
+            <div className="card-surface p-4 space-y-2">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-slate-900">Posts clôturés/matchés</h3>
+                <Shield className="text-emerald-600" />
               </div>
-            ))}
-            {!majors.length && <p className="text-sm text-slate-500">Aucune filière enregistrée.</p>}
+              <p className="text-3xl font-semibold text-slate-900">{stats?.matchedOrClosedPosts ?? 0}</p>
+              <p className="text-sm text-slate-500">Annonces terminées.</p>
+            </div>
+            <div className="card-surface p-4 space-y-2">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-slate-900">Posts expirés</h3>
+                <Activity className="text-emerald-600" />
+              </div>
+              <p className="text-3xl font-semibold text-slate-900">{stats?.expiredPosts ?? 0}</p>
+              <p className="text-sm text-slate-500">Plus visibles sur le fil.</p>
+            </div>
           </div>
-        </div>
 
-        <div className="card-surface p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="font-semibold text-slate-900">Matières</h3>
-            <span className="badge-soft">{subjects.length}</span>
+          <div className="grid md:grid-cols-2 gap-4">
+            <div className="card-surface p-4 space-y-2">
+              <h3 className="font-semibold text-slate-900">Engagement sur les posts</h3>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-slate-600">Posts avec acceptation</span>
+                <span className="badge-soft">{stats?.postsWithAccepted ?? 0}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-slate-600">Posts clôturés sans acceptation</span>
+                <span className="badge-soft">{stats?.closedWithoutAccepted ?? 0}</span>
+              </div>
+            </div>
+            <div className="card-surface p-4 space-y-2">
+              <div className="flex items-center gap-2">
+                <Users className="text-emerald-600" />
+                <h3 className="font-semibold text-slate-900">Utilisateurs par rôle</h3>
+              </div>
+              {stats?.usersByRole
+                ? Object.entries(stats.usersByRole).map(([role, count]) => (
+                    <div key={role} className="flex items-center justify-between">
+                      <span className="text-sm text-slate-600">{role}</span>
+                      <span className="badge-soft">{count}</span>
+                    </div>
+                  ))
+                : <p className="text-sm text-slate-500">Aucune donnée utilisateur.</p>}
+            </div>
           </div>
-          <form className="space-y-2" onSubmit={addSubject}>
-            <select
-              className="w-full"
-              value={newSubject.facultyId}
-              onChange={(e) => setNewSubject((prev) => ({ ...prev, facultyId: e.target.value }))}
-              required
-            >
-              <option value="">Choisir une faculté</option>
-              {faculties.map((faculty) => (
-                <option key={faculty._id} value={faculty._id}>{faculty.nameFr}</option>
-              ))}
-            </select>
-            <select
-              className="w-full"
-              value={newSubject.majorId}
-              onChange={(e) => setNewSubject((prev) => ({ ...prev, majorId: e.target.value }))}
-              required
-            >
-              <option value="">Choisir une filière</option>
-              {majors
-                .filter((m) => !newSubject.facultyId || m.facultyId?._id === newSubject.facultyId)
-                .map((major) => (
-                  <option key={major._id} value={major._id}>{major.nameFr}</option>
+
+          <div className="card-surface p-4 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <h3 className="font-semibold text-slate-900">Évènements récents</h3>
+                <p className="text-sm text-slate-500">Filtrez par type d'action.</p>
+              </div>
+              <select
+                className="min-w-[200px]"
+                value={filterAction}
+                onChange={(event) => void handleFilterChange(event.target.value)}
+              >
+                {actionOptions.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
                 ))}
-            </select>
-            <input
-              className="w-full"
-              placeholder="Nom en Ar"
-              value={newSubject.nameAr}
-              onChange={(e) => setNewSubject((prev) => ({ ...prev, nameAr: e.target.value }))}
-              required
-            />
-            <input
-              className="w-full"
-              placeholder="Nom en Fr"
-              value={newSubject.nameFr}
-              onChange={(e) => setNewSubject((prev) => ({ ...prev, nameFr: e.target.value }))}
-              required
-            />
-            <button type="submit" className="primary-btn w-full">
-              <Plus size={16} className="me-1" /> Ajouter
-            </button>
-          </form>
-          <div className="space-y-2">
-            {subjects.map((subject) => (
-              <div key={subject._id} className="card-surface p-3 flex items-center justify-between">
-                <div>
-                  <p className="font-semibold text-slate-900">{subject.nameFr}</p>
-                  <p className="text-sm text-slate-600">{subject.majorId?.nameFr}</p>
-                </div>
-                <button className="secondary-btn" onClick={() => deleteSubject(subject._id).then(loadLookups)}>
-                  <Trash2 size={16} />
-                </button>
-              </div>
-            ))}
-            {!subjects.length && <p className="text-sm text-slate-500">Aucune matière enregistrée.</p>}
+              </select>
+            </div>
+            <div className="space-y-2">
+              {events.length ? (
+                events.map((eventItem) => {
+                  const actor = typeof eventItem.actorId === 'string' ? eventItem.actorId : eventItem.actorId?.username;
+                  const postTitle = typeof eventItem.postId === 'string' ? eventItem.postId : eventItem.postId?.title;
+                  return (
+                    <div key={eventItem._id} className="card-surface p-3 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-900">{eventItem.action}</p>
+                        <p className="text-xs text-slate-500">
+                          {actor ? `Par ${actor}` : 'Acteur inconnu'} · {postTitle ? `Post: ${postTitle}` : 'Post non précisé'}
+                        </p>
+                      </div>
+                      <span className="text-xs text-slate-500">{new Date(eventItem.createdAt).toLocaleString()}</span>
+                    </div>
+                  );
+                })
+              ) : (
+                <p className="text-sm text-slate-500">Aucun évènement récent.</p>
+              )}
+            </div>
           </div>
-        </div>
-      </div>
+        </>
+      )}
     </div>
   );
 };
