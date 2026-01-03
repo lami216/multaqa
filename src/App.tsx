@@ -12,6 +12,7 @@ import CreatePostPage from './pages/CreatePostPage';
 import ProfilePage from './pages/ProfilePage';
 import EditProfilePage from './pages/EditProfilePage';
 import MessagesPage from './pages/MessagesPage';
+import ConversationPage from './pages/ConversationPage';
 import NotificationsPage from './pages/NotificationsPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
 import { LoginPage, SignupPage } from './pages/AuthPages';
@@ -79,6 +80,16 @@ const App: React.FC = () => {
                   <ProtectedRoute>
                     <Layout>
                       <MessagesPage />
+                    </Layout>
+                  </ProtectedRoute>
+                )}
+              />
+              <Route
+                path="/messages/:conversationId"
+                element={(
+                  <ProtectedRoute>
+                    <Layout>
+                      <ConversationPage />
                     </Layout>
                   </ProtectedRoute>
                 )}

@@ -1,6 +1,8 @@
 import Post from '../models/Post.js';
 import User from '../models/User.js';
 import Profile from '../models/Profile.js';
+import Conversation from '../models/Conversation.js';
+import Message from '../models/Message.js';
 import redis from '../config/redis.js';
 import { maskContactInfo } from '../utils/contentMasking.js';
 import { containsProfanity, maskProfanity } from '../utils/profanityFilter.js';
@@ -306,6 +308,13 @@ export const deletePost = async (req, res) => {
 
     if (post.authorId.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
       return res.status(403).json({ error: 'Not authorized to delete this post' });
+    }
+
+    const conversations = await Conversation.find({ type: 'post', postId: id }).select('_id');
+    const conversationIds = conversations.map((conversation) => conversation._id);
+    if (conversationIds.length) {
+      await Message.deleteMany({ conversationId: { $in: conversationIds } });
+      await Conversation.deleteMany({ _id: { $in: conversationIds } });
     }
 
     await Post.findByIdAndDelete(id);

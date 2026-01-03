@@ -111,7 +111,7 @@ export interface PostPayload {
 
 export interface PostResponse extends PostPayload {
   _id: string;
-  authorId: string;
+  authorId: string | { _id: string; username?: string };
   status: 'active' | 'matched' | 'expired';
   expiresAt?: string;
   createdAt: string;
@@ -146,22 +146,25 @@ export interface SubjectItem {
   active: boolean;
 }
 
-export interface ChatSummary {
+export interface ConversationSummary {
   _id: string;
+  type: 'post' | 'direct';
   participants: string[];
-  otherParticipant: { id: string; username: string; profile?: Profile };
-  lastMessage?: { body: string; createdAt: string };
+  postId?: string;
+  otherParticipant: { id: string; username: string; profile?: Profile } | null;
+  lastMessage?: { text: string; createdAt: string } | null;
   unreadCount: number;
-  lastMessageAt?: string;
+  lastMessageAt?: string | null;
 }
 
-export interface ChatMessageItem {
+export interface ConversationMessageItem {
   _id: string;
-  chatId: string;
-  senderId: { _id: string; username: string };
-  body: string;
+  conversationId: string;
+  senderId: string;
+  text: string;
   createdAt: string;
-  read: boolean;
+  deliveredAt?: string | null;
+  readAt?: string | null;
 }
 
 export interface NotificationItem {
@@ -186,9 +189,17 @@ export const fetchPosts = (params?: Record<string, string>) => http.get<{ posts:
 export const createPost = (payload: PostPayload) => http.post('/posts', payload);
 export const updatePost = (id: string, payload: Partial<PostPayload>) => http.patch(`/posts/${id}`, payload);
 export const fetchPost = (id: string) => http.get<{ post: PostResponse; author: { username: string; profile?: Profile } }>(`/posts/${id}`);
-export const fetchChats = () => http.get<{ chats: ChatSummary[] }>('/chats');
-export const fetchMessages = (chatId: string) => http.get<{ messages: ChatMessageItem[] }>(`/chats/${chatId}/messages`);
-export const sendMessage = (chatId: string, body: string) => http.post(`/chats/${chatId}/messages`, { body });
+export const createConversation = (payload: { type: 'post' | 'direct'; postId?: string; otherUserId: string }) =>
+  http.post<{ conversationId: string }>('/conversations', payload);
+export const fetchConversations = () => http.get<{ conversations: ConversationSummary[] }>('/conversations');
+export const fetchConversationMessages = (conversationId: string, params?: { after?: string; limit?: number }) =>
+  http.get<{ messages: ConversationMessageItem[]; nextCursor: string | null }>(
+    `/conversations/${conversationId}/messages`,
+    { params }
+  );
+export const markConversationRead = (conversationId: string) => http.post(`/conversations/${conversationId}/read`);
+export const sendConversationMessage = (conversationId: string, text: string) =>
+  http.post<{ message: ConversationMessageItem }>(`/conversations/${conversationId}/messages`, { text });
 export const fetchNotifications = () => http.get<{ notifications: NotificationItem[]; unread: number }>('/notifications');
 export const fetchFaculties = () => http.get<{ faculties: FacultyItem[] }>('/faculties');
 export const fetchMajors = (params?: Record<string, string>) => http.get<{ majors: MajorItem[] }>('/majors', { params });

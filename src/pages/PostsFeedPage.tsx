@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Bookmark, Filter, MessageCircle, Users } from 'lucide-react';
-import { Link } from 'react-router-dom';
-import { fetchPosts, type PostResponse } from '../lib/http';
+import { Link, useNavigate } from 'react-router-dom';
+import { createConversation, fetchPosts, type PostResponse } from '../lib/http';
+import { useAuth } from '../context/AuthContext';
 
 const PostsFeedPage: React.FC = () => {
   const [level, setLevel] = useState('');
@@ -9,6 +10,8 @@ const PostsFeedPage: React.FC = () => {
   const [category, setCategory] = useState('');
   const [posts, setPosts] = useState<PostResponse[]>([]);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+  const { user } = useAuth();
 
   useEffect(() => {
     const load = async () => {
@@ -36,6 +39,28 @@ const PostsFeedPage: React.FC = () => {
       return matchesLevel && matchesCategory && matchesSearch;
     });
   }, [level, category, search, posts]);
+
+  const resolveAuthorId = (post: PostResponse) => {
+    if (typeof post.authorId === 'string') return post.authorId;
+    if (post.authorId && typeof post.authorId === 'object' && '_id' in post.authorId) {
+      return (post.authorId as { _id: string })._id;
+    }
+    return '';
+  };
+
+  const handleContact = async (post: PostResponse) => {
+    const authorId = resolveAuthorId(post);
+    if (!authorId || authorId === user?.id) return;
+    const { data } = await createConversation({ type: 'post', postId: post._id, otherUserId: authorId });
+    navigate(`/messages/${data.conversationId}`);
+  };
+
+  const handleDirect = async (post: PostResponse) => {
+    const authorId = resolveAuthorId(post);
+    if (!authorId || authorId === user?.id) return;
+    const { data } = await createConversation({ type: 'direct', otherUserId: authorId });
+    navigate(`/messages/${data.conversationId}`);
+  };
 
   return (
     <div className="space-y-4">
@@ -133,9 +158,22 @@ const PostsFeedPage: React.FC = () => {
                 <Link to={`/posts/${post._id}`} className="primary-btn">
                   <Users size={16} className="me-1" /> Consulter
                 </Link>
-                <Link to="/messages" className="secondary-btn">
+                <button
+                  type="button"
+                  className="secondary-btn"
+                  onClick={() => handleContact(post)}
+                  disabled={resolveAuthorId(post) === user?.id}
+                >
                   <MessageCircle size={16} className="me-1" /> Contacter
-                </Link>
+                </button>
+                <button
+                  type="button"
+                  className="secondary-btn"
+                  onClick={() => handleDirect(post)}
+                  disabled={resolveAuthorId(post) === user?.id}
+                >
+                  <MessageCircle size={16} className="me-1" /> Message direct
+                </button>
                 <button className="secondary-btn" type="button" disabled>
                   <Bookmark size={16} className="me-1" /> Sauvegarder
                 </button>
