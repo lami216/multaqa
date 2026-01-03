@@ -65,7 +65,8 @@ export const getPosts = async (req, res) => {
       query.$text = { $search: search };
     }
 
-    const cacheKey = `posts:${req.user._id}:${JSON.stringify(query)}:${page}:${limit}`;
+    const userId = req.user?._id?.toString() ?? 'anonymous';
+    const cacheKey = `posts:${userId}:${JSON.stringify(query)}:${page}:${limit}`;
     const cached = await redis.get(cacheKey);
     if (cached) {
       return res.json(JSON.parse(cached));
@@ -84,7 +85,7 @@ export const getPosts = async (req, res) => {
     const postsWithProfiles = await Promise.all(
       posts.map(async (post) => {
         const profile = await Profile.findOne({ userId: post.authorId._id });
-        const isAuthor = post.authorId._id.toString() === req.user._id.toString();
+        const isAuthor = userId !== 'anonymous' && post.authorId._id.toString() === userId;
         let pendingJoinRequestsCount = 0;
         let unreadPostMessagesCount = 0;
 
@@ -99,7 +100,7 @@ export const getPosts = async (req, res) => {
           if (conversationIds.length) {
             unreadPostMessagesCount = await Message.countDocuments({
               conversationId: { $in: conversationIds },
-              senderId: { $ne: req.user._id },
+              senderId: { $ne: userId },
               readAt: null
             });
           }

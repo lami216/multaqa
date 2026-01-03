@@ -1,6 +1,8 @@
+import axios from 'axios';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Calendar, Clock3, Globe, Lock, MessageCircle, Trash2, Users } from 'lucide-react';
+import { toast } from 'sonner';
 import {
   acceptJoinRequest,
   closePost,
@@ -30,6 +32,7 @@ const PostDetailsPage: React.FC = () => {
   const navigate = useNavigate();
   const [post, setPost] = useState<PostResponse | null>(null);
   const [notFound, setNotFound] = useState(false);
+  const [loadError, setLoadError] = useState('');
   const [actionError, setActionError] = useState('');
   const [actionNotice, setActionNotice] = useState('');
   const [saving, setSaving] = useState(false);
@@ -40,6 +43,18 @@ const PostDetailsPage: React.FC = () => {
   const [loadingRequests, setLoadingRequests] = useState(false);
   const [postConversations, setPostConversations] = useState<ConversationSummary[]>([]);
 
+  const reportRequestError = (label: string, error: unknown, toastMessage: string) => {
+    if (axios.isAxiosError(error)) {
+      console.error(`[PostDetailsPage] ${label}`, {
+        status: error.response?.status,
+        payload: error.response?.data
+      });
+    } else {
+      console.error(`[PostDetailsPage] ${label}`, error);
+    }
+    toast.error(toastMessage);
+  };
+
   useEffect(() => {
     if (!id) return;
 
@@ -47,8 +62,25 @@ const PostDetailsPage: React.FC = () => {
       try {
         const { data } = await fetchPost(id);
         setPost({ ...data.post, author: data.author });
+        setLoadError('');
+        setNotFound(false);
       } catch (error) {
-        setNotFound(true);
+        if (axios.isAxiosError(error) && error.response?.status === 404) {
+          setNotFound(true);
+          setLoadError('');
+          reportRequestError(
+            'Failed to load post (404)',
+            error,
+            "L'annonce demandée est introuvable."
+          );
+          return;
+        }
+        setLoadError("Impossible de charger l'annonce.");
+        reportRequestError(
+          'Failed to load post',
+          error,
+          "Impossible de charger l'annonce. Réessayez."
+        );
       }
     };
 
@@ -72,6 +104,11 @@ const PostDetailsPage: React.FC = () => {
           )
         );
       } catch (error) {
+        reportRequestError(
+          'Failed to load join requests or conversations',
+          error,
+          'Impossible de charger les demandes ou messages.'
+        );
         setJoinRequests([]);
         setPostConversations([]);
       } finally {
@@ -102,14 +139,22 @@ const PostDetailsPage: React.FC = () => {
 
   const handleContact = async () => {
     if (!post || !authorId) return;
-    const { data } = await createConversation({ type: 'post', postId: post._id, otherUserId: authorId });
-    navigate(`/messages/${data.conversationId}`);
+    try {
+      const { data } = await createConversation({ type: 'post', postId: post._id, otherUserId: authorId });
+      navigate(`/messages/${data.conversationId}`);
+    } catch (error) {
+      reportRequestError('Failed to create post conversation', error, 'Impossible de contacter cet utilisateur.');
+    }
   };
 
   const handleDirect = async () => {
     if (!post || !authorId || authorId === user?.id) return;
-    const { data } = await createConversation({ type: 'direct', otherUserId: authorId });
-    navigate(`/messages/${data.conversationId}`);
+    try {
+      const { data } = await createConversation({ type: 'direct', otherUserId: authorId });
+      navigate(`/messages/${data.conversationId}`);
+    } catch (error) {
+      reportRequestError('Failed to create direct conversation', error, 'Impossible de démarrer la conversation.');
+    }
   };
 
   const handleStatusUpdate = async () => {
@@ -120,6 +165,7 @@ const PostDetailsPage: React.FC = () => {
       const { data } = await updatePost(id, { status: 'matched' });
       setPost((prev) => (prev ? { ...prev, ...data.post } : prev));
     } catch (error) {
+      reportRequestError('Failed to update post status', error, "Impossible de mettre à jour l'annonce.");
       setActionError("Impossible de mettre à jour l'annonce.");
     } finally {
       setSaving(false);
@@ -138,6 +184,7 @@ const PostDetailsPage: React.FC = () => {
       const { data } = await updatePost(id, { extendHours });
       setPost((prev) => (prev ? { ...prev, ...data.post } : prev));
     } catch (error) {
+      reportRequestError('Failed to extend post', error, "Impossible de prolonger l'annonce.");
       setActionError("Impossible de prolonger l'annonce.");
     } finally {
       setSaving(false);
@@ -153,6 +200,7 @@ const PostDetailsPage: React.FC = () => {
       await requestJoinPost(id);
       setActionNotice('Demande envoyée avec succès.');
     } catch (error) {
+      reportRequestError('Failed to request join post', error, "Impossible d'envoyer la demande.");
       setActionError("Impossible d'envoyer la demande.");
     } finally {
       setSaving(false);
@@ -171,6 +219,7 @@ const PostDetailsPage: React.FC = () => {
       );
       setPost((prev) => (prev ? { ...prev, ...data.post } : prev));
     } catch (error) {
+      reportRequestError('Failed to accept join request', error, 'Impossible de valider la demande.');
       setActionError('Impossible de valider la demande.');
     } finally {
       setSaving(false);
@@ -188,6 +237,7 @@ const PostDetailsPage: React.FC = () => {
         prev.map((item) => (item._id === requestId ? data.joinRequest : item))
       );
     } catch (error) {
+      reportRequestError('Failed to reject join request', error, 'Impossible de refuser la demande.');
       setActionError('Impossible de refuser la demande.');
     } finally {
       setSaving(false);
@@ -203,6 +253,7 @@ const PostDetailsPage: React.FC = () => {
       const { data } = await closePost(id, { closeReason });
       setPost((prev) => (prev ? { ...prev, ...data.post } : prev));
     } catch (error) {
+      reportRequestError('Failed to close post', error, "Impossible de clôturer l'annonce.");
       setActionError("Impossible de clôturer l'annonce.");
     } finally {
       setSaving(false);
@@ -218,6 +269,7 @@ const PostDetailsPage: React.FC = () => {
       await deletePost(id);
       navigate('/posts');
     } catch (error) {
+      reportRequestError('Failed to delete post', error, "Impossible de supprimer l'annonce.");
       setActionError("Impossible de supprimer l'annonce.");
     } finally {
       setSaving(false);
@@ -232,6 +284,23 @@ const PostDetailsPage: React.FC = () => {
         <Link to="/posts" className="primary-btn w-fit">
           Retour aux posts
         </Link>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="card-surface p-5 space-y-3">
+        <h1 className="section-title">Impossible de charger l'annonce</h1>
+        <p className="helper-text">{loadError}</p>
+        <div className="flex flex-wrap gap-2">
+          <button className="primary-btn" type="button" onClick={() => navigate(-1)}>
+            Retour
+          </button>
+          <Link to="/posts" className="secondary-btn">
+            Retour aux posts
+          </Link>
+        </div>
       </div>
     );
   }
