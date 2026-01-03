@@ -4,6 +4,7 @@ import { LanguageProvider } from './context/LanguageContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Layout from './components/common/Layout';
 import ProtectedRoute from './components/common/ProtectedRoute';
+import ProfileEditGuard from './components/common/ProfileEditGuard';
 import HomePage from './pages/HomePage';
 import PostsFeedPage from './pages/PostsFeedPage';
 import PostDetailsPage from './pages/PostDetailsPage';
@@ -106,9 +107,11 @@ const App: React.FC = () => {
                 path="/profile/edit"
                 element={(
                   <ProtectedRoute>
-                    <Layout>
-                      <EditProfilePage />
-                    </Layout>
+                    <ProfileEditGuard>
+                      <Layout>
+                        <EditProfilePage />
+                      </Layout>
+                    </ProfileEditGuard>
                   </ProtectedRoute>
                 )}
               />

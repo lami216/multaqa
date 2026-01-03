@@ -45,15 +45,6 @@ export const getPublicProfile = async (req, res) => {
 export const updateProfile = async (req, res) => {
   try {
     const { profileLocked: _ignored, ...updates } = req.body;
-    const existingProfile = await Profile.findOne({ userId: req.user._id });
-
-    if (!existingProfile) {
-      return res.status(404).json({ error: 'Profile not found' });
-    }
-
-    if (existingProfile.profileLocked) {
-      return res.status(409).json({ error: 'Profile is locked' });
-    }
 
     const hasRequiredFields = Boolean(
       updates.facultyId &&
@@ -64,20 +55,30 @@ export const updateProfile = async (req, res) => {
         updates.subjectCodes.length
     );
     const nextUpdates =
-      hasRequiredFields && !existingProfile.profileLocked
+      hasRequiredFields
         ? { ...updates, profileLocked: true }
         : updates;
 
     const profile = await Profile.findOneAndUpdate(
-      { userId: req.user._id },
-      { $set: nextUpdates },
-      { new: true, runValidators: true }
+      { userId: req.user._id, profileLocked: { $ne: true } },
+      {
+        $set: nextUpdates,
+        $setOnInsert: { userId: req.user._id }
+      },
+      { new: true, runValidators: true, upsert: true, setDefaultsOnInsert: true }
     );
+
+    if (!profile) {
+      return res.status(409).json({ error: 'Profile is locked' });
+    }
 
     await redis.del(`profile:${req.user.username}`);
 
     res.json({ message: 'Profile updated successfully', profile });
   } catch (error) {
+    if (error?.code === 11000) {
+      return res.status(409).json({ error: 'Profile is locked' });
+    }
     console.error('Update profile error:', error);
     res.status(500).json({ error: 'Failed to update profile' });
   }

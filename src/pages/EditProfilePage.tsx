@@ -360,6 +360,7 @@ const EditProfilePage: React.FC = () => {
       setProfile(data.profile ?? null);
       await refresh();
       setMessage('Profil mis à jour');
+      navigate('/profile', { replace: true });
     } catch (err) {
       setError("Impossible d'enregistrer le profil. Veuillez réessayer.");
     } finally {
