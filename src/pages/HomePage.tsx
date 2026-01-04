@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { BookOpen, Plus, Search } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
-import { createConversation, fetchPosts, type PostResponse } from '../lib/http';
+import { Link } from 'react-router-dom';
+import { fetchPosts, type PostResponse } from '../lib/http';
 import { useAuth } from '../context/AuthContext';
 import { resolveAuthorId } from '../lib/postUtils';
 
@@ -11,13 +11,12 @@ const HomePage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [hiddenMatchedIds, setHiddenMatchedIds] = useState<string[]>([]);
   const { currentUserId } = useAuth();
-  const navigate = useNavigate();
 
   useEffect(() => {
     const load = async () => {
       try {
         const { data } = await fetchPosts();
-        setPosts(data.posts);
+        setPosts(Array.isArray(data.posts) ? data.posts : []);
       } catch (error) {
         setPosts([]);
       } finally {
@@ -32,13 +31,6 @@ const HomePage: React.FC = () => {
     const stored = sessionStorage.getItem('matchedPostsHidden');
     setHiddenMatchedIds(stored ? (JSON.parse(stored) as string[]) : []);
   }, []);
-
-  const handleContact = async (post: PostResponse) => {
-    const authorId = resolveAuthorId(post);
-    if (!authorId || authorId === currentUserId) return;
-    const { data } = await createConversation({ type: 'post', postId: post._id, otherUserId: authorId });
-    navigate(`/messages/${data.conversationId}`);
-  };
 
   const filteredPosts = posts.filter((post) => {
     if (hiddenMatchedIds.includes(post._id)) return false;
@@ -97,65 +89,59 @@ const HomePage: React.FC = () => {
               Aucune annonce encore. Publiez votre première demande ou consultez le panneau admin pour configurer les filières.
             </div>
           ) : (
-            filteredPosts.map((post) => (
-              <div key={post._id} className="card-surface p-4 sm:p-5 flex flex-col gap-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="space-y-1">
-                    <div className="flex flex-wrap gap-2 items-center text-xs font-semibold text-emerald-700">
-                      <span className="badge-soft">{post.category}</span>
-                      {post.level ? <span className="badge-soft bg-blue-50 text-blue-700">{post.level}</span> : null}
-                      {resolveAuthorId(post) === currentUserId && post.pendingJoinRequestsCount ? (
-                        <span className="badge-soft bg-amber-50 text-amber-700">
-                          {post.pendingJoinRequestsCount} demandes en attente
-                        </span>
-                      ) : null}
-                    </div>
-                    <Link to={`/posts/${post._id}`} className="text-xl font-semibold text-slate-900 hover:text-emerald-700">
-                      {post.title}
-                    </Link>
-                    {post.category === 'study_partner' ? (
-                      <div className="space-y-2">
-                        <div className="flex flex-wrap gap-2">
-                          {(post.subjectCodes ?? []).map((subject) => (
-                            <span key={subject} className="badge-soft bg-emerald-50 text-emerald-700">{subject}</span>
-                          ))}
-                        </div>
-                        <p className="text-sm text-slate-600">Rôle: {post.studentRole ?? 'Non précisé'}</p>
-                        {post.description ? (
-                          <p className="text-sm text-slate-700 leading-relaxed line-clamp-3">{post.description}</p>
-                        ) : null}
-                      </div>
-                    ) : (
-                      <>
-                        <p className="text-sm text-slate-600">{post.faculty ?? 'Faculté non renseignée'} · {post.languagePref ?? 'Langue libre'}</p>
-                        <p className="text-sm text-slate-700 leading-relaxed line-clamp-3">{post.description}</p>
-                      </>
-                    )}
-                  </div>
-                  <div className="text-right text-sm text-slate-500">
-                    <p className="font-semibold text-slate-800">{post.author?.username ?? 'Auteur'}</p>
-                    <p>{new Date(post.createdAt).toLocaleDateString()}</p>
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-2 text-sm">
-                  {(post.tags ?? []).map((tag) => (
-                    <span key={tag} className="badge-soft">{tag}</span>
-                  ))}
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <Link to={`/posts/${post._id}`} className="primary-btn">Consulter</Link>
-                  {resolveAuthorId(post) !== currentUserId ? (
-                    <button
-                      type="button"
-                      className="secondary-btn"
-                      onClick={() => handleContact(post)}
-                    >
-                      Message {post.author?.username ?? 'Utilisateur'}
-                    </button>
+            filteredPosts.map((post) => {
+              const isAuthor = resolveAuthorId(post) === currentUserId;
+              return (
+                <div key={post._id} className="card-surface p-4 sm:p-5 flex flex-col gap-3 relative">
+                  {isAuthor && post.pendingJoinRequestsCount ? (
+                    <span className="absolute right-3 top-3 inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-rose-600 px-1 text-[0.65rem] font-bold text-white">
+                      {post.pendingJoinRequestsCount}
+                    </span>
                   ) : null}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="space-y-1">
+                      <div className="flex flex-wrap gap-2 items-center text-xs font-semibold text-emerald-700">
+                        <span className="badge-soft">{post.category}</span>
+                        {post.level ? <span className="badge-soft bg-blue-50 text-blue-700">{post.level}</span> : null}
+                      </div>
+                      <Link to={`/posts/${post._id}`} className="text-xl font-semibold text-slate-900 hover:text-emerald-700">
+                        {post.title}
+                      </Link>
+                      {post.category === 'study_partner' ? (
+                        <div className="space-y-2">
+                          <div className="flex flex-wrap gap-2">
+                            {(post.subjectCodes ?? []).map((subject) => (
+                              <span key={subject} className="badge-soft bg-emerald-50 text-emerald-700">{subject}</span>
+                            ))}
+                          </div>
+                          <p className="text-sm text-slate-600">Rôle: {post.studentRole ?? 'Non précisé'}</p>
+                          {post.description ? (
+                            <p className="text-sm text-slate-700 leading-relaxed line-clamp-3">{post.description}</p>
+                          ) : null}
+                        </div>
+                      ) : (
+                        <>
+                          <p className="text-sm text-slate-600">{post.faculty ?? 'Faculté non renseignée'} · {post.languagePref ?? 'Langue libre'}</p>
+                          <p className="text-sm text-slate-700 leading-relaxed line-clamp-3">{post.description}</p>
+                        </>
+                      )}
+                    </div>
+                    <div className="text-right text-sm text-slate-500">
+                      <p className="font-semibold text-slate-800">{post.author?.username ?? 'Auteur'}</p>
+                      <p>{new Date(post.createdAt).toLocaleDateString()}</p>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2 text-sm">
+                    {(post.tags ?? []).map((tag) => (
+                      <span key={tag} className="badge-soft">{tag}</span>
+                    ))}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Link to={`/posts/${post._id}`} className="primary-btn">Consulter</Link>
+                  </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>

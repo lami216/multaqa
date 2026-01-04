@@ -627,12 +627,14 @@ const PostDetailsPage: React.FC = () => {
               disabled={saving || joinRequestStatus === 'pending'}
             >
               <Users size={16} className="me-1" />
-              {joinRequestStatus === 'pending' ? 'Demande en attente' : 'Demander à rejoindre'}
+              {joinRequestStatus === 'pending' ? 'Demande envoyée' : 'Demander à rejoindre'}
             </button>
           ) : null}
-          <button className="secondary-btn" type="button" onClick={handleContact}>
-            <MessageCircle size={16} className="me-1" /> Message {authorUsername}
-          </button>
+          {isJoined ? (
+            <button className="secondary-btn" type="button" onClick={handleContact}>
+              <MessageCircle size={16} className="me-1" /> Message {authorUsername}
+            </button>
+          ) : null}
           <Link to="/posts" className="secondary-btn">Retour au fil</Link>
           {actionError && <p className="text-sm text-rose-600 w-full">{actionError}</p>}
           {actionNotice && <p className="text-sm text-emerald-600 w-full">{actionNotice}</p>}
