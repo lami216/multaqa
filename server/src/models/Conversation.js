@@ -28,6 +28,11 @@ const conversationSchema = new mongoose.Schema({
     ref: 'User',
     default: []
   },
+  pinnedBy: {
+    type: [mongoose.Schema.Types.ObjectId],
+    ref: 'User',
+    default: []
+  },
   deletedBy: {
     type: [mongoose.Schema.Types.ObjectId],
     ref: 'User',
