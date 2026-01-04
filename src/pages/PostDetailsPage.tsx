@@ -43,7 +43,7 @@ const PostDetailsPage: React.FC = () => {
   const [joinRequests, setJoinRequests] = useState<JoinRequestItem[]>([]);
   const [loadingRequests, setLoadingRequests] = useState(false);
   const [postConversations, setPostConversations] = useState<ConversationSummary[]>([]);
-  const [joinRequestStatus, setJoinRequestStatus] = useState<'idle' | 'pending' | 'accepted'>('idle');
+  const [joinRequestStatus, setJoinRequestStatus] = useState<'none' | 'pending' | 'accepted' | 'rejected'>('none');
   const authorId = useMemo(() => resolveAuthorId(post), [post]);
   const isAuthor = useMemo(() => (authorId ? authorId === currentUserId : false), [authorId, currentUserId]);
 
@@ -140,18 +140,17 @@ const PostDetailsPage: React.FC = () => {
   const extendHours = extendChoice === 'custom' ? Number(customExtend) : Number(extendChoice);
   const authorUsername = post?.author?.username ?? 'Utilisateur';
   const isJoined = Boolean(
-    currentUserId && post?.acceptedUserIds?.some((acceptedId) => String(acceptedId) === currentUserId)
+    joinRequestStatus === 'accepted' ||
+      (currentUserId && post?.acceptedUserIds?.some((acceptedId) => String(acceptedId) === currentUserId))
   );
 
   useEffect(() => {
     if (!currentUserId) {
-      setJoinRequestStatus('idle');
+      setJoinRequestStatus('none');
       return;
     }
-    if (isJoined) {
-      setJoinRequestStatus('accepted');
-    }
-  }, [currentUserId, isJoined]);
+    setJoinRequestStatus(post?.myJoinRequestStatus ?? 'none');
+  }, [currentUserId, post]);
 
   const handleContact = async () => {
     if (!post || !authorId) return;
@@ -224,12 +223,14 @@ const PostDetailsPage: React.FC = () => {
       await requestJoinPost(id);
       setActionNotice('Demande envoyée avec succès.');
       setJoinRequestStatus('pending');
+      setPost((prev) => (prev ? { ...prev, myJoinRequestStatus: 'pending' } : prev));
     } catch (error) {
       if (axios.isAxiosError(error) && error.response?.status === 400) {
         const serverMessage = typeof error.response?.data === 'object' ? error.response?.data?.error : null;
         if (typeof serverMessage === 'string' && serverMessage.toLowerCase().includes('join request already exists')) {
           setJoinRequestStatus('pending');
           setActionNotice('Votre demande est déjà en attente.');
+          setPost((prev) => (prev ? { ...prev, myJoinRequestStatus: 'pending' } : prev));
           setSaving(false);
           return;
         }
@@ -646,15 +647,32 @@ const PostDetailsPage: React.FC = () => {
       ) : (
         <div className="flex flex-wrap gap-3">
           {isStudyPartner && !isJoined ? (
-            <button
-              className="primary-btn"
-              type="button"
-              onClick={handleJoinRequest}
-              disabled={saving || joinRequestStatus === 'pending'}
-            >
-              <Users size={16} className="me-1" />
-              {joinRequestStatus === 'pending' ? 'Demande envoyée' : 'Demander à rejoindre'}
-            </button>
+            joinRequestStatus === 'rejected' ? (
+              <div className="space-y-2">
+                <p className="text-sm text-rose-600">Demande refusée</p>
+                <p className="text-sm text-slate-600">
+                  Conseil : créez votre propre annonce pour trouver un partenaire plus rapidement.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Link to="/posts/new" className="primary-btn">
+                    Créer une annonce
+                  </Link>
+                  <Link to="/posts" className="secondary-btn">
+                    Voir d&apos;autres annonces
+                  </Link>
+                </div>
+              </div>
+            ) : (
+              <button
+                className="primary-btn"
+                type="button"
+                onClick={handleJoinRequest}
+                disabled={saving || joinRequestStatus === 'pending'}
+              >
+                <Users size={16} className="me-1" />
+                {joinRequestStatus === 'pending' ? 'Demande envoyée' : 'Demander à rejoindre'}
+              </button>
+            )
           ) : null}
           {isJoined ? (
             <button className="secondary-btn" type="button" onClick={handleContact}>

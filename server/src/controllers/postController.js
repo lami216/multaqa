@@ -161,6 +161,17 @@ export const getPost = async (req, res) => {
     const profile = await Profile.findOne({ userId: post.authorId._id });
     let pendingJoinRequestsCount = 0;
     let unreadPostMessagesCount = 0;
+    let myJoinRequestStatus = 'none';
+
+    if (req.user?._id) {
+      const myJoinRequest = await JoinRequest.findOne({
+        postId: post._id,
+        requesterId: req.user._id
+      }).select('status');
+      if (myJoinRequest?.status) {
+        myJoinRequestStatus = myJoinRequest.status;
+      }
+    }
 
     if (isAuthor) {
       pendingJoinRequestsCount = await JoinRequest.countDocuments({
@@ -183,7 +194,8 @@ export const getPost = async (req, res) => {
       post: {
         ...post.toObject(),
         pendingJoinRequestsCount,
-        unreadPostMessagesCount
+        unreadPostMessagesCount,
+        myJoinRequestStatus
       },
       author: {
         username: post.authorId.username,
