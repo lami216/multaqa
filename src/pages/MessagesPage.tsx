@@ -35,7 +35,8 @@ import {
 } from '../components/ui/alert-dialog';
 
 const POLL_INTERVAL = 20000;
-const LONG_PRESS_DURATION = 500;
+const LONG_PRESS_DURATION = 450;
+const LONG_PRESS_MOVE_THRESHOLD = 10;
 
 interface ConversationRowProps {
   conversation: ConversationSummary;
@@ -74,9 +75,9 @@ const ConversationRow: React.FC<ConversationRowProps> = ({
 }) => {
   const pointerStart = useRef<{ x: number; y: number } | null>(null);
   const longPressTimeout = useRef<number | null>(null);
-  const longPressTriggered = useRef(false);
   const suppressClickRef = useRef(false);
   const suppressClickTimeout = useRef<number | null>(null);
+  const movedRef = useRef(false);
 
   const clearLongPress = () => {
     if (longPressTimeout.current) {
@@ -92,38 +93,44 @@ const ConversationRow: React.FC<ConversationRowProps> = ({
     }
   };
 
-  const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+  const handleOverlayPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     pointerStart.current = { x: event.clientX, y: event.clientY };
+    movedRef.current = false;
     if (!selectionMode) {
-      longPressTriggered.current = false;
       longPressTimeout.current = window.setTimeout(() => {
-        longPressTriggered.current = true;
         suppressClickRef.current = true;
         clearSuppressClickTimeout();
         suppressClickTimeout.current = window.setTimeout(() => {
           suppressClickRef.current = false;
           suppressClickTimeout.current = null;
-        }, 350);
+        }, 500);
         onSelectShortcut(conversation._id);
       }, LONG_PRESS_DURATION);
     }
   };
 
+  const handleOverlayPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!pointerStart.current || movedRef.current) return;
+    const deltaX = event.clientX - pointerStart.current.x;
+    const deltaY = event.clientY - pointerStart.current.y;
+    if (Math.abs(deltaX) > LONG_PRESS_MOVE_THRESHOLD || Math.abs(deltaY) > LONG_PRESS_MOVE_THRESHOLD) {
+      movedRef.current = true;
+      clearLongPress();
+    }
+  };
+
   const handlePointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
     clearLongPress();
-    if (longPressTriggered.current) {
-      longPressTriggered.current = false;
-      pointerStart.current = null;
-      return;
-    }
     if (selectionMode) {
       pointerStart.current = null;
+      movedRef.current = false;
       return;
     }
     if (!pointerStart.current) return;
     const deltaX = event.clientX - pointerStart.current.x;
     const deltaY = event.clientY - pointerStart.current.y;
     pointerStart.current = null;
+    movedRef.current = false;
     if (Math.abs(deltaX) < 50 || Math.abs(deltaX) < Math.abs(deltaY)) {
       onClose();
       return;
@@ -150,21 +157,7 @@ const ConversationRow: React.FC<ConversationRowProps> = ({
   };
 
   return (
-    <div
-      className="relative overflow-hidden rounded-2xl select-none"
-      style={{ WebkitUserSelect: 'none', userSelect: 'none', WebkitTouchCallout: 'none' }}
-      onPointerDown={handlePointerDown}
-      onPointerUp={handlePointerUp}
-      onPointerCancel={() => {
-        clearLongPress();
-        pointerStart.current = null;
-        onClose();
-      }}
-      onPointerLeave={() => {
-        clearLongPress();
-        pointerStart.current = null;
-      }}
-    >
+    <div className="relative overflow-hidden rounded-2xl">
       <div className="absolute inset-0 flex items-center justify-between">
         <button
           type="button"
@@ -186,28 +179,48 @@ const ConversationRow: React.FC<ConversationRowProps> = ({
       <div
         role="button"
         tabIndex={0}
-        onClick={handleCardClick}
         onKeyDown={(event) => {
           if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault();
             handleCardClick();
           }
         }}
-        onContextMenu={(event) => {
-          event.preventDefault();
-          onSelectShortcut(conversation._id);
-        }}
         className={`relative w-full text-start card-surface rounded-2xl p-4 transition ${
-          selectionMode ? 'cursor-pointer select-none' : 'hover:shadow'
+          selectionMode ? 'cursor-pointer' : 'hover:shadow'
         } ${isSelected ? 'bg-emerald-50 ring-2 ring-emerald-300 ring-inset' : ''}`}
         style={{ transform: `translateX(${translateX}px)` }}
       >
+        <div
+          className="absolute inset-0 z-0"
+          onPointerDown={handleOverlayPointerDown}
+          onPointerMove={handleOverlayPointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={() => {
+            clearLongPress();
+            pointerStart.current = null;
+            movedRef.current = false;
+            onClose();
+          }}
+          onPointerLeave={() => {
+            clearLongPress();
+            pointerStart.current = null;
+            movedRef.current = false;
+          }}
+          onClick={handleCardClick}
+          onContextMenu={(event) => {
+            event.preventDefault();
+            onSelectShortcut(conversation._id);
+          }}
+        />
         {isSelected && (
           <span className="absolute left-3 top-3 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-600 text-white shadow">
             <Check size={12} />
           </span>
         )}
-        <div className={`space-y-2 ${isSelected ? 'ps-7' : ''}`}>
+        <div
+          className={`relative z-10 space-y-2 ${isSelected ? 'ps-7' : ''}`}
+          onClick={handleCardClick}
+        >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <p className="font-semibold text-slate-900">
