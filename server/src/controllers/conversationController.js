@@ -200,6 +200,54 @@ export const unarchiveConversation = async (req, res) => {
   }
 };
 
+export const pinConversation = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const conversation = await Conversation.findById(id);
+    if (!conversation) {
+      return res.status(404).json({ error: 'Conversation not found' });
+    }
+
+    if (!ensureParticipant(conversation, req.user._id)) {
+      return res.status(403).json({ error: 'Not authorized to pin this conversation' });
+    }
+
+    await Conversation.updateOne(
+      { _id: id },
+      { $addToSet: { pinnedBy: req.user._id } }
+    );
+
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('Pin conversation error:', error);
+    res.status(500).json({ error: 'Failed to pin conversation' });
+  }
+};
+
+export const unpinConversation = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const conversation = await Conversation.findById(id);
+    if (!conversation) {
+      return res.status(404).json({ error: 'Conversation not found' });
+    }
+
+    if (!ensureParticipant(conversation, req.user._id)) {
+      return res.status(403).json({ error: 'Not authorized to unpin this conversation' });
+    }
+
+    await Conversation.updateOne(
+      { _id: id },
+      { $pull: { pinnedBy: req.user._id } }
+    );
+
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('Unpin conversation error:', error);
+    res.status(500).json({ error: 'Failed to unpin conversation' });
+  }
+};
+
 export const deleteConversationForMe = async (req, res) => {
   try {
     const { id } = req.params;

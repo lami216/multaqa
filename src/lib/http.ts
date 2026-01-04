@@ -167,6 +167,8 @@ export interface ConversationSummary {
   } | null;
   unreadCount: number;
   lastMessageAt?: string | null;
+  pinnedBy?: string[];
+  updatedAt?: string;
 }
 
 export interface ConversationMessageItem {
@@ -256,6 +258,10 @@ export const archiveConversation = (conversationId: string) =>
   http.patch(`/conversations/${conversationId}/archive`);
 export const unarchiveConversation = (conversationId: string) =>
   http.patch(`/conversations/${conversationId}/unarchive`);
+export const pinConversation = (conversationId: string) =>
+  http.patch(`/conversations/${conversationId}/pin`);
+export const unpinConversation = (conversationId: string) =>
+  http.patch(`/conversations/${conversationId}/unpin`);
 export const deleteConversationForMe = (conversationId: string) =>
   http.patch(`/conversations/${conversationId}/delete-for-me`);
 export const fetchNotifications = () => http.get<{ notifications: NotificationItem[]; unread: number }>('/notifications');

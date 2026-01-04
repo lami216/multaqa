@@ -1,12 +1,26 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Archive, Check, CheckCheck, MessageCircle, RefreshCw, RotateCcw, Trash2 } from 'lucide-react';
+import {
+  Archive,
+  Check,
+  CheckCheck,
+  MessageCircle,
+  MoreHorizontal,
+  Pin,
+  PinOff,
+  RefreshCw,
+  RotateCcw,
+  Trash2,
+  X
+} from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   archiveConversation,
   deleteConversationForMe,
   fetchConversations,
+  pinConversation,
   type ConversationSummary,
-  unarchiveConversation
+  unarchiveConversation,
+  unpinConversation
 } from '../lib/http';
 import { useConversations } from '../context/ConversationsContext';
 import { useAuth } from '../context/AuthContext';
@@ -22,17 +36,23 @@ import {
 } from '../components/ui/alert-dialog';
 
 const POLL_INTERVAL = 20000;
+const LONG_PRESS_DURATION = 500;
 
 interface ConversationRowProps {
   conversation: ConversationSummary;
   isArchivedTab: boolean;
   isOpen: boolean;
   openDirection: 'left' | 'right' | null;
+  isSelected: boolean;
+  selectionMode: boolean;
+  isPinned: boolean;
   onOpen: (id: string, direction: 'left' | 'right') => void;
   onClose: () => void;
   onNavigate: (id: string) => void;
   onArchiveToggle: (conversation: ConversationSummary) => void;
   onDelete: (conversation: ConversationSummary) => void;
+  onToggleSelect: (id: string) => void;
+  onSelectShortcut: (id: string) => void;
   renderLastMessageStatus: (conversation: ConversationSummary) => React.ReactNode;
 }
 
@@ -41,19 +61,51 @@ const ConversationRow: React.FC<ConversationRowProps> = ({
   isArchivedTab,
   isOpen,
   openDirection,
+  isSelected,
+  selectionMode,
+  isPinned,
   onOpen,
   onClose,
   onNavigate,
   onArchiveToggle,
   onDelete,
+  onToggleSelect,
+  onSelectShortcut,
   renderLastMessageStatus
 }) => {
   const pointerStart = useRef<{ x: number; y: number } | null>(null);
+  const longPressTimeout = useRef<number | null>(null);
+  const longPressTriggered = useRef(false);
+
+  const clearLongPress = () => {
+    if (longPressTimeout.current) {
+      window.clearTimeout(longPressTimeout.current);
+      longPressTimeout.current = null;
+    }
+  };
+
   const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     pointerStart.current = { x: event.clientX, y: event.clientY };
+    if (!selectionMode) {
+      longPressTriggered.current = false;
+      longPressTimeout.current = window.setTimeout(() => {
+        longPressTriggered.current = true;
+        onSelectShortcut(conversation._id);
+      }, LONG_PRESS_DURATION);
+    }
   };
 
   const handlePointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
+    clearLongPress();
+    if (longPressTriggered.current) {
+      longPressTriggered.current = false;
+      pointerStart.current = null;
+      return;
+    }
+    if (selectionMode) {
+      pointerStart.current = null;
+      return;
+    }
     if (!pointerStart.current) return;
     const deltaX = event.clientX - pointerStart.current.x;
     const deltaY = event.clientY - pointerStart.current.y;
@@ -64,7 +116,8 @@ const ConversationRow: React.FC<ConversationRowProps> = ({
     }
     onOpen(conversation._id, deltaX < 0 ? 'left' : 'right');
   };
-  const translateX = isOpen ? (openDirection === 'left' ? -96 : 96) : 0;
+
+  const translateX = isOpen && !selectionMode ? (openDirection === 'left' ? -96 : 96) : 0;
   const actionLabel = isArchivedTab ? 'Restaurer' : 'Archiver';
   const actionIcon = isArchivedTab ? <RotateCcw size={16} /> : <Archive size={16} />;
 
@@ -73,7 +126,15 @@ const ConversationRow: React.FC<ConversationRowProps> = ({
       className="relative overflow-hidden rounded-2xl"
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
-      onPointerCancel={onClose}
+      onPointerCancel={() => {
+        clearLongPress();
+        pointerStart.current = null;
+        onClose();
+      }}
+      onPointerLeave={() => {
+        clearLongPress();
+        pointerStart.current = null;
+      }}
     >
       <div className="absolute inset-0 flex items-center justify-between">
         <button
@@ -100,15 +161,40 @@ const ConversationRow: React.FC<ConversationRowProps> = ({
             onClose();
             return;
           }
+          if (selectionMode) {
+            onToggleSelect(conversation._id);
+            return;
+          }
           onNavigate(conversation._id);
         }}
-        className="relative w-full text-start card-surface p-4 hover:shadow transition"
+        onContextMenu={(event) => {
+          event.preventDefault();
+          onSelectShortcut(conversation._id);
+        }}
+        className={`relative w-full text-start card-surface p-4 hover:shadow transition ${
+          isSelected ? 'ring-2 ring-emerald-400' : ''
+        }`}
         style={{ transform: `translateX(${translateX}px)` }}
       >
+        <button
+          type="button"
+          aria-label="Sélectionner"
+          className="absolute top-3 right-3 rounded-full bg-slate-100 p-2 text-slate-600 hover:bg-slate-200"
+          onClick={(event) => {
+            event.stopPropagation();
+            onSelectShortcut(conversation._id);
+          }}
+          onPointerDown={(event) => event.stopPropagation()}
+        >
+          <MoreHorizontal size={16} />
+        </button>
         <div className="flex items-center justify-between">
-          <p className="font-semibold text-slate-900">
-            {conversation.otherParticipant?.username ?? 'Contact'}
-          </p>
+          <div className="flex items-center gap-2">
+            <p className="font-semibold text-slate-900">
+              {conversation.otherParticipant?.username ?? 'Contact'}
+            </p>
+            {isPinned && <Pin size={14} className="text-amber-500" />}
+          </div>
           {conversation.unreadCount > 0 && !isArchivedTab && (
             <span className="badge-soft bg-emerald-50 text-emerald-700">
               {conversation.unreadCount} non lu(s)
@@ -135,8 +221,10 @@ const MessagesPage: React.FC = () => {
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<ConversationSummary | null>(null);
+  const [deleteTargetIds, setDeleteTargetIds] = useState<string[]>([]);
   const [openRow, setOpenRow] = useState<{ id: string; direction: 'left' | 'right' } | null>(null);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { syncUnreadCounts } = useConversations();
@@ -144,12 +232,40 @@ const MessagesPage: React.FC = () => {
   const tab = searchParams.get('tab') === 'archived' ? 'archived' : 'active';
   const isArchivedTab = tab === 'archived';
 
+  const isConversationPinned = useCallback(
+    (conversation: ConversationSummary) =>
+      Boolean(currentUserId && conversation.pinnedBy?.includes(currentUserId)),
+    [currentUserId]
+  );
+
+  const sortConversations = useCallback(
+    (items: ConversationSummary[]) => {
+      return [...items].sort((a, b) => {
+        const aPinned = isConversationPinned(a);
+        const bPinned = isConversationPinned(b);
+        if (aPinned !== bPinned) {
+          return aPinned ? -1 : 1;
+        }
+        const aDate = new Date(a.lastMessageAt ?? a.updatedAt ?? 0).getTime();
+        const bDate = new Date(b.lastMessageAt ?? b.updatedAt ?? 0).getTime();
+        return bDate - aDate;
+      });
+    },
+    [isConversationPinned]
+  );
+
+  const clearSelection = useCallback(() => {
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+  }, []);
+
   const handleLoad = useCallback(
     async (showLoading = false) => {
       if (showLoading) setLoading(true);
       try {
         const { data } = await fetchConversations({ status: isArchivedTab ? 'archived' : 'active' });
-        setConversations(data.conversations);
+        const sortedConversations = sortConversations(data.conversations);
+        setConversations(sortedConversations);
         if (!isArchivedTab) {
           syncUnreadCounts(data.conversations);
         }
@@ -157,7 +273,7 @@ const MessagesPage: React.FC = () => {
         if (showLoading) setLoading(false);
       }
     },
-    [isArchivedTab, syncUnreadCounts]
+    [isArchivedTab, sortConversations, syncUnreadCounts]
   );
 
   useEffect(() => {
@@ -170,6 +286,10 @@ const MessagesPage: React.FC = () => {
     }, POLL_INTERVAL);
     return () => clearInterval(interval);
   }, [handleLoad]);
+
+  useEffect(() => {
+    clearSelection();
+  }, [tab, clearSelection]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -188,7 +308,43 @@ const MessagesPage: React.FC = () => {
   const handleChangeTab = (nextTab: 'active' | 'archived') => {
     setSearchParams(nextTab === 'archived' ? { tab: 'archived' } : {});
     setOpenRow(null);
+    clearSelection();
   };
+
+  const toggleSelection = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      if (next.size === 0) {
+        setSelectionMode(false);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleSelectShortcut = useCallback(
+    (id: string) => {
+      setSelectionMode(true);
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        if (next.has(id)) {
+          next.delete(id);
+        } else {
+          next.add(id);
+        }
+        if (next.size === 0) {
+          setSelectionMode(false);
+        }
+        return next;
+      });
+      setOpenRow(null);
+    },
+    []
+  );
 
   const handleArchiveToggle = async (conversation: ConversationSummary) => {
     if (isArchivedTab) {
@@ -197,14 +353,36 @@ const MessagesPage: React.FC = () => {
       await archiveConversation(conversation._id);
     }
     setOpenRow(null);
+    clearSelection();
+    await handleLoad();
+  };
+
+  const handleBulkArchiveToggle = async () => {
+    const ids = Array.from(selectedIds);
+    if (!ids.length) return;
+    await Promise.all(
+      ids.map((id) => (isArchivedTab ? unarchiveConversation(id) : archiveConversation(id)))
+    );
+    clearSelection();
+    await handleLoad();
+  };
+
+  const handleBulkPinToggle = async (shouldUnpin: boolean) => {
+    const ids = Array.from(selectedIds);
+    if (!ids.length) return;
+    await Promise.all(ids.map((id) => (shouldUnpin ? unpinConversation(id) : pinConversation(id))));
+    clearSelection();
     await handleLoad();
   };
 
   const handleDeleteConfirm = async () => {
-    if (!deleteTarget) return;
-    await deleteConversationForMe(deleteTarget._id);
-    setDeleteTarget(null);
+    if (!deleteTargetIds.length) return;
+    const ids = [...deleteTargetIds];
+    setConversations((prev) => prev.filter((conversation) => !ids.includes(conversation._id)));
+    setDeleteTargetIds([]);
     setOpenRow(null);
+    clearSelection();
+    await Promise.all(ids.map((id) => deleteConversationForMe(id)));
     await handleLoad();
   };
 
@@ -219,6 +397,14 @@ const MessagesPage: React.FC = () => {
     }
     return <Check size={14} className="text-slate-300" />;
   };
+
+  const selectedConversations = useMemo(
+    () => conversations.filter((conversation) => selectedIds.has(conversation._id)),
+    [conversations, selectedIds]
+  );
+  const selectedCount = selectedIds.size;
+  const allSelectedPinned =
+    selectedConversations.length > 0 && selectedConversations.every(isConversationPinned);
 
   return (
     <div className="card-surface p-4 space-y-4 min-h-[60vh]">
@@ -253,6 +439,49 @@ const MessagesPage: React.FC = () => {
           Archivées
         </button>
       </div>
+      {selectedCount > 0 && (
+        <div className="sticky top-0 z-20 -mx-4 px-4">
+          <div className="card-surface p-3 shadow-sm flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm font-semibold text-slate-700">
+              {selectedCount} sélectionnée{selectedCount > 1 ? 's' : ''}
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                className="secondary-btn flex items-center gap-2"
+                onClick={() => void handleBulkPinToggle(allSelectedPinned)}
+              >
+                {allSelectedPinned ? <PinOff size={16} /> : <Pin size={16} />}
+                {allSelectedPinned ? 'Désépingler' : 'Épingler'}
+              </button>
+              <button
+                type="button"
+                className="secondary-btn flex items-center gap-2"
+                onClick={() => void handleBulkArchiveToggle()}
+              >
+                {isArchivedTab ? <RotateCcw size={16} /> : <Archive size={16} />}
+                {isArchivedTab ? 'Restaurer' : 'Archiver'}
+              </button>
+              <button
+                type="button"
+                className="secondary-btn flex items-center gap-2 text-rose-600"
+                onClick={() => setDeleteTargetIds(Array.from(selectedIds))}
+              >
+                <Trash2 size={16} />
+                Supprimer
+              </button>
+              <button
+                type="button"
+                className="secondary-btn flex items-center gap-2"
+                onClick={clearSelection}
+              >
+                <X size={16} />
+                Annuler
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="space-y-2">
         {loading && <p className="text-sm text-slate-500">Chargement des conversations...</p>}
         {!loading && !conversations.length && (
@@ -265,11 +494,22 @@ const MessagesPage: React.FC = () => {
             isArchivedTab={isArchivedTab}
             isOpen={openRow?.id === conversation._id}
             openDirection={openRow?.id === conversation._id ? openRow.direction : null}
+            isSelected={selectedIds.has(conversation._id)}
+            selectionMode={selectionMode}
+            isPinned={isConversationPinned(conversation)}
             onOpen={(id, direction) => setOpenRow({ id, direction })}
             onClose={() => setOpenRow(null)}
-            onNavigate={(id) => navigate(`/messages/${id}`)}
+            onNavigate={(id) => {
+              clearSelection();
+              navigate(`/messages/${id}`);
+            }}
             onArchiveToggle={(item) => void handleArchiveToggle(item)}
-            onDelete={(item) => setDeleteTarget(item)}
+            onDelete={(item) => {
+              setDeleteTargetIds([item._id]);
+              setOpenRow(null);
+            }}
+            onToggleSelect={(id) => toggleSelection(id)}
+            onSelectShortcut={(id) => handleSelectShortcut(id)}
             renderLastMessageStatus={renderLastMessageStatus}
           />
         ))}
@@ -278,10 +518,14 @@ const MessagesPage: React.FC = () => {
         <MessageCircle className="text-emerald-600" size={18} />
         Discussions sécurisées et accessibles sur mobile.
       </div>
-      <AlertDialog open={Boolean(deleteTarget)} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+      <AlertDialog open={Boolean(deleteTargetIds.length)} onOpenChange={(open) => !open && setDeleteTargetIds([])}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Supprimer cette conversation ?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {deleteTargetIds.length > 1
+                ? 'Supprimer ces conversations ?'
+                : 'Supprimer cette conversation ?'}
+            </AlertDialogTitle>
             <AlertDialogDescription>
               Cette action supprime la conversation de votre liste uniquement.
             </AlertDialogDescription>
