@@ -163,6 +163,16 @@ const PostDetailsPage: React.FC = () => {
     }
   };
 
+  const handleMessageRequester = async (requesterId: string) => {
+    if (!post) return;
+    try {
+      const { data } = await createConversation({ type: 'post', postId: post._id, otherUserId: requesterId });
+      navigate(`/messages/${data.conversationId}`);
+    } catch (error) {
+      reportRequestError('Failed to create post conversation', error, 'Impossible de contacter cet utilisateur.');
+    }
+  };
+
   const handleStatusUpdate = async () => {
     if (!id) return;
     setSaving(true);
@@ -537,6 +547,22 @@ const PostDetailsPage: React.FC = () => {
                             Refuser
                           </button>
                         </div>
+                      ) : request.status === 'accepted' ? (
+                        <button
+                          className="secondary-btn"
+                          type="button"
+                          disabled={saving}
+                          onClick={() =>
+                            handleMessageRequester(
+                              typeof request.requesterId === 'string'
+                                ? request.requesterId
+                                : request.requesterId._id
+                            )
+                          }
+                        >
+                          <MessageCircle size={16} className="me-1" />
+                          Message {typeof request.requesterId === 'string' ? request.requesterId : request.requesterId.username}
+                        </button>
                       ) : null}
                     </div>
                   ))}

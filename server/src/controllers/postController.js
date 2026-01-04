@@ -341,10 +341,14 @@ export const updatePost = async (req, res) => {
         updates.description = updates.description ? maskContactInfo(updates.description) : '';
       }
 
-      if (updates.extendHours) {
+      if (updates.extendHours !== undefined) {
+        const extendHoursValue = Number(updates.extendHours);
+        if (!Number.isFinite(extendHoursValue) || extendHoursValue <= 0) {
+          return res.status(400).json({ error: 'Extend hours must be a positive number.' });
+        }
         const now = new Date();
         const base = post.expiresAt && post.expiresAt > now ? post.expiresAt : now;
-        post.expiresAt = new Date(base.getTime() + updates.extendHours * 60 * 60 * 1000);
+        post.expiresAt = new Date(base.getTime() + extendHoursValue * 60 * 60 * 1000);
         post.status = 'active';
         delete updates.extendHours;
       }
@@ -560,9 +564,13 @@ export const acceptJoinRequest = async (req, res) => {
 
     joinRequest.status = 'accepted';
     await joinRequest.save();
+    await joinRequest.populate('requesterId', 'username');
 
     post.acceptedUserIds = post.acceptedUserIds ?? [];
     post.acceptedUserIds.addToSet(joinRequest.requesterId);
+    if (post.category === 'study_partner' && post.acceptedUserIds.length >= 1) {
+      post.status = 'matched';
+    }
     await post.save();
 
     await recordEvent({
@@ -601,6 +609,7 @@ export const rejectJoinRequest = async (req, res) => {
 
     joinRequest.status = 'rejected';
     await joinRequest.save();
+    await joinRequest.populate('requesterId', 'username');
 
     await recordEvent({
       action: 'join_rejected',

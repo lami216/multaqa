@@ -169,7 +169,11 @@ const CreatePostPage: React.FC = () => {
                       key={role.value}
                       type="button"
                       onClick={() => setStudentRole(role.value)}
-                      className={`card-surface text-left p-3 border ${studentRole === role.value ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200'}`}
+                      className={`card-surface text-left p-3 border transition ${
+                        studentRole === role.value
+                          ? 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-200 shadow-sm'
+                          : 'border-slate-200'
+                      }`}
                     >
                       <p className="text-sm font-semibold text-slate-800">{role.label}</p>
                       <p className="text-xs text-slate-500">{role.helper}</p>
