@@ -40,7 +40,8 @@ const CreatePostPage: React.FC = () => {
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
   const [studentRole, setStudentRole] = useState<PostPayload['studentRole']>();
   const [durationChoice, setDurationChoice] = useState<(typeof durationOptions)[number]['value']>('24');
-  const [customDuration, setCustomDuration] = useState('');
+  const [customDurationInput, setCustomDurationInput] = useState('');
+  const [customDurationHours, setCustomDurationHours] = useState<number | null>(null);
   const [shortDescription, setShortDescription] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -48,18 +49,36 @@ const CreatePostPage: React.FC = () => {
   const subjectOptions = useMemo(() => profile?.subjectCodes?.filter(Boolean) ?? [], [profile?.subjectCodes]);
   const isStudyPartner = form.category === 'study_partner';
 
-  const durationHours = durationChoice === 'custom' ? Number(customDuration) : Number(durationChoice);
+  const durationHours = durationChoice === 'custom' ? customDurationHours ?? Number.NaN : Number(durationChoice);
   const studyPartnerValid =
     selectedSubjects.length >= 1 &&
     selectedSubjects.length <= 2 &&
     Boolean(studentRole) &&
     Number.isFinite(durationHours) &&
+    Number.isInteger(durationHours) &&
     durationHours > 0;
 
   const standardPostValid = Boolean(form.title?.trim() && form.description?.trim());
 
   const handleChange = (field: keyof PostPayload, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleDurationChoice = (value: (typeof durationOptions)[number]['value']) => {
+    setDurationChoice(value);
+  };
+
+  const confirmCustomDuration = () => {
+    const parsed = Number(customDurationInput.trim());
+    if (!Number.isFinite(parsed) || !Number.isInteger(parsed) || parsed <= 0) {
+      setDurationChoice('24');
+      setCustomDurationInput('');
+      setCustomDurationHours(null);
+      setError('Sélectionnez une durée personnalisée valide.');
+      return;
+    }
+    setError('');
+    setCustomDurationHours(parsed);
   };
 
   const toggleSubject = (subject: string) => {
@@ -103,6 +122,7 @@ const CreatePostPage: React.FC = () => {
           .filter(Boolean),
       };
 
+    console.log('[createPost] durationHours=', durationHours);
     createPost(payload)
       .then(() => navigate('/posts'))
       .catch(() => setError('Impossible de publier cette annonce pour le moment.'))
@@ -189,7 +209,7 @@ const CreatePostPage: React.FC = () => {
                     <button
                       key={option.value}
                       type="button"
-                      onClick={() => setDurationChoice(option.value)}
+                      onClick={() => handleDurationChoice(option.value)}
                       className={`tab-btn ${durationChoice === option.value ? 'active' : 'bg-white border border-slate-200'}`}
                     >
                       <Clock3 size={14} className="me-1" />
@@ -198,15 +218,20 @@ const CreatePostPage: React.FC = () => {
                   ))}
                 </div>
                 {durationChoice === 'custom' && (
-                  <input
-                    value={customDuration}
-                    onChange={(e) => setCustomDuration(e.target.value)}
-                    type="number"
-                    min={1}
-                    max={168}
-                    placeholder="Durée en heures"
-                    className="w-full mt-2"
-                  />
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <input
+                      value={customDurationInput}
+                      onChange={(e) => setCustomDurationInput(e.target.value)}
+                      type="number"
+                      min={1}
+                      max={168}
+                      placeholder="Durée en heures"
+                      className="flex-1 min-w-[160px]"
+                    />
+                    <button type="button" className="secondary-btn" onClick={confirmCustomDuration}>
+                      OK
+                    </button>
+                  </div>
                 )}
               </div>
 

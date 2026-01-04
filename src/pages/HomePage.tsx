@@ -68,6 +68,11 @@ const HomePage: React.FC = () => {
                 className="border-none flex-1 focus:ring-0 focus:border-transparent"
               />
             </div>
+            <div className="mt-2">
+              <Link to="/posts" className="secondary-btn w-full text-center sm:w-auto">
+                Filtrer les posts
+              </Link>
+            </div>
           </div>
           <div className="flex items-end">
             <Link to="/posts/new" className="primary-btn w-full text-center">Publier une annonce</Link>
