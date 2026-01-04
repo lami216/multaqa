@@ -75,11 +75,20 @@ const ConversationRow: React.FC<ConversationRowProps> = ({
   const pointerStart = useRef<{ x: number; y: number } | null>(null);
   const longPressTimeout = useRef<number | null>(null);
   const longPressTriggered = useRef(false);
+  const suppressClickRef = useRef(false);
+  const suppressClickTimeout = useRef<number | null>(null);
 
   const clearLongPress = () => {
     if (longPressTimeout.current) {
       window.clearTimeout(longPressTimeout.current);
       longPressTimeout.current = null;
+    }
+  };
+
+  const clearSuppressClickTimeout = () => {
+    if (suppressClickTimeout.current) {
+      window.clearTimeout(suppressClickTimeout.current);
+      suppressClickTimeout.current = null;
     }
   };
 
@@ -89,6 +98,12 @@ const ConversationRow: React.FC<ConversationRowProps> = ({
       longPressTriggered.current = false;
       longPressTimeout.current = window.setTimeout(() => {
         longPressTriggered.current = true;
+        suppressClickRef.current = true;
+        clearSuppressClickTimeout();
+        suppressClickTimeout.current = window.setTimeout(() => {
+          suppressClickRef.current = false;
+          suppressClickTimeout.current = null;
+        }, 350);
         onSelectShortcut(conversation._id);
       }, LONG_PRESS_DURATION);
     }
@@ -119,10 +134,25 @@ const ConversationRow: React.FC<ConversationRowProps> = ({
   const translateX = isOpen && !selectionMode ? (openDirection === 'left' ? -96 : 96) : 0;
   const actionLabel = isArchivedTab ? 'Restaurer' : 'Archiver';
   const actionIcon = isArchivedTab ? <RotateCcw size={16} /> : <Archive size={16} />;
+  const handleCardClick = () => {
+    if (suppressClickRef.current) {
+      return;
+    }
+    if (isOpen) {
+      onClose();
+      return;
+    }
+    if (selectionMode) {
+      onToggleSelect(conversation._id);
+      return;
+    }
+    onNavigate(conversation._id);
+  };
 
   return (
     <div
-      className="relative overflow-hidden rounded-2xl"
+      className="relative overflow-hidden rounded-2xl select-none"
+      style={{ WebkitUserSelect: 'none', userSelect: 'none', WebkitTouchCallout: 'none' }}
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
       onPointerCancel={() => {
@@ -153,58 +183,57 @@ const ConversationRow: React.FC<ConversationRowProps> = ({
           Supprimer
         </button>
       </div>
-      <button
-        type="button"
-        onClick={() => {
-          if (isOpen) {
-            onClose();
-            return;
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={handleCardClick}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            handleCardClick();
           }
-          if (selectionMode) {
-            onToggleSelect(conversation._id);
-            return;
-          }
-          onNavigate(conversation._id);
         }}
         onContextMenu={(event) => {
           event.preventDefault();
           onSelectShortcut(conversation._id);
         }}
-        className={`relative w-full text-start card-surface p-4 transition ${
+        className={`relative w-full text-start card-surface rounded-2xl p-4 transition ${
           selectionMode ? 'cursor-pointer select-none' : 'hover:shadow'
-        } ${isSelected ? 'ring-2 ring-emerald-300 bg-emerald-50' : ''}`}
+        } ${isSelected ? 'bg-emerald-50 ring-2 ring-emerald-300 ring-inset' : ''}`}
         style={{ transform: `translateX(${translateX}px)` }}
       >
         {isSelected && (
-          <span className="absolute left-0 top-0 flex h-5 w-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-emerald-500 text-white shadow">
+          <span className="absolute left-3 top-3 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-600 text-white shadow">
             <Check size={12} />
           </span>
         )}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <p className="font-semibold text-slate-900">
-              {conversation.otherParticipant?.username ?? 'Contact'}
-            </p>
-            {isPinned && <Pin size={14} className="text-amber-500" />}
+        <div className={`space-y-2 ${isSelected ? 'ps-7' : ''}`}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <p className="font-semibold text-slate-900">
+                {conversation.otherParticipant?.username ?? 'Contact'}
+              </p>
+              {isPinned && <Pin size={14} className="text-amber-500" />}
+            </div>
+            {conversation.unreadCount > 0 && !isArchivedTab && (
+              <span className="badge-soft bg-emerald-50 text-emerald-700">
+                {conversation.unreadCount} non lu(s)
+              </span>
+            )}
           </div>
-          {conversation.unreadCount > 0 && !isArchivedTab && (
-            <span className="badge-soft bg-emerald-50 text-emerald-700">
-              {conversation.unreadCount} non lu(s)
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          {renderLastMessageStatus(conversation)}
-          <p className="text-sm text-slate-600 line-clamp-1">
-            {conversation.lastMessage?.text ?? 'Nouvelle conversation'}
+          <div className="flex items-center gap-2">
+            {renderLastMessageStatus(conversation)}
+            <p className="text-sm text-slate-600 line-clamp-1">
+              {conversation.lastMessage?.text ?? 'Nouvelle conversation'}
+            </p>
+          </div>
+          <p className="text-xs text-slate-400">
+            {conversation.lastMessage?.createdAt
+              ? new Date(conversation.lastMessage.createdAt).toLocaleString()
+              : 'Aucun message'}
           </p>
         </div>
-        <p className="text-xs text-slate-400">
-          {conversation.lastMessage?.createdAt
-            ? new Date(conversation.lastMessage.createdAt).toLocaleString()
-            : 'Aucun message'}
-        </p>
-      </button>
+      </div>
     </div>
   );
 };
