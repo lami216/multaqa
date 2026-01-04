@@ -6,6 +6,9 @@ const router = express.Router();
 
 router.post('/', authenticate, conversationController.createOrGetConversation);
 router.get('/', authenticate, conversationController.getConversations);
+router.patch('/:id/archive', authenticate, conversationController.archiveConversation);
+router.patch('/:id/unarchive', authenticate, conversationController.unarchiveConversation);
+router.patch('/:id/delete-for-me', authenticate, conversationController.deleteConversationForMe);
 router.post('/:id/messages', authenticate, conversationController.sendMessage);
 router.get('/:id/messages', authenticate, conversationController.getMessages);
 router.post('/:id/read', authenticate, conversationController.markRead);

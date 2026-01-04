@@ -79,8 +79,24 @@ export const createOrGetConversation = async (req, res) => {
 
 export const getConversations = async (req, res) => {
   try {
+    const status = req.query.status ?? 'active';
+    const baseQuery = {
+      participants: req.user._id,
+      deletedBy: { $ne: req.user._id }
+    };
+    const statusQuery = status === 'active'
+      ? { archivedBy: { $ne: req.user._id } }
+      : status === 'archived'
+        ? { archivedBy: req.user._id }
+        : null;
+
+    if (!statusQuery) {
+      return res.status(400).json({ error: 'Invalid status filter' });
+    }
+
     const conversations = await Conversation.find({
-      participants: req.user._id
+      ...baseQuery,
+      ...statusQuery
     }).sort({ lastMessageAt: -1, updatedAt: -1 });
 
     const conversationsWithDetails = await Promise.all(
@@ -118,7 +134,10 @@ export const getConversations = async (req, res) => {
           lastMessage: lastMessage
             ? {
                 text: lastMessage.text,
-                createdAt: lastMessage.createdAt
+                createdAt: lastMessage.createdAt,
+                senderId: lastMessage.senderId,
+                deliveredAt: lastMessage.deliveredAt ?? null,
+                readAt: lastMessage.readAt ?? null
               }
             : null,
           unreadCount
@@ -130,6 +149,78 @@ export const getConversations = async (req, res) => {
   } catch (error) {
     console.error('Get conversations error:', error);
     res.status(500).json({ error: 'Failed to fetch conversations' });
+  }
+};
+
+export const archiveConversation = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const conversation = await Conversation.findById(id);
+    if (!conversation) {
+      return res.status(404).json({ error: 'Conversation not found' });
+    }
+
+    if (!ensureParticipant(conversation, req.user._id)) {
+      return res.status(403).json({ error: 'Not authorized to archive this conversation' });
+    }
+
+    await Conversation.updateOne(
+      { _id: id },
+      { $addToSet: { archivedBy: req.user._id } }
+    );
+
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('Archive conversation error:', error);
+    res.status(500).json({ error: 'Failed to archive conversation' });
+  }
+};
+
+export const unarchiveConversation = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const conversation = await Conversation.findById(id);
+    if (!conversation) {
+      return res.status(404).json({ error: 'Conversation not found' });
+    }
+
+    if (!ensureParticipant(conversation, req.user._id)) {
+      return res.status(403).json({ error: 'Not authorized to unarchive this conversation' });
+    }
+
+    await Conversation.updateOne(
+      { _id: id },
+      { $pull: { archivedBy: req.user._id } }
+    );
+
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('Unarchive conversation error:', error);
+    res.status(500).json({ error: 'Failed to unarchive conversation' });
+  }
+};
+
+export const deleteConversationForMe = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const conversation = await Conversation.findById(id);
+    if (!conversation) {
+      return res.status(404).json({ error: 'Conversation not found' });
+    }
+
+    if (!ensureParticipant(conversation, req.user._id)) {
+      return res.status(403).json({ error: 'Not authorized to delete this conversation' });
+    }
+
+    await Conversation.updateOne(
+      { _id: id },
+      { $addToSet: { deletedBy: req.user._id }, $pull: { archivedBy: req.user._id } }
+    );
+
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('Delete conversation for me error:', error);
+    res.status(500).json({ error: 'Failed to delete conversation' });
   }
 };
 
