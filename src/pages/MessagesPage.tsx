@@ -38,6 +38,16 @@ const POLL_INTERVAL = 20000;
 const LONG_PRESS_DURATION = 450;
 const LONG_PRESS_MOVE_THRESHOLD = 10;
 
+const isTextTarget = (el: EventTarget | null) => {
+  const node = el as HTMLElement | null;
+  if (!node) return false;
+  return Boolean(
+    node.closest(
+      'p, span, a, h1, h2, h3, h4, h5, h6, strong, em, small, label, time, code, pre, input, textarea, select'
+    ) || node.closest('[data-allow-text-select="true"]')
+  );
+};
+
 interface ConversationRowProps {
   conversation: ConversationSummary;
   isArchivedTab: boolean;
@@ -93,23 +103,22 @@ const ConversationRow: React.FC<ConversationRowProps> = ({
     }
   };
 
-  const handleOverlayPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+  const handleCardPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (isTextTarget(event.target)) return;
     pointerStart.current = { x: event.clientX, y: event.clientY };
     movedRef.current = false;
-    if (!selectionMode) {
-      longPressTimeout.current = window.setTimeout(() => {
-        suppressClickRef.current = true;
-        clearSuppressClickTimeout();
-        suppressClickTimeout.current = window.setTimeout(() => {
-          suppressClickRef.current = false;
-          suppressClickTimeout.current = null;
-        }, 500);
-        onSelectShortcut(conversation._id);
-      }, LONG_PRESS_DURATION);
-    }
+    longPressTimeout.current = window.setTimeout(() => {
+      suppressClickRef.current = true;
+      clearSuppressClickTimeout();
+      suppressClickTimeout.current = window.setTimeout(() => {
+        suppressClickRef.current = false;
+        suppressClickTimeout.current = null;
+      }, 600);
+      onSelectShortcut(conversation._id);
+    }, LONG_PRESS_DURATION);
   };
 
-  const handleOverlayPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+  const handleCardPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
     if (!pointerStart.current || movedRef.current) return;
     const deltaX = event.clientX - pointerStart.current.x;
     const deltaY = event.clientY - pointerStart.current.y;
@@ -141,15 +150,21 @@ const ConversationRow: React.FC<ConversationRowProps> = ({
   const translateX = isOpen && !selectionMode ? (openDirection === 'left' ? -96 : 96) : 0;
   const actionLabel = isArchivedTab ? 'Restaurer' : 'Archiver';
   const actionIcon = isArchivedTab ? <RotateCcw size={16} /> : <Archive size={16} />;
-  const handleCardClick = () => {
+  const handleCardClick = (event: React.MouseEvent<HTMLDivElement>) => {
     if (suppressClickRef.current) {
+      event.preventDefault();
+      event.stopPropagation();
       return;
     }
     if (isOpen) {
+      event.preventDefault();
+      event.stopPropagation();
       onClose();
       return;
     }
     if (selectionMode) {
+      event.preventDefault();
+      event.stopPropagation();
       onToggleSelect(conversation._id);
       return;
     }
@@ -185,41 +200,39 @@ const ConversationRow: React.FC<ConversationRowProps> = ({
             handleCardClick();
           }
         }}
+        onPointerDown={handleCardPointerDown}
+        onPointerMove={handleCardPointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={() => {
+          clearLongPress();
+          pointerStart.current = null;
+          movedRef.current = false;
+          onClose();
+        }}
+        onPointerLeave={() => {
+          clearLongPress();
+          pointerStart.current = null;
+          movedRef.current = false;
+        }}
+        onClick={handleCardClick}
+        onContextMenu={(event) => {
+          event.preventDefault();
+          onSelectShortcut(conversation._id);
+        }}
         className={`relative w-full text-start card-surface rounded-2xl p-4 transition ${
           selectionMode ? 'cursor-pointer' : 'hover:shadow'
-        } ${isSelected ? 'bg-emerald-50 ring-2 ring-emerald-300 ring-inset' : ''}`}
+        } ${isSelected ? 'bg-emerald-50 ring-2 ring-emerald-300 ring-inset' : ''} hover:bg-slate-50 active:bg-slate-100`}
         style={{ transform: `translateX(${translateX}px)` }}
       >
-        <div
-          className="absolute inset-0 z-0"
-          onPointerDown={handleOverlayPointerDown}
-          onPointerMove={handleOverlayPointerMove}
-          onPointerUp={handlePointerUp}
-          onPointerCancel={() => {
-            clearLongPress();
-            pointerStart.current = null;
-            movedRef.current = false;
-            onClose();
-          }}
-          onPointerLeave={() => {
-            clearLongPress();
-            pointerStart.current = null;
-            movedRef.current = false;
-          }}
-          onClick={handleCardClick}
-          onContextMenu={(event) => {
-            event.preventDefault();
-            onSelectShortcut(conversation._id);
-          }}
-        />
         {isSelected && (
           <span className="absolute left-3 top-3 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-600 text-white shadow">
             <Check size={12} />
           </span>
         )}
         <div
+          data-allow-text-select="true"
+          style={{ userSelect: 'text' }}
           className={`relative z-10 space-y-2 ${isSelected ? 'ps-7' : ''}`}
-          onClick={handleCardClick}
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
