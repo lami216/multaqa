@@ -4,7 +4,6 @@ import {
   Check,
   CheckCheck,
   MessageCircle,
-  MoreHorizontal,
   Pin,
   PinOff,
   RefreshCw,
@@ -171,23 +170,16 @@ const ConversationRow: React.FC<ConversationRowProps> = ({
           event.preventDefault();
           onSelectShortcut(conversation._id);
         }}
-        className={`relative w-full text-start card-surface p-4 hover:shadow transition ${
-          isSelected ? 'ring-2 ring-emerald-400' : ''
-        }`}
+        className={`relative w-full text-start card-surface p-4 transition ${
+          selectionMode ? 'cursor-pointer select-none' : 'hover:shadow'
+        } ${isSelected ? 'ring-2 ring-emerald-300 bg-emerald-50' : ''}`}
         style={{ transform: `translateX(${translateX}px)` }}
       >
-        <button
-          type="button"
-          aria-label="Sélectionner"
-          className="absolute top-3 right-3 rounded-full bg-slate-100 p-2 text-slate-600 hover:bg-slate-200"
-          onClick={(event) => {
-            event.stopPropagation();
-            onSelectShortcut(conversation._id);
-          }}
-          onPointerDown={(event) => event.stopPropagation()}
-        >
-          <MoreHorizontal size={16} />
-        </button>
+        {isSelected && (
+          <span className="absolute left-0 top-0 flex h-5 w-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-emerald-500 text-white shadow">
+            <Check size={12} />
+          </span>
+        )}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <p className="font-semibold text-slate-900">
