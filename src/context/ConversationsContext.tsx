@@ -30,7 +30,7 @@ export const ConversationsProvider: React.FC<{ children: React.ReactNode }> = ({
       return;
     }
     try {
-      const { data } = await fetchConversations();
+      const { data } = await fetchConversations({ status: 'active' });
       syncUnreadCounts(data.conversations);
     } catch {
       // ignore refresh errors

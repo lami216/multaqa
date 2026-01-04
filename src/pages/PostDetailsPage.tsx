@@ -106,7 +106,7 @@ const PostDetailsPage: React.FC = () => {
       try {
         const [{ data: joinData }, { data: conversationsData }] = await Promise.all([
           fetchJoinRequests(id),
-          fetchConversations()
+          fetchConversations({ status: 'active' })
         ]);
         setJoinRequests(joinData.joinRequests);
         setPostConversations(

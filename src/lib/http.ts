@@ -158,7 +158,13 @@ export interface ConversationSummary {
   participants: string[];
   postId?: string;
   otherParticipant: { id: string; username: string; profile?: Profile } | null;
-  lastMessage?: { text: string; createdAt: string } | null;
+  lastMessage?: {
+    text: string;
+    createdAt: string;
+    senderId: string;
+    deliveredAt?: string | null;
+    readAt?: string | null;
+  } | null;
   unreadCount: number;
   lastMessageAt?: string | null;
 }
@@ -236,7 +242,8 @@ export const rejectJoinRequest = (postId: string, requestId: string) =>
 export const closePost = (postId: string, payload: { closeReason?: string }) =>
   http.post<{ message: string; post: PostResponse }>(`/posts/${postId}/close`, payload);
 export const deletePost = (postId: string) => http.delete<{ message: string }>(`/posts/${postId}`);
-export const fetchConversations = () => http.get<{ conversations: ConversationSummary[] }>('/conversations');
+export const fetchConversations = (params?: { status?: 'active' | 'archived' }) =>
+  http.get<{ conversations: ConversationSummary[] }>('/conversations', { params });
 export const fetchConversationMessages = (conversationId: string, params?: { after?: string; limit?: number }) =>
   http.get<{ messages: ConversationMessageItem[]; nextCursor: string | null }>(
     `/conversations/${conversationId}/messages`,
@@ -245,6 +252,12 @@ export const fetchConversationMessages = (conversationId: string, params?: { aft
 export const markConversationRead = (conversationId: string) => http.post(`/conversations/${conversationId}/read`);
 export const sendConversationMessage = (conversationId: string, text: string) =>
   http.post<{ message: ConversationMessageItem }>(`/conversations/${conversationId}/messages`, { text });
+export const archiveConversation = (conversationId: string) =>
+  http.patch(`/conversations/${conversationId}/archive`);
+export const unarchiveConversation = (conversationId: string) =>
+  http.patch(`/conversations/${conversationId}/unarchive`);
+export const deleteConversationForMe = (conversationId: string) =>
+  http.patch(`/conversations/${conversationId}/delete-for-me`);
 export const fetchNotifications = () => http.get<{ notifications: NotificationItem[]; unread: number }>('/notifications');
 export const fetchFaculties = () => http.get<{ faculties: FacultyItem[] }>('/faculties');
 export const fetchMajors = (params?: Record<string, string>) => http.get<{ majors: MajorItem[] }>('/majors', { params });

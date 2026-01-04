@@ -16,7 +16,7 @@ const POLL_INTERVAL = 5000;
 
 const ConversationPage: React.FC = () => {
   const { conversationId } = useParams();
-  const { user } = useAuth();
+  const { currentUserId } = useAuth();
   const navigate = useNavigate();
   const [conversation, setConversation] = useState<ConversationSummary | null>(null);
   const [messages, setMessages] = useState<ConversationMessageItem[]>([]);
@@ -29,12 +29,14 @@ const ConversationPage: React.FC = () => {
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const { clearUnreadCount } = useConversations();
 
-  const currentUserId = user?.id ?? '';
-
   const loadConversation = useCallback(async () => {
     if (!conversationId) return;
-    const { data } = await fetchConversations();
-    const found = data.conversations.find((item) => item._id === conversationId) ?? null;
+    const { data } = await fetchConversations({ status: 'active' });
+    let found = data.conversations.find((item) => item._id === conversationId) ?? null;
+    if (!found) {
+      const { data: archivedData } = await fetchConversations({ status: 'archived' });
+      found = archivedData.conversations.find((item) => item._id === conversationId) ?? null;
+    }
     setConversation(found);
   }, [conversationId]);
 
@@ -173,7 +175,7 @@ const ConversationPage: React.FC = () => {
   const renderTicks = (message: ConversationMessageItem) => {
     if (message.senderId !== currentUserId) return null;
     if (message.readAt) {
-      return <CheckCheck size={14} className="text-emerald-200" />;
+      return <CheckCheck size={14} className="text-amber-500" />;
     }
     if (message.deliveredAt) {
       return <CheckCheck size={14} className="text-emerald-100" />;

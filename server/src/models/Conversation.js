@@ -22,6 +22,16 @@ const conversationSchema = new mongoose.Schema({
   lastMessageAt: {
     type: Date,
     default: null
+  },
+  archivedBy: {
+    type: [mongoose.Schema.Types.ObjectId],
+    ref: 'User',
+    default: []
+  },
+  deletedBy: {
+    type: [mongoose.Schema.Types.ObjectId],
+    ref: 'User',
+    default: []
   }
 }, {
   timestamps: true
