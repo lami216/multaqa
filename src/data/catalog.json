@@ -125,6 +125,141 @@
           ]
         }
       ]
+    },
+    {
+      "id": "ISCAE",
+      "nameAr": "المعهد العالي للمحاسبة وإدارة المؤسسات ISCAE",
+      "nameFr": "Institut Supérieur de Comptabilité et d'Administration des Entreprises ISCAE",
+      "levels": [
+        {
+          "id": "L1",
+          "nameAr": "السنة الأولى إجازة",
+          "nameFr": "Licence 1",
+          "majors": [
+            {
+              "id": "FIN-COMP",
+              "nameAr": "المالية والمحاسبة",
+              "nameFr": "Finance et Comptabilité",
+              "semesters": [
+                {
+                  "id": "S1",
+                  "nameAr": "السداسي 1",
+                  "nameFr": "Semestre 1",
+                  "subjects": [
+                    {
+                      "code": "PGR",
+                      "nameAr": "مبادئ التسيير",
+                      "nameFr": "Principe de gestion"
+                    },
+                    {
+                      "code": "CF1",
+                      "nameAr": "المحاسبة المالية 1",
+                      "nameFr": "Comptabilité financière I"
+                    },
+                    {
+                      "code": "SD1",
+                      "nameAr": "الإحصاء الوصفي 1",
+                      "nameFr": "Statistique descriptive I"
+                    },
+                    {
+                      "code": "MAT1",
+                      "nameAr": "الرياضيات",
+                      "nameFr": "Mathématique"
+                    },
+                    {
+                      "code": "ANG1",
+                      "nameAr": "الإنجليزية 1",
+                      "nameFr": "Anglais I"
+                    },
+                    {
+                      "code": "MTU",
+                      "nameAr": "منهجية العمل الجامعي",
+                      "nameFr": "Méthodologie du travail universitaire"
+                    },
+                    {
+                      "code": "MSO",
+                      "nameAr": "مايكروسوفت أوفيس",
+                      "nameFr": "MS Office"
+                    },
+                    {
+                      "code": "ECO1",
+                      "nameAr": "مدخل إلى الاقتصاد",
+                      "nameFr": "Introduction à l’économie"
+                    },
+                    {
+                      "code": "DR1",
+                      "nameAr": "مدخل إلى القانون",
+                      "nameFr": "Introduction au droit"
+                    },
+                    {
+                      "code": "TC1",
+                      "nameAr": "تقنيات التواصل",
+                      "nameFr": "Technique de communication"
+                    }
+                  ]
+                },
+                {
+                  "id": "S2",
+                  "nameAr": "السداسي 2",
+                  "nameFr": "Semestre 2",
+                  "subjects": [
+                    {
+                      "code": "CF2",
+                      "nameAr": "المحاسبة المالية 2",
+                      "nameFr": "Comptabilité financière II"
+                    },
+                    {
+                      "code": "MFIN",
+                      "nameAr": "الميكرو-تمويل",
+                      "nameFr": "Micro-finance"
+                    },
+                    {
+                      "code": "ECOE",
+                      "nameAr": "اقتصاد المؤسسة",
+                      "nameFr": "Économie d’entreprise"
+                    },
+                    {
+                      "code": "SD2",
+                      "nameAr": "الإحصاء الوصفي 2",
+                      "nameFr": "Statistique descriptive II"
+                    },
+                    {
+                      "code": "MATF",
+                      "nameAr": "الرياضيات المالية",
+                      "nameFr": "Mathématiques financières"
+                    },
+                    {
+                      "code": "ANG2",
+                      "nameAr": "الإنجليزية 2",
+                      "nameFr": "Anglais II"
+                    },
+                    {
+                      "code": "TIC",
+                      "nameAr": "مهارات تكنولوجيا المعلومات والاتصال",
+                      "nameFr": "Aptitudes en TIC"
+                    },
+                    {
+                      "code": "DEVP",
+                      "nameAr": "التنمية الشخصية",
+                      "nameFr": "Développement personnel"
+                    },
+                    {
+                      "code": "MICR",
+                      "nameAr": "الاقتصاد الجزئي",
+                      "nameFr": "Microéconomie"
+                    },
+                    {
+                      "code": "DAF",
+                      "nameAr": "قانون الأعمال",
+                      "nameFr": "Droit des affaires"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
     }
   ]
 }
