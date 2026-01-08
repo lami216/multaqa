@@ -258,6 +258,134 @@
               ]
             }
           ]
+        },
+        {
+          "id": "L2",
+          "nameAr": "السنة الثانية إجازة",
+          "nameFr": "Licence 2",
+          "majors": [
+            {
+              "id": "FIN-COMP",
+              "nameAr": "المالية والمحاسبة",
+              "nameFr": "Finance et Comptabilité",
+              "semesters": [
+                {
+                  "id": "S3",
+                  "nameAr": "السداسي 3",
+                  "nameFr": "Semestre 3",
+                  "subjects": [
+                    {
+                      "code": "GF",
+                      "nameAr": "التسيير المالي",
+                      "nameFr": "Gestion financière"
+                    },
+                    {
+                      "code": "CS1",
+                      "nameAr": "محاسبة الشركات 1",
+                      "nameFr": "Comptabilité des sociétés I"
+                    },
+                    {
+                      "code": "SFM",
+                      "nameAr": "النظام المالي الموريتاني",
+                      "nameFr": "Système financier mauritanien"
+                    },
+                    {
+                      "code": "TB",
+                      "nameAr": "تقنيات بنكية",
+                      "nameFr": "Techniques bancaires"
+                    },
+                    {
+                      "code": "ADB",
+                      "nameAr": "الإنجليزية للأعمال",
+                      "nameFr": "Anglais des affaires"
+                    },
+                    {
+                      "code": "LOGC",
+                      "nameAr": "برمجيات محاسبية",
+                      "nameFr": "Logiciel comptable"
+                    },
+                    {
+                      "code": "MKT",
+                      "nameAr": "تسويق",
+                      "nameFr": "Marketing"
+                    },
+                    {
+                      "code": "DADM",
+                      "nameAr": "القانون الإداري",
+                      "nameFr": "Droit administratif"
+                    },
+                    {
+                      "code": "MACRO",
+                      "nameAr": "اقتصاد كلي",
+                      "nameFr": "Macroéconomie"
+                    },
+                    {
+                      "code": "MAD",
+                      "nameAr": "مناهج المساعدة على اتخاذ القرار",
+                      "nameFr": "Méthodes d’aide à la décision"
+                    }
+                  ]
+                },
+                {
+                  "id": "S4",
+                  "nameAr": "السداسي 4",
+                  "nameFr": "Semestre 4",
+                  "subjects": [
+                    {
+                      "code": "AF",
+                      "nameAr": "تحليل مالي",
+                      "nameFr": "Analyse financière"
+                    },
+                    {
+                      "code": "CG",
+                      "nameAr": "محاسبة التسيير",
+                      "nameFr": "Comptabilité de gestion"
+                    },
+                    {
+                      "code": "CS2",
+                      "nameAr": "محاسبة الشركات 2",
+                      "nameFr": "Comptabilité des sociétés II"
+                    },
+                    {
+                      "code": "FI",
+                      "nameAr": "المالية الإسلامية",
+                      "nameFr": "Finance islamique"
+                    },
+                    {
+                      "code": "GP",
+                      "nameAr": "تسيير المحافظ",
+                      "nameFr": "Gestion de portefeuilles"
+                    },
+                    {
+                      "code": "FM",
+                      "nameAr": "مالية الأسواق",
+                      "nameFr": "Finance des marchés"
+                    },
+                    {
+                      "code": "DT",
+                      "nameAr": "قانون الشغل",
+                      "nameFr": "Droit du travail"
+                    },
+                    {
+                      "code": "GRH",
+                      "nameAr": "إدارة الموارد البشرية",
+                      "nameFr": "GRH"
+                    },
+                    {
+                      "code": "FISC",
+                      "nameAr": "جباية",
+                      "nameFr": "Fiscalité"
+                    },
+                    {
+                      "code": "IC",
+                      "nameAr": "أدوات القروض",
+                      "nameFr": "Les instruments de crédits"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
         }
       ]
     }
