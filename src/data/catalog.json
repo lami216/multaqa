@@ -386,6 +386,99 @@
               ]
             }
           ]
+        },
+        {
+          "id": "L3",
+          "nameAr": "السنة الثالثة إجازة",
+          "nameFr": "Licence 3",
+          "majors": [
+            {
+              "id": "FIN-COMP",
+              "nameAr": "المالية والمحاسبة",
+              "nameFr": "Finance et Comptabilité",
+              "semesters": [
+                {
+                  "id": "S5",
+                  "nameAr": "السداسي 5",
+                  "nameFr": "Semestre 5",
+                  "subjects": [
+                    {
+                      "code": "GTRE",
+                      "nameAr": "تسيير الخزينة",
+                      "nameFr": "Gestion de trésorerie"
+                    },
+                    {
+                      "code": "CDG",
+                      "nameAr": "مراقبة التسيير",
+                      "nameFr": "Contrôle de gestion"
+                    },
+                    {
+                      "code": "STR",
+                      "nameAr": "استراتيجية المؤسسة",
+                      "nameFr": "Stratégie d’entreprise"
+                    },
+                    {
+                      "code": "MEE",
+                      "nameAr": "طرائق تقييم المؤسسة",
+                      "nameFr": "Méthodes d’évaluation de l’entreprise"
+                    },
+                    {
+                      "code": "RF",
+                      "nameAr": "التقارير المالية",
+                      "nameFr": "Reporting financier"
+                    },
+                    {
+                      "code": "AUF",
+                      "nameAr": "تدقيق مالي",
+                      "nameFr": "Audit financier"
+                    },
+                    {
+                      "code": "NCI",
+                      "nameAr": "المعايير المحاسبية الدولية",
+                      "nameFr": "Normes comptables internationales"
+                    },
+                    {
+                      "code": "CI",
+                      "nameAr": "اختيارات الاستثمار",
+                      "nameFr": "Choix d’investissement"
+                    },
+                    {
+                      "code": "DBF",
+                      "nameAr": "القانون البنكي والمالي",
+                      "nameFr": "Droit bancaire et financier"
+                    },
+                    {
+                      "code": "RS2",
+                      "nameAr": "تقرير تدريب السنة الثانية",
+                      "nameFr": "Rapport de stage de la 2ème année"
+                    }
+                  ]
+                },
+                {
+                  "id": "S6",
+                  "nameAr": "السداسي 6",
+                  "nameFr": "Semestre 6",
+                  "subjects": [
+                    {
+                      "code": "MR",
+                      "nameAr": "منهجية البحث",
+                      "nameFr": "Méthodologie de recherche"
+                    },
+                    {
+                      "code": "SE",
+                      "nameAr": "ندوة حول ريادة الأعمال",
+                      "nameFr": "Séminaire sur l’entrepreneuriat"
+                    },
+                    {
+                      "code": "MFE",
+                      "nameAr": "مذكرة نهاية الدراسة",
+                      "nameFr": "Mémoire de fin d’études"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
         }
       ]
     }
