@@ -1,10 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Filter, Users } from 'lucide-react';
+import { Filter } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { fetchPosts, type PostResponse } from '../lib/http';
 import { useAuth } from '../context/AuthContext';
-import { resolveAuthorId } from '../lib/postUtils';
-import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
+import PostCard from '../components/PostCard';
 
 type IntentValue = 'NEED_HELP' | 'STUDY_TOGETHER' | 'I_CAN_HELP';
 
@@ -15,11 +14,6 @@ const intentOptions: Array<{ value: IntentValue; title: string; subtitle: string
 ];
 
 const intentStorageKey = 'feedIntent';
-const roleLabels: Record<string, string> = {
-  helper: 'Helper',
-  partner: 'Partner',
-  learner: 'Learner',
-};
 
 const PostsFeedPage: React.FC = () => {
   const [level, setLevel] = useState('');
@@ -261,76 +255,9 @@ const PostsFeedPage: React.FC = () => {
             Aucun résultat pour ces filtres. Publiez une annonce ou ajustez vos critères.
           </div>
         ) : (
-          filtered.map((post) => {
-            const isAuthor = resolveAuthorId(post) === currentUserId;
-            const roleLabel = post.studentRole ? roleLabels[post.studentRole] ?? post.studentRole : 'Non précisé';
-            return (
-              <div key={post._id} className="card-surface p-4 sm:p-5 flex flex-col gap-3 relative">
-                {isAuthor && post.pendingJoinRequestsCount ? (
-                  <span className="absolute right-3 top-3 inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-rose-600 px-1 text-[0.65rem] font-bold text-white">
-                    {post.pendingJoinRequestsCount}
-                  </span>
-                ) : null}
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="space-y-1">
-                    <div className="flex flex-wrap gap-2 items-center text-xs font-semibold text-emerald-700">
-                      <span className="badge-soft">{post.category}</span>
-                      {post.level ? <span className="badge-soft bg-blue-50 text-blue-700">{post.level}</span> : null}
-                      {post.languagePref ? <span className="badge-soft bg-emerald-50 text-emerald-700">{post.languagePref}</span> : null}
-                    </div>
-                    <Link to={`/posts/${post._id}`} className="text-xl font-semibold text-slate-900 hover:text-emerald-700">
-                      {post.title}
-                    </Link>
-                    {post.category === 'study_partner' ? (
-                      <div className="space-y-2">
-                        <div className="flex flex-wrap gap-2">
-                          {(post.subjectCodes ?? []).map((subject) => (
-                            <span key={subject} className="badge-soft bg-emerald-50 text-emerald-700">{subject}</span>
-                          ))}
-                          <span className="badge-soft bg-slate-100 text-slate-700">Rôle {roleLabel}</span>
-                        </div>
-                        {post.description ? (
-                          <p className="text-sm text-slate-700 leading-relaxed">{post.description}</p>
-                        ) : null}
-                      </div>
-                    ) : (
-                      <>
-                        <p className="text-sm text-slate-600">{post.faculty ?? 'Faculté non renseignée'}</p>
-                        <p className="text-sm text-slate-700 leading-relaxed">{post.description}</p>
-                        {post.studentRole ? (
-                          <p className="text-sm font-semibold text-slate-700">Rôle {roleLabel}</p>
-                        ) : null}
-                      </>
-                    )}
-                  </div>
-                  <div className="flex items-start gap-3 text-sm text-slate-500 sm:min-w-[200px] sm:justify-end">
-                    <Avatar className="h-10 w-10 shrink-0">
-                      <AvatarImage src={post.author?.avatarUrl} alt={post.author?.username ?? 'Auteur'} />
-                      <AvatarFallback className="bg-emerald-50 text-emerald-700 text-sm font-semibold">
-                        {(post.author?.username ?? 'A')[0]?.toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="space-y-2">
-                      <div>
-                        <p className="font-semibold text-slate-800">{post.author?.username ?? 'Auteur'}</p>
-                        <p>{new Date(post.createdAt).toLocaleDateString()}</p>
-                      </div>
-                      {typeof post.matchingPercent === 'number' ? (
-                        <span className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-3 py-1 text-base font-semibold text-white shadow-sm">
-                          Match <span className="text-lg font-bold">{post.matchingPercent}%</span>
-                        </span>
-                      ) : null}
-                    </div>
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <Link to={`/posts/${post._id}`} className="primary-btn">
-                    <Users size={16} className="me-1" /> Consulter
-                  </Link>
-                </div>
-              </div>
-            );
-          })
+          filtered.map((post) => (
+            <PostCard key={post._id} post={post} currentUserId={currentUserId} />
+          ))
         )}
       </div>
     </div>

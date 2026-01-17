@@ -356,9 +356,9 @@ const PostDetailsPage: React.FC = () => {
                 Rôle {roleLabels[post.studentRole] ?? post.studentRole}
               </span>
             ) : null}
-            {typeof post.matchingPercent === 'number' ? (
+            {typeof post.matchPercent === 'number' ? (
               <span className="badge-soft bg-slate-100 text-slate-700">
-                Match {post.matchingPercent}%
+                Match {post.matchPercent}%
               </span>
             ) : null}
           </div>
@@ -372,9 +372,6 @@ const PostDetailsPage: React.FC = () => {
                   </span>
                 ))}
               </div>
-              <p className="text-sm text-slate-600">
-                Rôle : {post.studentRole ? roleLabels[post.studentRole] : 'Non précisé'}
-              </p>
               {post?.expiresAt && (
                 <p className="text-sm text-slate-500">
                   Expire le {new Date(post?.expiresAt).toLocaleString()}
@@ -392,18 +389,18 @@ const PostDetailsPage: React.FC = () => {
             </>
           )}
         </div>
-        <div className="text-right text-sm text-slate-500 space-y-2">
-          <div className="flex items-center justify-end gap-3">
+        <div className="text-sm text-slate-500 space-y-2 sm:min-w-[220px]">
+          <div className="flex items-center justify-between gap-3 flex-nowrap">
+            <div className="min-w-0">
+              <p className="font-semibold text-slate-800">{post?.author?.username ?? 'Auteur'}</p>
+              <p className="text-xs text-slate-500">ID annonce: {id}</p>
+            </div>
             <Avatar className="h-9 w-9 shrink-0">
               <AvatarImage src={post.author?.avatarUrl} alt={post.author?.username ?? 'Auteur'} />
               <AvatarFallback className="bg-emerald-50 text-emerald-700 text-sm font-semibold">
                 {(post.author?.username ?? 'A')[0]?.toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <div className="min-w-0">
-              <p className="font-semibold text-slate-800">{post?.author?.username ?? 'Auteur'}</p>
-              <p className="text-xs text-slate-500">ID annonce: {id}</p>
-            </div>
           </div>
           {post?.status && <p className="badge-soft inline-flex">{post.status}</p>}
         </div>
