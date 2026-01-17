@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { fetchPosts, type PostResponse } from '../lib/http';
 import { useAuth } from '../context/AuthContext';
 import { resolveAuthorId } from '../lib/postUtils';
+import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 
 type IntentValue = 'NEED_HELP' | 'STUDY_TOGETHER' | 'I_CAN_HELP';
 
@@ -22,7 +23,7 @@ const PostsFeedPage: React.FC = () => {
   const [posts, setPosts] = useState<PostResponse[]>([]);
   const [hiddenMatchedIds, setHiddenMatchedIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
-  const { currentUserId, profile } = useAuth();
+  const { currentUserId, profile, user, loading: authLoading } = useAuth();
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
   const [broaderResults, setBroaderResults] = useState(false);
   const [intent, setIntent] = useState<IntentValue>(() => {
@@ -63,6 +64,12 @@ const PostsFeedPage: React.FC = () => {
   }, [subjectOptions]);
 
   useEffect(() => {
+    if (authLoading) return;
+    if (!user) {
+      setPosts([]);
+      setLoading(false);
+      return;
+    }
     const load = async () => {
       setLoading(true);
       try {
@@ -84,7 +91,7 @@ const PostsFeedPage: React.FC = () => {
     };
 
     void load();
-  }, [level, search, category, intent, selectedSubjects, broaderResults]);
+  }, [level, search, category, intent, selectedSubjects, broaderResults, user, authLoading]);
 
   const toggleSubject = (subject: string) => {
     setSelectedSubjects((prev) => {
@@ -101,6 +108,25 @@ const PostsFeedPage: React.FC = () => {
   const filtered = useMemo(() => {
     return (posts ?? []).filter((post) => !hiddenMatchedIds.includes(post._id));
   }, [posts, hiddenMatchedIds]);
+
+  if (authLoading) {
+    return <div className="card-surface p-6 text-sm text-slate-600">Chargement...</div>;
+  }
+
+  if (!user) {
+    return (
+      <div className="card-surface p-6 space-y-3">
+        <h2 className="section-title">Connectez-vous pour voir les annonces</h2>
+        <p className="text-sm text-slate-600">
+          Veuillez vous connecter ou créer un compte pour accéder au fil des posts.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <Link to="/login" className="primary-btn">Connexion</Link>
+          <Link to="/signup" className="secondary-btn">Créer un compte</Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -235,6 +261,11 @@ const PostsFeedPage: React.FC = () => {
                   <div className="space-y-1">
                     <div className="flex flex-wrap gap-2 items-center text-xs font-semibold text-emerald-700">
                       <span className="badge-soft">{post.category}</span>
+                      {typeof post.matchingPercent === 'number' ? (
+                        <span className="badge-soft bg-slate-100 text-slate-700">
+                          Match {post.matchingPercent}%
+                        </span>
+                      ) : null}
                       {post.level ? <span className="badge-soft bg-blue-50 text-blue-700">{post.level}</span> : null}
                       {post.languagePref ? <span className="badge-soft bg-emerald-50 text-emerald-700">{post.languagePref}</span> : null}
                     </div>
@@ -262,9 +293,17 @@ const PostsFeedPage: React.FC = () => {
                       </>
                     )}
                   </div>
-                  <div className="text-right text-sm text-slate-500">
-                    <p className="font-semibold text-slate-800">{post.author?.username ?? 'Auteur'}</p>
-                    <p>{new Date(post.createdAt).toLocaleDateString()}</p>
+                  <div className="flex items-center gap-2 text-sm text-slate-500">
+                    <Avatar className="h-9 w-9">
+                      <AvatarImage src={post.author?.avatarUrl} alt={post.author?.username ?? 'Auteur'} />
+                      <AvatarFallback className="bg-emerald-50 text-emerald-700 text-sm font-semibold">
+                        {(post.author?.username ?? 'A')[0]?.toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="text-right">
+                      <p className="font-semibold text-slate-800">{post.author?.username ?? 'Auteur'}</p>
+                      <p>{new Date(post.createdAt).toLocaleDateString()}</p>
+                    </div>
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2">

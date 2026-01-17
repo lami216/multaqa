@@ -49,11 +49,9 @@ const App: React.FC = () => {
                 <Route
                   path="/posts"
                   element={(
-                    <ProtectedRoute>
-                      <Layout>
-                        <PostsFeedPage />
-                      </Layout>
-                    </ProtectedRoute>
+                    <Layout>
+                      <PostsFeedPage />
+                    </Layout>
                   )}
                 />
                 <Route

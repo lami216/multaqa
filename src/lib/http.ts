@@ -121,11 +121,11 @@ export interface PostResponse extends PostPayload {
   pendingJoinRequestsCount?: number;
   unreadPostMessagesCount?: number;
   myJoinRequestStatus?: 'none' | 'pending' | 'accepted' | 'rejected';
-  matchScore?: number;
+  matchingPercent?: number;
   createdAt: string;
   updatedAt: string;
   language?: string;
-  author?: { username: string; profile?: Profile };
+  author?: { id?: string; username: string; avatarUrl?: string; profile?: Profile };
 }
 
 export interface FacultyItem {

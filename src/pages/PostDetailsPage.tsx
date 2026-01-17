@@ -20,6 +20,7 @@ import {
 } from '../lib/http';
 import { useAuth } from '../context/AuthContext';
 import { resolveAuthorId } from '../lib/postUtils';
+import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 
 const roleLabels: Record<string, string> = {
   helper: 'Helper',
@@ -348,7 +349,14 @@ const PostDetailsPage: React.FC = () => {
     <div className="card-surface p-5 space-y-4">
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-2">
-          <p className="badge-soft inline-flex">{post?.category}</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="badge-soft inline-flex">{post?.category}</span>
+            {typeof post.matchingPercent === 'number' ? (
+              <span className="badge-soft bg-slate-100 text-slate-700">
+                Match {post.matchingPercent}%
+              </span>
+            ) : null}
+          </div>
           <h1 className="text-2xl font-bold text-slate-900">{post.title}</h1>
           {isStudyPartner ? (
             <div className="space-y-2">
@@ -359,10 +367,14 @@ const PostDetailsPage: React.FC = () => {
                   </span>
                 ))}
               </div>
-              <p className="text-sm text-slate-600">Rôle : {post.studentRole ? roleLabels[post.studentRole] : 'Non précisé'}</p>
-          {post?.expiresAt && (
-            <p className="text-sm text-slate-500">Expire le {new Date(post?.expiresAt).toLocaleString()}</p>
-          )}
+              <p className="text-sm text-slate-600">
+                Rôle : {post.studentRole ? roleLabels[post.studentRole] : 'Non précisé'}
+              </p>
+              {post?.expiresAt && (
+                <p className="text-sm text-slate-500">
+                  Expire le {new Date(post?.expiresAt).toLocaleString()}
+                </p>
+              )}
             </div>
           ) : (
             <>
@@ -375,10 +387,20 @@ const PostDetailsPage: React.FC = () => {
             </>
           )}
         </div>
-        <div className="text-right text-sm text-slate-500">
-          <p className="font-semibold text-slate-800">{post?.author?.username ?? 'Auteur'}</p>
-          <p>ID annonce: {id}</p>
-          {post?.status && <p className="badge-soft mt-2">{post.status}</p>}
+        <div className="text-right text-sm text-slate-500 space-y-2">
+          <div className="flex items-center justify-end gap-2">
+            <Avatar className="h-10 w-10">
+              <AvatarImage src={post.author?.avatarUrl} alt={post.author?.username ?? 'Auteur'} />
+              <AvatarFallback className="bg-emerald-50 text-emerald-700 text-sm font-semibold">
+                {(post.author?.username ?? 'A')[0]?.toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <div>
+              <p className="font-semibold text-slate-800">{post?.author?.username ?? 'Auteur'}</p>
+              <p>ID annonce: {id}</p>
+            </div>
+          </div>
+          {post?.status && <p className="badge-soft inline-flex">{post.status}</p>}
         </div>
       </div>
 

@@ -41,40 +41,79 @@ const countSharedSubjects = (userSubjects, postSubjects) => {
   return count;
 };
 
-const calculateMatchScore = ({
+const extractProgramValues = (source) => {
+  if (!source) return [];
+  return [
+    source.facultyId,
+    source.faculty,
+    source.majorId,
+    source.major,
+    source.departmentId,
+    source.department,
+    source.filiereId,
+    source.filiere,
+    source.programmeId,
+    source.programme,
+    source.programId,
+    source.program
+  ]
+    .map((value) => normalizeValue(value))
+    .filter(Boolean);
+};
+
+const calculateMatchingPercent = ({
   userProfile,
   authorProfile,
   post,
   userSubjects,
   postSubjects
 }) => {
-  const sameInstitute =
-    Boolean(userProfile?.facultyId && authorProfile?.facultyId) &&
-    normalizeValue(userProfile?.facultyId) === normalizeValue(authorProfile?.facultyId);
-  const sameFaculty =
-    Boolean(userProfile?.faculty && (post?.faculty || authorProfile?.faculty)) &&
-    normalizeValue(userProfile?.faculty) === normalizeValue(post?.faculty || authorProfile?.faculty);
-  const sameSpecialty =
-    Boolean(userProfile?.major || userProfile?.majorId) &&
-    Boolean(authorProfile?.major || authorProfile?.majorId) &&
-    normalizeValue(userProfile?.majorId ?? userProfile?.major) ===
-      normalizeValue(authorProfile?.majorId ?? authorProfile?.major);
-  const sameLevel =
-    Boolean(userProfile?.level && (post?.level || authorProfile?.level)) &&
-    normalizeValue(userProfile?.level) === normalizeValue(post?.level || authorProfile?.level);
-  const sharedSubjectsCount = countSharedSubjects(userSubjects, postSubjects);
-  const overlapPoints = sharedSubjectsCount
-    ? Math.round((30 * sharedSubjectsCount) / Math.min(userSubjects.length, postSubjects.length))
-    : 0;
+  const userSubjectList = Array.isArray(userSubjects) ? userSubjects.filter(Boolean) : [];
+  const postSubjectList = Array.isArray(postSubjects) ? postSubjects.filter(Boolean) : [];
+  const hasSubjects = userSubjectList.length > 0 && postSubjectList.length > 0;
 
-  const rawScore =
-    (sameInstitute ? 20 : 0) +
-    (sameFaculty ? 20 : 0) +
-    (sameSpecialty ? 20 : 0) +
-    (sameLevel ? 10 : 0) +
-    overlapPoints;
+  const levelCandidate = post?.level || authorProfile?.level;
+  const hasLevel = Boolean(userProfile?.level && levelCandidate);
+  const sameLevel = hasLevel && normalizeValue(userProfile?.level) === normalizeValue(levelCandidate);
 
-  return Math.min(100, rawScore);
+  const userProgramValues = extractProgramValues(userProfile);
+  const postProgramValues = [
+    ...extractProgramValues(post),
+    ...extractProgramValues(authorProfile)
+  ];
+  const hasProgram = userProgramValues.length > 0 && postProgramValues.length > 0;
+  const userProgramSet = new Set(userProgramValues);
+  const sameProgram = hasProgram && postProgramValues.some((value) => userProgramSet.has(value));
+
+  const weights = {
+    subjects: 60,
+    level: 20,
+    program: 20
+  };
+  const totalWeight =
+    (hasSubjects ? weights.subjects : 0) +
+    (hasLevel ? weights.level : 0) +
+    (hasProgram ? weights.program : 0);
+
+  if (!totalWeight) return 0;
+
+  let weightedScore = 0;
+  if (hasSubjects) {
+    const sharedSubjectsCount = countSharedSubjects(userSubjectList, postSubjectList);
+    const ratio = sharedSubjectsCount
+      ? sharedSubjectsCount / Math.max(userSubjectList.length, postSubjectList.length)
+      : 0;
+    weightedScore += weights.subjects * ratio;
+  }
+  if (hasLevel) {
+    weightedScore += weights.level * (sameLevel ? 1 : 0);
+  }
+  if (hasProgram) {
+    weightedScore += weights.program * (sameProgram ? 1 : 0);
+  }
+
+  const percent = Math.round((weightedScore / totalWeight) * 100);
+  return Math.max(0, Math.min(100, percent));
 };
 
 const resolveIntentBoost = (intent, post) => {
@@ -116,6 +155,10 @@ const recordEvent = async ({ action, actorId, postId, meta }) => {
 
 export const getPosts = async (req, res) => {
   try {
+    if (!req.user?._id) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
     const {
       category,
       faculty,
@@ -152,7 +195,7 @@ export const getPosts = async (req, res) => {
       query.$text = { $search: resolvedSearch };
     }
 
-    const userId = req.user?._id?.toString() ?? 'anonymous';
+    const userId = req.user._id.toString();
     const selectedSubjectList = extractQueryArray(selectedSubjects);
     const broaderResults = broader === 'true' || broader === true;
     const cacheKey = `posts:${userId}:${JSON.stringify({
@@ -175,12 +218,15 @@ export const getPosts = async (req, res) => {
     const userProfile = req.user?._id ? await Profile.findOne({ userId: req.user._id }) : null;
     const fallbackSubjects = selectedSubjectList.length
       ? selectedSubjectList
-      : userProfile?.subjectCodes ?? [];
+      : [
+          ...(userProfile?.subjectCodes ?? []),
+          ...(userProfile?.subjects ?? [])
+        ];
 
     const postsWithProfiles = await Promise.all(
       posts.map(async (post) => {
         const profile = await Profile.findOne({ userId: post.authorId._id });
-        const isAuthor = userId !== 'anonymous' && post.authorId._id.toString() === userId;
+        const isAuthor = post.authorId._id.toString() === userId;
         let pendingJoinRequestsCount = 0;
         let unreadPostMessagesCount = 0;
 
@@ -203,7 +249,10 @@ export const getPosts = async (req, res) => {
 
         const postSubjects = post.subjectCodes?.length
           ? post.subjectCodes
-          : profile?.subjectCodes ?? [];
+          : [
+              ...(profile?.subjectCodes ?? []),
+              ...(profile?.subjects ?? [])
+            ];
         const sharedSubjectsCount = countSharedSubjects(fallbackSubjects, postSubjects);
         const hasSharedSubject = sharedSubjectsCount > 0;
         const sameFaculty =
@@ -217,24 +266,28 @@ export const getPosts = async (req, res) => {
           return null;
         }
 
-        const matchScore = calculateMatchScore({
+        const matchingPercent = calculateMatchingPercent({
           userProfile,
           authorProfile: profile,
           post,
           userSubjects: fallbackSubjects,
           postSubjects
         });
+        if (matchingPercent === 0) {
+          return null;
+        }
         const intentBoost = resolveIntentBoost(intent, post);
 
         return {
           ...post.toObject(),
-          matchScore,
+          matchingPercent,
           intentBoost,
           pendingJoinRequestsCount,
           unreadPostMessagesCount,
           author: {
+            id: post.authorId._id,
             username: post.authorId.username,
-            profile
+            avatarUrl: profile?.avatarUrl
           }
         };
       })
@@ -242,7 +295,7 @@ export const getPosts = async (req, res) => {
 
     const visiblePosts = postsWithProfiles.filter(Boolean);
     visiblePosts.sort((a, b) => {
-      if (b.matchScore !== a.matchScore) return b.matchScore - a.matchScore;
+      if (b.matchingPercent !== a.matchingPercent) return b.matchingPercent - a.matchingPercent;
       if (b.intentBoost !== a.intentBoost) return b.intentBoost - a.intentBoost;
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
@@ -325,16 +378,37 @@ export const getPost = async (req, res) => {
       }
     }
 
+    const userProfile = req.user?._id ? await Profile.findOne({ userId: req.user._id }) : null;
+    const fallbackSubjects = [
+      ...(userProfile?.subjectCodes ?? []),
+      ...(userProfile?.subjects ?? [])
+    ];
+    const postSubjects = post.subjectCodes?.length
+      ? post.subjectCodes
+      : [
+          ...(profile?.subjectCodes ?? []),
+          ...(profile?.subjects ?? [])
+        ];
+    const matchingPercent = calculateMatchingPercent({
+      userProfile,
+      authorProfile: profile,
+      post,
+      userSubjects: fallbackSubjects,
+      postSubjects
+    });
+
     res.json({
       post: {
         ...post.toObject(),
+        matchingPercent,
         pendingJoinRequestsCount,
         unreadPostMessagesCount,
         myJoinRequestStatus
       },
       author: {
+        id: post.authorId._id,
         username: post.authorId.username,
-        profile
+        avatarUrl: profile?.avatarUrl
       }
     });
   } catch (error) {
