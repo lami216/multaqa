@@ -128,7 +128,7 @@
     },
     {
       "id": "ISCAE",
-      "nameAr": "المعهد العالي للمحاسبة وإدارة المؤسسات ISCAE",
+      "nameAr": "المعهد العالي للمحاسبة و إدارة المؤسسات ISCAE",
       "nameFr": "Institut Supérieur de Comptabilité et d'Administration des Entreprises ISCAE",
       "levels": [
         {
@@ -252,6 +252,611 @@
                       "code": "DAF",
                       "nameAr": "قانون الأعمال",
                       "nameFr": "Droit des affaires"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "BAN-ASS",
+              "nameAr": "البنوك والتأمينات",
+              "nameFr": "Banques Assurances",
+              "semesters": [
+                {
+                  "id": "S1",
+                  "nameAr": "السداسي 1",
+                  "nameFr": "Semestre 1",
+                  "subjects": [
+                    {
+                      "code": "PGR",
+                      "nameAr": "مبادئ التسيير",
+                      "nameFr": "Principe de gestion"
+                    },
+                    {
+                      "code": "CF1",
+                      "nameAr": "المحاسبة المالية 1",
+                      "nameFr": "Comptabilité financière I"
+                    },
+                    {
+                      "code": "SD1",
+                      "nameAr": "الإحصاء الوصفي 1",
+                      "nameFr": "Statistique descriptive I"
+                    },
+                    {
+                      "code": "MAT1",
+                      "nameAr": "الرياضيات",
+                      "nameFr": "Mathématique"
+                    },
+                    {
+                      "code": "ANG1",
+                      "nameAr": "الإنجليزية 1",
+                      "nameFr": "Anglais I"
+                    },
+                    {
+                      "code": "MTU",
+                      "nameAr": "منهجية العمل الجامعي",
+                      "nameFr": "Méthodologie du travail universitaire"
+                    },
+                    {
+                      "code": "MSO",
+                      "nameAr": "مايكروسوفت أوفيس",
+                      "nameFr": "MS office"
+                    },
+                    {
+                      "code": "ECO1",
+                      "nameAr": "مدخل إلى الاقتصاد",
+                      "nameFr": "Introduction à l'économie"
+                    },
+                    {
+                      "code": "DR1",
+                      "nameAr": "مدخل إلى القانون",
+                      "nameFr": "Introduction au droit"
+                    },
+                    {
+                      "code": "TC1",
+                      "nameAr": "تقنيات التواصل",
+                      "nameFr": "Technique de communication"
+                    }
+                  ]
+                },
+                {
+                  "id": "S2",
+                  "nameAr": "السداسي 2",
+                  "nameFr": "Semestre 2",
+                  "subjects": [
+                    {
+                      "code": "CF2",
+                      "nameAr": "المحاسبة المالية 2",
+                      "nameFr": "Comptabilité financière II"
+                    },
+                    {
+                      "code": "MFIN",
+                      "nameAr": "الميكرو-تمويل",
+                      "nameFr": "Micro finance"
+                    },
+                    {
+                      "code": "ECOE",
+                      "nameAr": "اقتصاد المؤسسة",
+                      "nameFr": "Economie d'entreprise"
+                    },
+                    {
+                      "code": "SD2",
+                      "nameAr": "الإحصاء الوصفي 2",
+                      "nameFr": "Statistique descriptive II"
+                    },
+                    {
+                      "code": "MATF",
+                      "nameAr": "الرياضيات المالية",
+                      "nameFr": "Mathématiques financières"
+                    },
+                    {
+                      "code": "ANG2",
+                      "nameAr": "الإنجليزية 2",
+                      "nameFr": "Anglais II"
+                    },
+                    {
+                      "code": "TIC",
+                      "nameAr": "مهارات تكنولوجيا المعلومات والاتصال",
+                      "nameFr": "Aptitudes en TIC"
+                    },
+                    {
+                      "code": "DEVP",
+                      "nameAr": "التنمية الشخصية",
+                      "nameFr": "Développement personnel"
+                    },
+                    {
+                      "code": "MICR",
+                      "nameAr": "الاقتصاد الجزئي",
+                      "nameFr": "Microéconomie"
+                    },
+                    {
+                      "code": "DAF",
+                      "nameAr": "قانون الأعمال",
+                      "nameFr": "Droit des affaires"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "TCM",
+              "nameAr": "تقنيات التجارة والتسويق",
+              "nameFr": "Technique commercial marketing",
+              "semesters": [
+                {
+                  "id": "S1",
+                  "nameAr": "السداسي 1",
+                  "nameFr": "Semestre 1",
+                  "subjects": [
+                    {
+                      "code": "IGC",
+                      "nameAr": "مدخل إلى التسيير التجاري",
+                      "nameFr": "Initiation à la gestion commerciale"
+                    },
+                    {
+                      "code": "PGR",
+                      "nameAr": "مبادئ التسيير",
+                      "nameFr": "Principe de gestion"
+                    },
+                    {
+                      "code": "CF1",
+                      "nameAr": "المحاسبة المالية 1",
+                      "nameFr": "Comptabilité financière I"
+                    },
+                    {
+                      "code": "ECO1",
+                      "nameAr": "مدخل إلى الاقتصاد",
+                      "nameFr": "Introduction à l'économie"
+                    },
+                    {
+                      "code": "ANG1",
+                      "nameAr": "الإنجليزية 1",
+                      "nameFr": "Anglais I"
+                    },
+                    {
+                      "code": "TC1",
+                      "nameAr": "تقنيات التواصل",
+                      "nameFr": "Techniques de communication"
+                    },
+                    {
+                      "code": "MSO",
+                      "nameAr": "مايكروسوفت أوفيس",
+                      "nameFr": "MS office"
+                    },
+                    {
+                      "code": "SD1",
+                      "nameAr": "الإحصاء الوصفي 1",
+                      "nameFr": "Statistique descriptive I"
+                    },
+                    {
+                      "code": "MAT1",
+                      "nameAr": "الرياضيات",
+                      "nameFr": "Mathématique"
+                    },
+                    {
+                      "code": "DR1",
+                      "nameAr": "مدخل إلى القانون",
+                      "nameFr": "Introduction au droit"
+                    }
+                  ]
+                },
+                {
+                  "id": "S2",
+                  "nameAr": "السداسي 2",
+                  "nameFr": "Semestre 2",
+                  "subjects": [
+                    {
+                      "code": "GCRC",
+                      "nameAr": "تسيير العلاقة التجارية مع الزبون",
+                      "nameFr": "Gestion commerciale de la relation client"
+                    },
+                    {
+                      "code": "ECOE",
+                      "nameAr": "اقتصاد المؤسسة",
+                      "nameFr": "Économie d'entreprise"
+                    },
+                    {
+                      "code": "CF2",
+                      "nameAr": "المحاسبة المالية 2",
+                      "nameFr": "Comptabilité financière II"
+                    },
+                    {
+                      "code": "GF",
+                      "nameAr": "التسيير المالي",
+                      "nameFr": "Gestion financière"
+                    },
+                    {
+                      "code": "ANG2",
+                      "nameAr": "الإنجليزية 2",
+                      "nameFr": "Anglais II"
+                    },
+                    {
+                      "code": "TIC",
+                      "nameAr": "مهارات تكنولوجيا المعلومات والاتصال",
+                      "nameFr": "Aptitudes en TIC"
+                    },
+                    {
+                      "code": "DEVP",
+                      "nameAr": "التنمية الشخصية",
+                      "nameFr": "Développement personnel"
+                    },
+                    {
+                      "code": "MICR",
+                      "nameAr": "الاقتصاد الجزئي",
+                      "nameFr": "Microéconomie"
+                    },
+                    {
+                      "code": "MACRO",
+                      "nameAr": "اقتصاد كلي",
+                      "nameFr": "Macro économie"
+                    },
+                    {
+                      "code": "SD2",
+                      "nameAr": "الإحصاء الوصفي 2",
+                      "nameFr": "Statistique descriptive II"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "GRH",
+              "nameAr": "إدارة الموارد البشرية",
+              "nameFr": "Gestion de ressources humaines",
+              "semesters": [
+                {
+                  "id": "S1",
+                  "nameAr": "السداسي 1",
+                  "nameFr": "Semestre 1",
+                  "subjects": [
+                    {
+                      "code": "IGRH",
+                      "nameAr": "مدخل إلى تسيير الموارد البشرية",
+                      "nameFr": "Initiation à la gestion des RH"
+                    },
+                    {
+                      "code": "PGR",
+                      "nameAr": "مبادئ التسيير",
+                      "nameFr": "Principes de gestion"
+                    },
+                    {
+                      "code": "CF1",
+                      "nameAr": "المحاسبة المالية 1",
+                      "nameFr": "Comptabilité Financière I"
+                    },
+                    {
+                      "code": "ECO1",
+                      "nameAr": "مدخل إلى الاقتصاد",
+                      "nameFr": "Introduction à l'économie"
+                    },
+                    {
+                      "code": "ANG1",
+                      "nameAr": "الإنجليزية 1",
+                      "nameFr": "Anglais I"
+                    },
+                    {
+                      "code": "MSO",
+                      "nameAr": "مايكروسوفت أوفيس",
+                      "nameFr": "MS Office"
+                    },
+                    {
+                      "code": "TC1",
+                      "nameAr": "تقنيات التواصل",
+                      "nameFr": "Techniques de Communication"
+                    },
+                    {
+                      "code": "SD1",
+                      "nameAr": "الإحصاء الوصفي 1",
+                      "nameFr": "Statistique descriptive I"
+                    },
+                    {
+                      "code": "MAT1",
+                      "nameAr": "الرياضيات",
+                      "nameFr": "Mathématiques"
+                    },
+                    {
+                      "code": "DR1",
+                      "nameAr": "مدخل إلى القانون",
+                      "nameFr": "Introduction au droit"
+                    }
+                  ]
+                },
+                {
+                  "id": "S2",
+                  "nameAr": "السداسي 2",
+                  "nameFr": "Semestre 2",
+                  "subjects": [
+                    {
+                      "code": "EVC",
+                      "nameAr": "تقييم الكفاءات",
+                      "nameFr": "Evaluation des compétences"
+                    },
+                    {
+                      "code": "GARH1",
+                      "nameAr": "التسيير الإداري للموارد البشرية 1",
+                      "nameFr": "Gestion Administrative des RH I"
+                    },
+                    {
+                      "code": "CF2",
+                      "nameAr": "المحاسبة المالية 2",
+                      "nameFr": "Comptabilité financière II"
+                    },
+                    {
+                      "code": "GF1",
+                      "nameAr": "التسيير المالي 1",
+                      "nameFr": "Gestion financière I"
+                    },
+                    {
+                      "code": "ANG2",
+                      "nameAr": "الإنجليزية 2",
+                      "nameFr": "Anglais II"
+                    },
+                    {
+                      "code": "TIC",
+                      "nameAr": "مهارات تكنولوجيا المعلومات والاتصال",
+                      "nameFr": "Aptitudes en TIC"
+                    },
+                    {
+                      "code": "DEVP",
+                      "nameAr": "التنمية الشخصية",
+                      "nameFr": "Développement personnel"
+                    },
+                    {
+                      "code": "RA1",
+                      "nameAr": "التحرير الإداري 1",
+                      "nameFr": "Rédaction administrative I"
+                    },
+                    {
+                      "code": "DT1",
+                      "nameAr": "قانون الشغل 1",
+                      "nameFr": "Droit de travail I"
+                    },
+                    {
+                      "code": "SD2",
+                      "nameAr": "الإحصاء الوصفي 2",
+                      "nameFr": "Statistiques descriptives II"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "INFO-GEST",
+              "nameAr": "معلوماتية التسيير",
+              "nameFr": "Informatique de gestion",
+              "semesters": [
+                {
+                  "id": "S1",
+                  "nameAr": "السداسي 1",
+                  "nameFr": "Semestre 1",
+                  "subjects": [
+                    {
+                      "code": "ECO1",
+                      "nameAr": "مدخل إلى الاقتصاد",
+                      "nameFr": "Introduction à l'économie"
+                    },
+                    {
+                      "code": "DR1",
+                      "nameAr": "مدخل إلى القانون",
+                      "nameFr": "Introduction au droit"
+                    },
+                    {
+                      "code": "CF",
+                      "nameAr": "المحاسبة المالية",
+                      "nameFr": "Comptabilité financière"
+                    },
+                    {
+                      "code": "ALG",
+                      "nameAr": "الخوارزميات",
+                      "nameFr": "Algorithmiques"
+                    },
+                    {
+                      "code": "ARCH",
+                      "nameAr": "معمارية الحواسيب",
+                      "nameFr": "Architecture des ordinateurs"
+                    },
+                    {
+                      "code": "MSO",
+                      "nameAr": "مايكروسوفت أوفيس",
+                      "nameFr": "MS office"
+                    },
+                    {
+                      "code": "ANGT",
+                      "nameAr": "الإنجليزية التقنية",
+                      "nameFr": "Anglais technique"
+                    },
+                    {
+                      "code": "MTU",
+                      "nameAr": "منهجية العمل الجامعي",
+                      "nameFr": "Méthodologie du travail universitaire"
+                    },
+                    {
+                      "code": "LOGM",
+                      "nameAr": "المنطق الرياضي",
+                      "nameFr": "Logique mathématique"
+                    },
+                    {
+                      "code": "AN1",
+                      "nameAr": "تحليل 1",
+                      "nameFr": "Analyse I"
+                    }
+                  ]
+                },
+                {
+                  "id": "S2",
+                  "nameAr": "السداسي 2",
+                  "nameFr": "Semestre 2",
+                  "subjects": [
+                    {
+                      "code": "CF2",
+                      "nameAr": "المحاسبة المالية 2",
+                      "nameFr": "Comptabilité financière II"
+                    },
+                    {
+                      "code": "PGR",
+                      "nameAr": "مبادئ التسيير",
+                      "nameFr": "Principe de gestion"
+                    },
+                    {
+                      "code": "LC",
+                      "nameAr": "لغة سي",
+                      "nameFr": "Language c"
+                    },
+                    {
+                      "code": "SE",
+                      "nameAr": "نظم التشغيل",
+                      "nameFr": "Système d'exploitation"
+                    },
+                    {
+                      "code": "WEB",
+                      "nameAr": "برمجة الويب",
+                      "nameFr": "Programation Web"
+                    },
+                    {
+                      "code": "PY",
+                      "nameAr": "بايثون",
+                      "nameFr": "Python"
+                    },
+                    {
+                      "code": "ANGT",
+                      "nameAr": "الإنجليزية التقنية",
+                      "nameFr": "Anglais technique"
+                    },
+                    {
+                      "code": "TC1",
+                      "nameAr": "تقنيات التواصل",
+                      "nameFr": "Technique de communication"
+                    },
+                    {
+                      "code": "ALIN",
+                      "nameAr": "الجبر الخطي",
+                      "nameFr": "Algèbre linéaire"
+                    },
+                    {
+                      "code": "AN2",
+                      "nameAr": "تحليل 2",
+                      "nameFr": "Analyse II"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "STAT-ECON",
+              "nameAr": "الإحصاء التطبيقي في الاقتصاد",
+              "nameFr": "Statistique appliquée à l'économie",
+              "semesters": [
+                {
+                  "id": "S1",
+                  "nameAr": "السداسي 1",
+                  "nameFr": "Semestre 1",
+                  "subjects": [
+                    {
+                      "code": "ECO1",
+                      "nameAr": "مدخل إلى الاقتصاد",
+                      "nameFr": "Introduction à l'économie"
+                    },
+                    {
+                      "code": "PGR",
+                      "nameAr": "مبادئ التسيير",
+                      "nameFr": "Principe de gestion"
+                    },
+                    {
+                      "code": "CI1",
+                      "nameAr": "الحساب التفاضلي والتكاملي 1",
+                      "nameFr": "Calcul intégral I"
+                    },
+                    {
+                      "code": "CM1",
+                      "nameAr": "الحساب المصفوفي 1",
+                      "nameFr": "Calcul matricielle I"
+                    },
+                    {
+                      "code": "PR1",
+                      "nameAr": "الاحتمالات 1",
+                      "nameFr": "Probabilité I"
+                    },
+                    {
+                      "code": "SD",
+                      "nameAr": "الإحصاء الوصفي",
+                      "nameFr": "Statistique descriptive"
+                    },
+                    {
+                      "code": "ANGT",
+                      "nameAr": "الإنجليزية التقنية",
+                      "nameFr": "Anglais technique"
+                    },
+                    {
+                      "code": "MTU",
+                      "nameAr": "منهجية العمل الجامعي",
+                      "nameFr": "Méthodologie de travail universitaire"
+                    },
+                    {
+                      "code": "DR1",
+                      "nameAr": "مدخل إلى القانون",
+                      "nameFr": "Introduction au droit"
+                    },
+                    {
+                      "code": "MSO1",
+                      "nameAr": "مايكروسوفت أوفيس 1",
+                      "nameFr": "MS office I"
+                    }
+                  ]
+                },
+                {
+                  "id": "S2",
+                  "nameAr": "السداسي 2",
+                  "nameFr": "Semestre 2",
+                  "subjects": [
+                    {
+                      "code": "MACRO",
+                      "nameAr": "اقتصاد كلي",
+                      "nameFr": "Macro économie"
+                    },
+                    {
+                      "code": "MICR",
+                      "nameAr": "الاقتصاد الجزئي",
+                      "nameFr": "Microéconomie"
+                    },
+                    {
+                      "code": "CI2",
+                      "nameAr": "الحساب التفاضلي والتكاملي 2",
+                      "nameFr": "Calcul intégral II"
+                    },
+                    {
+                      "code": "CM2",
+                      "nameAr": "الحساب المصفوفي 2",
+                      "nameFr": "Calcul matricielle II"
+                    },
+                    {
+                      "code": "PR2",
+                      "nameAr": "الاحتمالات 2",
+                      "nameFr": "Probabilité II"
+                    },
+                    {
+                      "code": "SD2",
+                      "nameAr": "الإحصاء الوصفي 2",
+                      "nameFr": "Statistique descriptive II"
+                    },
+                    {
+                      "code": "ANGT2",
+                      "nameAr": "الإنجليزية التقنية 2",
+                      "nameFr": "Anglais technique II"
+                    },
+                    {
+                      "code": "MSO2",
+                      "nameAr": "مايكروسوفت أوفيس 2",
+                      "nameFr": "MS office II"
+                    },
+                    {
+                      "code": "CG",
+                      "nameAr": "المحاسبة العامة",
+                      "nameFr": "Comptabilité générale"
+                    },
+                    {
+                      "code": "TC1",
+                      "nameAr": "تقنيات التواصل",
+                      "nameFr": "Technique de communication"
                     }
                   ]
                 }
