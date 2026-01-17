@@ -24,6 +24,88 @@ const maxAcceptedForRole = (studentRole) => {
   return 1;
 };
 
+const normalizeValue = (value) => (typeof value === 'string' ? value.trim().toLowerCase() : '');
+
+const buildSubjectSet = (subjects = []) => new Set(subjects.map((subject) => normalizeValue(subject)).filter(Boolean));
+
+const countSharedSubjects = (userSubjects, postSubjects) => {
+  if (!userSubjects.length || !postSubjects.length) return 0;
+  const userSet = buildSubjectSet(userSubjects);
+  let count = 0;
+  postSubjects.forEach((subject) => {
+    const normalized = normalizeValue(subject);
+    if (normalized && userSet.has(normalized)) {
+      count += 1;
+    }
+  });
+  return count;
+};
+
+const calculateMatchScore = ({
+  userProfile,
+  authorProfile,
+  post,
+  userSubjects,
+  postSubjects
+}) => {
+  const sameInstitute =
+    Boolean(userProfile?.facultyId && authorProfile?.facultyId) &&
+    normalizeValue(userProfile?.facultyId) === normalizeValue(authorProfile?.facultyId);
+  const sameFaculty =
+    Boolean(userProfile?.faculty && (post?.faculty || authorProfile?.faculty)) &&
+    normalizeValue(userProfile?.faculty) === normalizeValue(post?.faculty || authorProfile?.faculty);
+  const sameSpecialty =
+    Boolean(userProfile?.major || userProfile?.majorId) &&
+    Boolean(authorProfile?.major || authorProfile?.majorId) &&
+    normalizeValue(userProfile?.majorId ?? userProfile?.major) ===
+      normalizeValue(authorProfile?.majorId ?? authorProfile?.major);
+  const sameLevel =
+    Boolean(userProfile?.level && (post?.level || authorProfile?.level)) &&
+    normalizeValue(userProfile?.level) === normalizeValue(post?.level || authorProfile?.level);
+  const sharedSubjectsCount = countSharedSubjects(userSubjects, postSubjects);
+  const overlapPoints = sharedSubjectsCount
+    ? Math.round((30 * sharedSubjectsCount) / Math.min(userSubjects.length, postSubjects.length))
+    : 0;
+
+  const rawScore =
+    (sameInstitute ? 20 : 0) +
+    (sameFaculty ? 20 : 0) +
+    (sameSpecialty ? 20 : 0) +
+    (sameLevel ? 10 : 0) +
+    overlapPoints;
+
+  return Math.min(100, rawScore);
+};
+
+const resolveIntentBoost = (intent, post) => {
+  if (!intent) return 0;
+  if (intent === 'NEED_HELP') {
+    if (post.category === 'tutor_offer') return 2;
+    if (post.category === 'study_partner' && post.studentRole === 'helper') return 2;
+    return 0;
+  }
+  if (intent === 'STUDY_TOGETHER') {
+    if (post.category === 'study_partner' && post.studentRole === 'partner') return 2;
+    return 0;
+  }
+  if (intent === 'I_CAN_HELP') {
+    if (post.category === 'study_partner' && post.studentRole === 'learner') return 2;
+    return 0;
+  }
+  return 0;
+};
+
+const extractQueryArray = (value) => {
+  if (!value) return [];
+  if (Array.isArray(value)) {
+    return value.flatMap((item) => item.split(',')).map((item) => item.trim()).filter(Boolean);
+  }
+  if (typeof value === 'string') {
+    return value.split(',').map((item) => item.trim()).filter(Boolean);
+  }
+  return [];
+};
+
 const recordEvent = async ({ action, actorId, postId, meta }) => {
   try {
     await Event.create({ action, actorId, postId, meta });
@@ -40,7 +122,11 @@ export const getPosts = async (req, res) => {
       level,
       tags,
       languagePref,
+      searchText,
       search,
+      intent,
+      selectedSubjects,
+      broader,
       page = 1,
       limit = 20
     } = req.query;
@@ -61,26 +147,35 @@ export const getPosts = async (req, res) => {
       const tagArray = tags.split(',');
       query.tags = { $in: tagArray };
     }
-    if (search) {
-      query.$text = { $search: search };
+    const resolvedSearch = searchText ?? search;
+    if (resolvedSearch) {
+      query.$text = { $search: resolvedSearch };
     }
 
     const userId = req.user?._id?.toString() ?? 'anonymous';
-    const cacheKey = `posts:${userId}:${JSON.stringify(query)}:${page}:${limit}`;
+    const selectedSubjectList = extractQueryArray(selectedSubjects);
+    const broaderResults = broader === 'true' || broader === true;
+    const cacheKey = `posts:${userId}:${JSON.stringify({
+      query,
+      intent,
+      selectedSubjects: selectedSubjectList,
+      broaderResults,
+      page,
+      limit
+    })}`;
     const cached = await redis.get(cacheKey);
     if (cached) {
       return res.json(JSON.parse(cached));
     }
 
-    const skip = (parseInt(page) - 1) * parseInt(limit);
-
     const posts = await Post.find(query)
       .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(parseInt(limit))
       .populate('authorId', 'username');
 
-    const total = await Post.countDocuments(query);
+    const userProfile = req.user?._id ? await Profile.findOne({ userId: req.user._id }) : null;
+    const fallbackSubjects = selectedSubjectList.length
+      ? selectedSubjectList
+      : userProfile?.subjectCodes ?? [];
 
     const postsWithProfiles = await Promise.all(
       posts.map(async (post) => {
@@ -106,8 +201,35 @@ export const getPosts = async (req, res) => {
           }
         }
 
+        const postSubjects = post.subjectCodes?.length
+          ? post.subjectCodes
+          : profile?.subjectCodes ?? [];
+        const sharedSubjectsCount = countSharedSubjects(fallbackSubjects, postSubjects);
+        const hasSharedSubject = sharedSubjectsCount > 0;
+        const sameFaculty =
+          Boolean(userProfile?.faculty && (post.faculty || profile?.faculty)) &&
+          normalizeValue(userProfile?.faculty) === normalizeValue(post.faculty || profile?.faculty);
+        const hasFacultyContext = Boolean(userProfile?.faculty);
+        const shouldHideForScope = !broaderResults && hasFacultyContext && !sameFaculty && !hasSharedSubject;
+        const shouldHideForSubjects =
+          !broaderResults && selectedSubjectList.length > 0 && !hasSharedSubject;
+        if (shouldHideForScope || shouldHideForSubjects) {
+          return null;
+        }
+
+        const matchScore = calculateMatchScore({
+          userProfile,
+          authorProfile: profile,
+          post,
+          userSubjects: fallbackSubjects,
+          postSubjects
+        });
+        const intentBoost = resolveIntentBoost(intent, post);
+
         return {
           ...post.toObject(),
+          matchScore,
+          intentBoost,
           pendingJoinRequestsCount,
           unreadPostMessagesCount,
           author: {
@@ -118,13 +240,26 @@ export const getPosts = async (req, res) => {
       })
     );
 
+    const visiblePosts = postsWithProfiles.filter(Boolean);
+    visiblePosts.sort((a, b) => {
+      if (b.matchScore !== a.matchScore) return b.matchScore - a.matchScore;
+      if (b.intentBoost !== a.intentBoost) return b.intentBoost - a.intentBoost;
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const pagedPosts = visiblePosts.slice(skip, skip + parseInt(limit)).map((post) => {
+      const { intentBoost, ...rest } = post;
+      return rest;
+    });
+
     const result = {
-      posts: postsWithProfiles,
+      posts: pagedPosts,
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
-        total,
-        pages: Math.ceil(total / parseInt(limit))
+        total: visiblePosts.length,
+        pages: Math.ceil(visiblePosts.length / parseInt(limit))
       }
     };
 
