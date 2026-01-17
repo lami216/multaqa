@@ -351,6 +351,11 @@ const PostDetailsPage: React.FC = () => {
         <div className="space-y-2">
           <div className="flex flex-wrap items-center gap-2">
             <span className="badge-soft inline-flex">{post?.category}</span>
+            {post.studentRole ? (
+              <span className="badge-soft bg-slate-100 text-slate-700">
+                Rôle {roleLabels[post.studentRole] ?? post.studentRole}
+              </span>
+            ) : null}
             {typeof post.matchingPercent === 'number' ? (
               <span className="badge-soft bg-slate-100 text-slate-700">
                 Match {post.matchingPercent}%
@@ -388,7 +393,7 @@ const PostDetailsPage: React.FC = () => {
           )}
         </div>
         <div className="text-right text-sm text-slate-500 space-y-2">
-          <div className="flex flex-wrap items-center justify-end gap-2">
+          <div className="flex items-center justify-end gap-3">
             <Avatar className="h-9 w-9 shrink-0">
               <AvatarImage src={post.author?.avatarUrl} alt={post.author?.username ?? 'Auteur'} />
               <AvatarFallback className="bg-emerald-50 text-emerald-700 text-sm font-semibold">
