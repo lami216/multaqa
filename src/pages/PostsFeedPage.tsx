@@ -15,6 +15,11 @@ const intentOptions: Array<{ value: IntentValue; title: string; subtitle: string
 ];
 
 const intentStorageKey = 'feedIntent';
+const roleLabels: Record<string, string> = {
+  helper: 'Helper',
+  partner: 'Partner',
+  learner: 'Learner',
+};
 
 const PostsFeedPage: React.FC = () => {
   const [level, setLevel] = useState('');
@@ -106,8 +111,23 @@ const PostsFeedPage: React.FC = () => {
   };
 
   const filtered = useMemo(() => {
-    return (posts ?? []).filter((post) => !hiddenMatchedIds.includes(post._id));
-  }, [posts, hiddenMatchedIds]);
+    const baseSubjects = (selectedSubjects.length ? selectedSubjects : profile?.subjectCodes) ?? [];
+    const normalizedBase = new Set(baseSubjects.map((subject) => subject.toLowerCase()));
+    const resolveMatchingPercent = (post: PostResponse) => {
+      if (typeof post.matchingPercent === 'number') return post.matchingPercent;
+      const postSubjects = post.subjectCodes ?? [];
+      if (!normalizedBase.size || postSubjects.length === 0) return 0;
+      const commonCount = postSubjects.reduce((count, subject) => {
+        return normalizedBase.has(subject.toLowerCase()) ? count + 1 : count;
+      }, 0);
+      return Math.round((commonCount / normalizedBase.size) * 100);
+    };
+
+    return (posts ?? [])
+      .filter((post) => !hiddenMatchedIds.includes(post._id))
+      .map((post) => ({ post, matchingPercent: resolveMatchingPercent(post) }))
+      .filter(({ matchingPercent }) => matchingPercent > 0);
+  }, [posts, hiddenMatchedIds, profile?.subjectCodes, selectedSubjects]);
 
   if (authLoading) {
     return <div className="card-surface p-6 text-sm text-slate-600">Chargement...</div>;
@@ -248,8 +268,9 @@ const PostsFeedPage: React.FC = () => {
             Aucun résultat pour ces filtres. Publiez une annonce ou ajustez vos critères.
           </div>
         ) : (
-          filtered.map((post) => {
+          filtered.map(({ post, matchingPercent }) => {
             const isAuthor = resolveAuthorId(post) === currentUserId;
+            const roleLabel = post.studentRole ? roleLabels[post.studentRole] ?? post.studentRole : 'Non précisé';
             return (
               <div key={post._id} className="card-surface p-4 sm:p-5 flex flex-col gap-3 relative">
                 {isAuthor && post.pendingJoinRequestsCount ? (
@@ -257,7 +278,7 @@ const PostsFeedPage: React.FC = () => {
                     {post.pendingJoinRequestsCount}
                   </span>
                 ) : null}
-                <div className="flex items-start justify-between gap-3">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                   <div className="space-y-1">
                     <div className="flex flex-wrap gap-2 items-center text-xs font-semibold text-emerald-700">
                       <span className="badge-soft">{post.category}</span>
@@ -273,10 +294,8 @@ const PostsFeedPage: React.FC = () => {
                           {(post.subjectCodes ?? []).map((subject) => (
                             <span key={subject} className="badge-soft bg-emerald-50 text-emerald-700">{subject}</span>
                           ))}
+                          <span className="badge-soft bg-slate-100 text-slate-700">Rôle {roleLabel}</span>
                         </div>
-                        <p className="text-sm text-slate-600">
-                          Rôle: {post.studentRole ?? 'Non précisé'}
-                        </p>
                         {post.description ? (
                           <p className="text-sm text-slate-700 leading-relaxed">{post.description}</p>
                         ) : null}
@@ -285,24 +304,27 @@ const PostsFeedPage: React.FC = () => {
                       <>
                         <p className="text-sm text-slate-600">{post.faculty ?? 'Faculté non renseignée'}</p>
                         <p className="text-sm text-slate-700 leading-relaxed">{post.description}</p>
+                        {post.studentRole ? (
+                          <p className="text-sm font-semibold text-slate-700">Rôle {roleLabel}</p>
+                        ) : null}
                       </>
                     )}
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-slate-500">
-                    <Avatar className="h-9 w-9">
+                  <div className="flex items-start gap-3 text-sm text-slate-500 sm:min-w-[200px] sm:justify-end">
+                    <Avatar className="h-10 w-10 shrink-0">
                       <AvatarImage src={post.author?.avatarUrl} alt={post.author?.username ?? 'Auteur'} />
                       <AvatarFallback className="bg-emerald-50 text-emerald-700 text-sm font-semibold">
                         {(post.author?.username ?? 'A')[0]?.toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
-                    <div className="text-right">
-                      <p className="font-semibold text-slate-800">{post.author?.username ?? 'Auteur'}</p>
-                      <p>{new Date(post.createdAt).toLocaleDateString()}</p>
-                      {typeof post.matchingPercent === 'number' && post.matchingPercent !== 0 ? (
-                        <span className="mt-2 inline-flex items-center justify-center rounded-full bg-emerald-50 px-3 py-1 text-lg font-bold text-emerald-700 shadow-sm">
-                          Match <span className="ms-1 text-2xl font-extrabold leading-none">{post.matchingPercent}%</span>
-                        </span>
-                      ) : null}
+                    <div className="space-y-2">
+                      <div>
+                        <p className="font-semibold text-slate-800">{post.author?.username ?? 'Auteur'}</p>
+                        <p>{new Date(post.createdAt).toLocaleDateString()}</p>
+                      </div>
+                      <span className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-3 py-1 text-base font-semibold text-white shadow-sm">
+                        Match <span className="text-lg font-bold">{matchingPercent}%</span>
+                      </span>
                     </div>
                   </div>
                 </div>
