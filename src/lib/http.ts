@@ -121,6 +121,7 @@ export interface PostResponse extends PostPayload {
   pendingJoinRequestsCount?: number;
   unreadPostMessagesCount?: number;
   myJoinRequestStatus?: 'none' | 'pending' | 'accepted' | 'rejected';
+  matchScore?: number;
   createdAt: string;
   updatedAt: string;
   language?: string;

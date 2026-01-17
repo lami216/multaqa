@@ -76,6 +76,11 @@ const postSchema = new mongoose.Schema({
 postSchema.index({ title: 'text', description: 'text', tags: 'text' });
 postSchema.index({ authorId: 1 });
 postSchema.index({ category: 1 });
+postSchema.index({ faculty: 1 });
+postSchema.index({ level: 1 });
+postSchema.index({ studentRole: 1 });
+postSchema.index({ subjectCodes: 1 });
+postSchema.index({ tags: 1 });
 postSchema.index({ status: 1 });
 postSchema.index({ expiresAt: 1 });
 postSchema.index({ createdAt: -1 });
