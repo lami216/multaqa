@@ -388,16 +388,16 @@ const PostDetailsPage: React.FC = () => {
           )}
         </div>
         <div className="text-right text-sm text-slate-500 space-y-2">
-          <div className="flex items-center justify-end gap-2">
-            <Avatar className="h-10 w-10">
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <Avatar className="h-9 w-9 shrink-0">
               <AvatarImage src={post.author?.avatarUrl} alt={post.author?.username ?? 'Auteur'} />
               <AvatarFallback className="bg-emerald-50 text-emerald-700 text-sm font-semibold">
                 {(post.author?.username ?? 'A')[0]?.toUpperCase()}
               </AvatarFallback>
             </Avatar>
-            <div>
+            <div className="min-w-0">
               <p className="font-semibold text-slate-800">{post?.author?.username ?? 'Auteur'}</p>
-              <p>ID annonce: {id}</p>
+              <p className="text-xs text-slate-500">ID annonce: {id}</p>
             </div>
           </div>
           {post?.status && <p className="badge-soft inline-flex">{post.status}</p>}

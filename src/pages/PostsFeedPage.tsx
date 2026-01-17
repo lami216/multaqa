@@ -261,11 +261,6 @@ const PostsFeedPage: React.FC = () => {
                   <div className="space-y-1">
                     <div className="flex flex-wrap gap-2 items-center text-xs font-semibold text-emerald-700">
                       <span className="badge-soft">{post.category}</span>
-                      {typeof post.matchingPercent === 'number' ? (
-                        <span className="badge-soft bg-slate-100 text-slate-700">
-                          Match {post.matchingPercent}%
-                        </span>
-                      ) : null}
                       {post.level ? <span className="badge-soft bg-blue-50 text-blue-700">{post.level}</span> : null}
                       {post.languagePref ? <span className="badge-soft bg-emerald-50 text-emerald-700">{post.languagePref}</span> : null}
                     </div>
@@ -303,6 +298,11 @@ const PostsFeedPage: React.FC = () => {
                     <div className="text-right">
                       <p className="font-semibold text-slate-800">{post.author?.username ?? 'Auteur'}</p>
                       <p>{new Date(post.createdAt).toLocaleDateString()}</p>
+                      {typeof post.matchingPercent === 'number' && post.matchingPercent !== 0 ? (
+                        <span className="mt-2 inline-flex items-center justify-center rounded-full bg-emerald-50 px-3 py-1 text-lg font-bold text-emerald-700 shadow-sm">
+                          Match <span className="ms-1 text-2xl font-extrabold leading-none">{post.matchingPercent}%</span>
+                        </span>
+                      ) : null}
                     </div>
                   </div>
                 </div>
