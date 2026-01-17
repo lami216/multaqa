@@ -28,6 +28,7 @@ const PostsFeedPage: React.FC = () => {
   const [posts, setPosts] = useState<PostResponse[]>([]);
   const [hiddenMatchedIds, setHiddenMatchedIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filtersReady, setFiltersReady] = useState(false);
   const { currentUserId, profile, user, loading: authLoading } = useAuth();
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
   const [broaderResults, setBroaderResults] = useState(false);
@@ -61,15 +62,22 @@ const PostsFeedPage: React.FC = () => {
 
   useEffect(() => {
     if (didSetDefaultsRef.current) return;
-    if (!subjectOptions.length) return;
+    if (!subjectOptions.length) {
+      didSetDefaultsRef.current = true;
+      setFiltersReady(true);
+      return;
+    }
     if (selectedSubjects.length === 0) {
       setSelectedSubjects(subjectOptions.slice(0, 2));
+      return;
     }
     didSetDefaultsRef.current = true;
-  }, [subjectOptions]);
+    setFiltersReady(true);
+  }, [subjectOptions, selectedSubjects.length]);
 
   useEffect(() => {
     if (authLoading) return;
+    if (!filtersReady) return;
     if (!user) {
       setPosts([]);
       setLoading(false);
@@ -96,7 +104,7 @@ const PostsFeedPage: React.FC = () => {
     };
 
     void load();
-  }, [level, search, category, intent, selectedSubjects, broaderResults, user, authLoading]);
+  }, [level, search, category, intent, selectedSubjects, broaderResults, user, authLoading, filtersReady]);
 
   const toggleSubject = (subject: string) => {
     setSelectedSubjects((prev) => {
@@ -111,23 +119,8 @@ const PostsFeedPage: React.FC = () => {
   };
 
   const filtered = useMemo(() => {
-    const baseSubjects = (selectedSubjects.length ? selectedSubjects : profile?.subjectCodes) ?? [];
-    const normalizedBase = new Set(baseSubjects.map((subject) => subject.toLowerCase()));
-    const resolveMatchingPercent = (post: PostResponse) => {
-      if (typeof post.matchingPercent === 'number') return post.matchingPercent;
-      const postSubjects = post.subjectCodes ?? [];
-      if (!normalizedBase.size || postSubjects.length === 0) return 0;
-      const commonCount = postSubjects.reduce((count, subject) => {
-        return normalizedBase.has(subject.toLowerCase()) ? count + 1 : count;
-      }, 0);
-      return Math.round((commonCount / normalizedBase.size) * 100);
-    };
-
-    return (posts ?? [])
-      .filter((post) => !hiddenMatchedIds.includes(post._id))
-      .map((post) => ({ post, matchingPercent: resolveMatchingPercent(post) }))
-      .filter(({ matchingPercent }) => matchingPercent > 0);
-  }, [posts, hiddenMatchedIds, profile?.subjectCodes, selectedSubjects]);
+    return (posts ?? []).filter((post) => !hiddenMatchedIds.includes(post._id));
+  }, [posts, hiddenMatchedIds]);
 
   if (authLoading) {
     return <div className="card-surface p-6 text-sm text-slate-600">Chargement...</div>;
@@ -268,7 +261,7 @@ const PostsFeedPage: React.FC = () => {
             Aucun résultat pour ces filtres. Publiez une annonce ou ajustez vos critères.
           </div>
         ) : (
-          filtered.map(({ post, matchingPercent }) => {
+          filtered.map((post) => {
             const isAuthor = resolveAuthorId(post) === currentUserId;
             const roleLabel = post.studentRole ? roleLabels[post.studentRole] ?? post.studentRole : 'Non précisé';
             return (
@@ -322,9 +315,11 @@ const PostsFeedPage: React.FC = () => {
                         <p className="font-semibold text-slate-800">{post.author?.username ?? 'Auteur'}</p>
                         <p>{new Date(post.createdAt).toLocaleDateString()}</p>
                       </div>
-                      <span className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-3 py-1 text-base font-semibold text-white shadow-sm">
-                        Match <span className="text-lg font-bold">{matchingPercent}%</span>
-                      </span>
+                      {typeof post.matchingPercent === 'number' ? (
+                        <span className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-3 py-1 text-base font-semibold text-white shadow-sm">
+                          Match <span className="text-lg font-bold">{post.matchingPercent}%</span>
+                        </span>
+                      ) : null}
                     </div>
                   </div>
                 </div>
