@@ -1,23 +1,21 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Filter } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { fetchPosts, type PostResponse } from '../lib/http';
+import { fetchPosts, type PostPayload, type PostResponse } from '../lib/http';
 import { useAuth } from '../context/AuthContext';
 import PostCard from '../components/PostCard';
+import { PRIORITY_ROLE_OPTIONS } from '../lib/priorities';
 
-type IntentValue = 'NEED_HELP' | 'STUDY_TOGETHER' | 'I_CAN_HELP';
-
-const intentOptions: Array<{ value: IntentValue; title: string; subtitle: string }> = [
-  { value: 'NEED_HELP', title: "J’ai besoin d’aide", subtitle: 'أحتاج مساعدة' },
-  { value: 'STUDY_TOGETHER', title: 'Réviser ensemble', subtitle: 'نراجع معًا' },
-  { value: 'I_CAN_HELP', title: 'Je peux aider', subtitle: 'أستطيع المساعدة' }
-];
-
-const intentStorageKey = 'feedIntent';
+const toRole = (post: PostResponse): PostPayload['postRole'] | undefined => {
+  if (post.postRole) return post.postRole;
+  const legacyRole = (post as PostResponse & { studentRole?: string }).studentRole;
+  if (legacyRole === 'helper') return 'can_help';
+  if (legacyRole === 'learner') return 'need_help';
+  if (legacyRole === 'partner') return 'td';
+  return undefined;
+};
 
 const PostsFeedPage: React.FC = () => {
-  const [level, setLevel] = useState('');
-  const [search, setSearch] = useState('');
   const [category, setCategory] = useState('');
   const [posts, setPosts] = useState<PostResponse[]>([]);
   const [hiddenMatchedIds, setHiddenMatchedIds] = useState<string[]>([]);
@@ -25,21 +23,13 @@ const PostsFeedPage: React.FC = () => {
   const [filtersReady, setFiltersReady] = useState(false);
   const { currentUserId, profile, user, loading: authLoading } = useAuth();
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
+  const [selectedRoles, setSelectedRoles] = useState<PostPayload['postRole'][]>([]);
+  const [subjectsLimitWarning, setSubjectsLimitWarning] = useState('');
+  const [subjectsLimitHighlight, setSubjectsLimitHighlight] = useState(false);
+  const [rolesLimitWarning, setRolesLimitWarning] = useState('');
   const [broaderResults, setBroaderResults] = useState(false);
-  const [intent, setIntent] = useState<IntentValue>(() => {
-    if (typeof window === 'undefined') return 'STUDY_TOGETHER';
-    const stored = window.localStorage.getItem(intentStorageKey);
-    if (stored === 'NEED_HELP' || stored === 'STUDY_TOGETHER' || stored === 'I_CAN_HELP') {
-      return stored;
-    }
-    return 'STUDY_TOGETHER';
-  });
   const didSetDefaultsRef = useRef(false);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    window.localStorage.setItem(intentStorageKey, intent);
-  }, [intent]);
+  const subjectsLimitTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     try {
@@ -81,10 +71,7 @@ const PostsFeedPage: React.FC = () => {
       setLoading(true);
       try {
         const params: Record<string, string> = {};
-        if (level) params.level = level;
-        if (search) params.searchText = search;
         if (category) params.category = category;
-        if (intent) params.intent = intent;
         if (selectedSubjects.length) params.selectedSubjects = selectedSubjects.join(',');
         params.broader = broaderResults ? 'true' : 'false';
         const { data } = await fetchPosts(params);
@@ -98,23 +85,70 @@ const PostsFeedPage: React.FC = () => {
     };
 
     void load();
-  }, [level, search, category, intent, selectedSubjects, broaderResults, user, authLoading, filtersReady]);
+  }, [category, selectedSubjects, broaderResults, user, authLoading, filtersReady]);
+
+  useEffect(() => () => {
+    if (subjectsLimitTimeoutRef.current) {
+      clearTimeout(subjectsLimitTimeoutRef.current);
+    }
+  }, []);
 
   const toggleSubject = (subject: string) => {
+    setSubjectsLimitWarning('');
     setSelectedSubjects((prev) => {
       if (prev.includes(subject)) {
         return prev.filter((item) => item !== subject);
       }
       if (prev.length >= 2) {
+        setSubjectsLimitWarning('Vous pouvez sélectionner deux matières maximum.');
+        setSubjectsLimitHighlight(false);
+        if (subjectsLimitTimeoutRef.current) {
+          clearTimeout(subjectsLimitTimeoutRef.current);
+        }
+        requestAnimationFrame(() => {
+          setSubjectsLimitHighlight(true);
+          subjectsLimitTimeoutRef.current = setTimeout(() => setSubjectsLimitHighlight(false), 650);
+        });
         return prev;
       }
       return [...prev, subject];
     });
   };
 
+  const toggleRole = (role: PostPayload['postRole']) => {
+    if (!role) return;
+    setRolesLimitWarning('');
+    setSelectedRoles((prev) => {
+      if (prev.includes(role)) {
+        return prev.filter((item) => item !== role);
+      }
+
+      if (prev.length >= 2) {
+        return prev;
+      }
+
+      const isConflict =
+        (role === 'need_help' && prev.includes('can_help')) ||
+        (role === 'can_help' && prev.includes('need_help'));
+
+      if (isConflict) {
+        setRolesLimitWarning('لا يمكن الجمع بين محتاج مساعدة وأقدر أساعد');
+        return prev;
+      }
+
+      return [...prev, role];
+    });
+  };
+
   const filtered = useMemo(() => {
-    return (posts ?? []).filter((post) => !hiddenMatchedIds.includes(post._id));
-  }, [posts, hiddenMatchedIds]);
+    return (posts ?? [])
+      .filter((post) => !hiddenMatchedIds.includes(post._id))
+      .filter((post) => {
+        if (!selectedRoles.length) return true;
+        const postRole = toRole(post);
+        return Boolean(postRole && selectedRoles.includes(postRole));
+      });
+  }, [posts, hiddenMatchedIds, selectedRoles]);
 
   if (authLoading) {
     return <div className="card-surface p-6 text-sm text-slate-600">Chargement...</div>;
@@ -148,23 +182,24 @@ const PostsFeedPage: React.FC = () => {
         <div className="space-y-4">
           <div className="space-y-2">
             <div>
-              <p className="text-sm font-semibold text-slate-700">Intention de recherche • نية البحث</p>
-              <p className="helper-text">Vous pouvez changer votre intention à tout moment.</p>
+              <p className="text-sm font-semibold text-slate-700">الدور</p>
+              <p className="helper-text">اختر حتى دورين.</p>
             </div>
-            <div className="grid sm:grid-cols-3 gap-2">
-              {intentOptions.map((option) => (
+            {rolesLimitWarning && <p className="text-xs text-amber-700">{rolesLimitWarning}</p>}
+            <div className="grid sm:grid-cols-2 gap-2">
+              {PRIORITY_ROLE_OPTIONS.map((role) => (
                 <button
-                  key={option.value}
+                  key={role.key}
                   type="button"
-                  onClick={() => setIntent(option.value)}
+                  onClick={() => toggleRole(role.key)}
                   className={`card-surface text-left p-3 border transition ${
-                    intent === option.value
+                    selectedRoles.includes(role.key)
                       ? 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-200 shadow-sm'
                       : 'border-slate-200'
                   }`}
                 >
-                  <p className="text-sm font-semibold text-slate-800">{option.title}</p>
-                  <p className="text-xs text-slate-500">{option.subtitle}</p>
+                  <p className="text-sm font-semibold text-slate-800">{role.label}</p>
+                  <p className="text-xs text-slate-500">{role.helper}</p>
                 </button>
               ))}
             </div>
@@ -172,20 +207,14 @@ const PostsFeedPage: React.FC = () => {
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
             <div>
-              <label className="text-sm font-semibold text-slate-700">Niveau</label>
-              <select value={level} onChange={(e) => setLevel(e.target.value)} className="w-full mt-1">
-                <option value="">Tous</option>
-                <option value="L1">Licence 1</option>
-                <option value="L2">Licence 2</option>
-                <option value="L3">Licence 3</option>
-                <option value="M1">Master 1</option>
-                <option value="M2">Master 2</option>
-              </select>
-            </div>
-            <div>
               <label className="text-sm font-semibold text-slate-700">Vos matières (max 2)</label>
               <p className="helper-text">Sélectionnez des matières présentes dans votre profil.</p>
-              <div className="flex flex-wrap gap-2 mt-2">
+              {subjectsLimitWarning && (
+                <p className="text-xs text-red-700 bg-red-50 border border-red-100 rounded-md px-2 py-1 mt-2">{subjectsLimitWarning}</p>
+              )}
+              <div
+                className={`flex flex-wrap gap-2 mt-2 rounded-lg border p-2 transition ${subjectsLimitHighlight ? 'border-red-300 bg-red-50/70' : 'border-transparent'}`}
+              >
                 {subjectOptions.length === 0 ? (
                   <span className="text-xs text-rose-600">
                     Ajoutez des matières dans votre profil pour affiner les résultats.
@@ -196,10 +225,10 @@ const PostsFeedPage: React.FC = () => {
                       key={subject}
                       type="button"
                       onClick={() => toggleSubject(subject)}
-                      className={`badge-soft ${
+                      className={`rounded-full border px-3 py-1 text-sm transition ${
                         selectedSubjects.includes(subject)
-                          ? 'bg-emerald-100 text-emerald-700'
-                          : 'bg-white border border-slate-200 text-slate-600'
+                          ? 'border-emerald-400 bg-emerald-50 text-emerald-700'
+                          : 'border-slate-200 bg-white text-slate-600'
                       }`}
                     >
                       {subject}
@@ -207,15 +236,6 @@ const PostsFeedPage: React.FC = () => {
                   ))
                 )}
               </div>
-            </div>
-            <div>
-              <label className="text-sm font-semibold text-slate-700">Recherche</label>
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Titre ou description"
-                className="w-full mt-1"
-              />
             </div>
             <div>
               <label className="text-sm font-semibold text-slate-700">Catégorie</label>
