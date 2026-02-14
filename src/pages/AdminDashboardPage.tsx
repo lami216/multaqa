@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Activity, Shield, Users } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { fetchAdminStats, type AdminEventItem, type AdminStatsResponse } from '../lib/http';
 
 const AdminDashboardPage: React.FC = () => {
@@ -46,6 +47,7 @@ const AdminDashboardPage: React.FC = () => {
           <h1 className="section-title">Console admin</h1>
           <p className="helper-text">Vue d'ensemble sur les annonces, utilisateurs et évènements récents.</p>
         </div>
+        <Link to="/admin/academic-settings" className="secondary-btn ms-auto">Academic Settings</Link>
       </div>
 
       {loading ? (

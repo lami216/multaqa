@@ -8,13 +8,15 @@ import {
   getMajorsByFacultyAndLevel,
   getSemestersByMajorAndLevel,
   getSubjectsByMajorAndSemester,
+  getTermSemesterForLevel,
+  isMajorEnabled,
+  isFacultyEnabled,
   type CatalogFaculty,
   type CatalogLevel,
   type CatalogMajor,
-  type CatalogSemester,
   type CatalogSubject
 } from '../lib/catalog';
-import { http, type Profile, type RemainingSubjectItem } from '../lib/http';
+import { fetchAcademicSettings, http, type AcademicSettingsResponse, type Profile, type RemainingSubjectItem } from '../lib/http';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { useAuth } from '../context/AuthContext';
 import { processImageFile } from '../lib/imageProcessing';
@@ -34,8 +36,12 @@ const EditProfilePage: React.FC = () => {
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [faculties, setFaculties] = useState<CatalogFaculty[]>([]);
   const [majors, setMajors] = useState<CatalogMajor[]>([]);
-  const [semesters, setSemesters] = useState<CatalogSemester[]>([]);
   const [subjects, setSubjects] = useState<CatalogSubject[]>([]);
+  const [academicSettings, setAcademicSettings] = useState<AcademicSettingsResponse>({
+    academicTermType: 'odd',
+    catalogVisibility: { faculties: {}, majors: {} },
+    preregCounts: {}
+  });
   const [previousLevelMajors, setPreviousLevelMajors] = useState<CatalogMajor[]>([]);
   const [remainingSubjectsCatalog, setRemainingSubjectsCatalog] = useState<CatalogSubject[]>([]);
   const [hasRemainingFromPrevious, setHasRemainingFromPrevious] = useState<boolean | null>(null);
@@ -69,7 +75,7 @@ const EditProfilePage: React.FC = () => {
   };
 
   const getAvailableLevels = (facultyId?: string) =>
-    (facultyId ? getLevelsByFaculty(facultyId) : []).map((level: CatalogLevel) => ({
+    (facultyId ? getLevelsByFaculty(facultyId, academicSettings.catalogVisibility) : []).map((level: CatalogLevel) => ({
       value: level.id,
       label: level.nameFr
     }));
@@ -87,24 +93,26 @@ const EditProfilePage: React.FC = () => {
   };
 
   const normalizeProfileWithCatalog = (rawProfile?: Profile): Profile => {
-    const catalogFaculties = getFaculties();
+    const catalogFaculties = getFaculties().filter((faculty) => isFacultyEnabled(faculty.id, settingsData.catalogVisibility));
     const facultyMatch = matchByIdOrName(catalogFaculties, rawProfile?.facultyId ?? rawProfile?.faculty);
 
-    const levels = facultyMatch ? getLevelsByFaculty(facultyMatch.id) : [];
+    const levels = facultyMatch ? getLevelsByFaculty(facultyMatch.id, academicSettings.catalogVisibility) : [];
     const levelMatch = matchByIdOrName(levels, rawProfile?.level);
 
-    const majors = facultyMatch && levelMatch ? getMajorsByFacultyAndLevel(facultyMatch.id, levelMatch.id) : [];
+    const majors = facultyMatch && levelMatch ? getMajorsByFacultyAndLevel(facultyMatch.id, levelMatch.id, academicSettings.catalogVisibility) : [];
     const majorMatch = matchByIdOrName(majors, rawProfile?.majorId ?? rawProfile?.major);
-
-    const semesters =
-      facultyMatch && levelMatch && majorMatch
-        ? getSemestersByMajorAndLevel(facultyMatch.id, levelMatch.id, majorMatch.id)
-        : [];
-    const semesterMatch = matchByIdOrName(semesters, rawProfile?.semesterId ?? rawProfile?.semester);
+    const mappedSemesterId = levelMatch ? getTermSemesterForLevel(levelMatch.id, academicSettings.academicTermType) : undefined;
 
     const catalogSubjects =
-      facultyMatch && levelMatch && majorMatch && semesterMatch
-        ? getSubjectsByMajorAndSemester(facultyMatch.id, levelMatch.id, majorMatch.id, semesterMatch.id)
+      facultyMatch && levelMatch && majorMatch && mappedSemesterId
+        ? getSubjectsByMajorAndSemester(
+            facultyMatch.id,
+            levelMatch.id,
+            majorMatch.id,
+            mappedSemesterId,
+            academicSettings.academicTermType,
+            academicSettings.catalogVisibility
+          )
         : [];
 
     const subjectCandidates = [...(rawProfile?.subjectCodes ?? []), ...(rawProfile?.subjects ?? [])].filter(Boolean);
@@ -130,7 +138,7 @@ const EditProfilePage: React.FC = () => {
       facultyId: facultyMatch?.id,
       level: levelMatch?.id,
       majorId: majorMatch?.id,
-      semesterId: semesterMatch?.id,
+      semesterId: mappedSemesterId,
       subjectCodes: resolvedSubjectCodes.length ? resolvedSubjectCodes : catalogSubjects.map((s) => s.code),
       subjects: resolvedSubjectCodes.length ? resolvedSubjectCodes : catalogSubjects.map((s) => s.code),
       subjectsSettings: syncSubjectSettings(
@@ -170,7 +178,11 @@ const EditProfilePage: React.FC = () => {
         setFacultiesError('');
         const meStartedAt = Date.now();
         console.info('[profile] fetching /auth/me', { startedAt: new Date(meStartedAt).toISOString() });
-        const { data: meData } = await http.get<{ user: unknown; profile: Profile }>('/auth/me');
+        const [{ data: meData }, { data: settingsData }] = await Promise.all([
+          http.get<{ user: unknown; profile: Profile }>('/auth/me'),
+          fetchAcademicSettings()
+        ]);
+        setAcademicSettings(settingsData);
         console.info('[profile] fetched /auth/me', { durationMs: Date.now() - meStartedAt });
 
         const nextProfile = {
@@ -183,7 +195,7 @@ const EditProfilePage: React.FC = () => {
           prioritiesOrder: normalizePrioritiesOrder(meData.profile?.prioritiesOrder)
         } as Profile;
 
-        const catalogFaculties = getFaculties();
+        const catalogFaculties = getFaculties().filter((faculty) => isFacultyEnabled(faculty.id, settingsData.catalogVisibility));
         const normalizedProfile = normalizeProfileWithCatalog(nextProfile);
 
         setFaculties(catalogFaculties);
@@ -200,6 +212,7 @@ const EditProfilePage: React.FC = () => {
         setAvatarPreview(cacheBustedUrl(meData.profile?.avatarUrl, meData.profile?.updatedAt));
       } catch (err) {
         console.error('Failed to load profile or faculties', err);
+        setAcademicSettings({ academicTermType: 'odd', catalogVisibility: { faculties: {}, majors: {} }, preregCounts: {} });
         setFaculties(getFaculties());
         setFacultiesError('Échec du chargement de votre profil. Le catalogue local a été chargé.');
         setError("Impossible de charger votre profil. Veuillez réessayer.");
@@ -249,12 +262,11 @@ const EditProfilePage: React.FC = () => {
       }));
       setSubjects([]);
       setMajors([]);
-      setSemesters([]);
       setError('La faculté sélectionnée n’est plus disponible dans le catalogue. Merci de choisir une autre faculté.');
       return;
     }
 
-    const availableLevels = getAvailableLevels(form.facultyId);
+    const availableLevels = getLevelsByFaculty(form.facultyId, academicSettings.catalogVisibility).map((level: CatalogLevel) => ({ value: level.id, label: level.nameFr }));
     const levelStillValid = !form.level || availableLevels.some((option) => option.value === form.level);
     if (!levelStillValid) {
       setForm((prev) => ({
@@ -270,7 +282,6 @@ const EditProfilePage: React.FC = () => {
       }));
       setSubjects([]);
       setMajors([]);
-      setSemesters([]);
       setError('Le niveau enregistré n’est plus disponible pour cette faculté. Merci de le sélectionner à nouveau.');
     }
   }, [faculties, form.facultyId, form.level]);
@@ -284,19 +295,17 @@ const EditProfilePage: React.FC = () => {
   useEffect(() => {
     if (!form.facultyId || !form.level) {
       setMajors([]);
-      setSemesters([]);
       setSubjects([]);
       setForm((prev) => ({ ...prev, majorId: undefined, semesterId: undefined, subjectCodes: [], subjects: [], courses: [] }));
       return;
     }
 
     setMajorsError('');
-    const availableMajors = getMajorsByFacultyAndLevel(form.facultyId, form.level);
+    const availableMajors = getMajorsByFacultyAndLevel(form.facultyId, form.level, academicSettings.catalogVisibility);
     setMajors(availableMajors);
     const hasMajor = availableMajors.some((major) => major.id === form.majorId);
     if (!hasMajor) {
       setForm((prev) => ({ ...prev, majorId: undefined, semesterId: undefined, subjectCodes: [], subjects: [], courses: [] }));
-      setSemesters([]);
       setSubjects([]);
     }
     if (!availableMajors.length) {
@@ -305,32 +314,21 @@ const EditProfilePage: React.FC = () => {
   }, [form.facultyId, form.level, form.majorId]);
 
   useEffect(() => {
-    if (!form.majorId || !form.level || !form.facultyId) {
-      setSemesters([]);
-      setSubjects([]);
-      setForm((prev) => ({ ...prev, semesterId: undefined, subjectCodes: [], subjects: [], courses: [] }));
-      return;
-    }
-
-    const availableSemesters = getSemestersByMajorAndLevel(form.facultyId, form.level, form.majorId);
-    setSemesters(availableSemesters);
-    const hasSemester = availableSemesters.some((semester) => semester.id === form.semesterId);
-    if (!hasSemester) {
-      setForm((prev) => ({ ...prev, semesterId: undefined, subjectCodes: [], subjects: [], courses: [] }));
-      setSubjects([]);
-    }
-  }, [form.majorId, form.facultyId, form.level, form.semesterId]);
-
-  useEffect(() => {
-    if (!form.majorId || !form.facultyId || !form.level || !form.semesterId) {
+    if (!form.majorId || !form.facultyId || !form.level) {
       setSubjects([]);
       setForm((prev) => ({ ...prev, subjectCodes: [], subjects: [], courses: [] }));
       return;
     }
 
-    const nextSubjects = getSubjectsByMajorAndSemester(form.facultyId, form.level, form.majorId, form.semesterId);
+    const mappedSemesterId = getTermSemesterForLevel(form.level, academicSettings.academicTermType);
+    if (!mappedSemesterId) {
+      setSubjects([]);
+      return;
+    }
+
+    const nextSubjects = getSubjectsByMajorAndSemester(form.facultyId, form.level, form.majorId, mappedSemesterId, academicSettings.academicTermType, academicSettings.catalogVisibility);
     setSubjects(nextSubjects);
-    setSubjectsError(nextSubjects.length ? '' : 'Aucune matière définie pour ce semestre.');
+    setSubjectsError(nextSubjects.length ? '' : 'Aucune matière définie pour le terme académique actif.');
     setForm((prev) => ({
       ...prev,
       subjectCodes: nextSubjects.map((subject) => subject.code),
@@ -338,7 +336,7 @@ const EditProfilePage: React.FC = () => {
       subjectsSettings: syncSubjectSettings(nextSubjects.map((subject) => subject.code), prev.subjectsSettings),
       courses: nextSubjects.map((subject) => subject.nameFr),
     }));
-  }, [form.majorId, form.facultyId, form.level, form.semesterId]);
+  }, [form.majorId, form.facultyId, form.level, academicSettings]);
 
 
 
@@ -360,7 +358,7 @@ const EditProfilePage: React.FC = () => {
       return;
     }
 
-    const availablePreviousMajors = getMajorsByFacultyAndLevel(form.facultyId, previousLevel);
+    const availablePreviousMajors = getMajorsByFacultyAndLevel(form.facultyId, previousLevel, academicSettings.catalogVisibility);
     setPreviousLevelMajors(availablePreviousMajors);
 
     if (hasRemainingFromPrevious !== true) {
@@ -384,10 +382,17 @@ const EditProfilePage: React.FC = () => {
       return;
     }
 
-    const previousSemesters = getSemestersByMajorAndLevel(form.facultyId, previousLevel, previousMajorId);
-    const generated = previousSemesters.flatMap((semester) =>
-      getSubjectsByMajorAndSemester(form.facultyId as string, previousLevel, previousMajorId, semester.id)
-    );
+    const mappedSemesterId = getTermSemesterForLevel(previousLevel, academicSettings.academicTermType);
+    const generated = mappedSemesterId
+      ? getSubjectsByMajorAndSemester(
+          form.facultyId as string,
+          previousLevel,
+          previousMajorId,
+          mappedSemesterId,
+          academicSettings.academicTermType,
+          academicSettings.catalogVisibility
+        )
+      : [];
     const unique = Array.from(new Map(generated.map((subject) => [subject.code, subject])).values());
     setRemainingSubjectsCatalog(unique);
   }, [form.facultyId, previousLevel, previousMajorId, hasRemainingFromPrevious]);
@@ -429,8 +434,14 @@ const EditProfilePage: React.FC = () => {
       return;
     }
 
-    if (!form.facultyId || !form.level || !form.majorId || !form.semesterId || !(form.subjectCodes?.length ?? 0)) {
-      setError('Merci de sélectionner une faculté, un niveau, une filière, un semestre et les matières associées.');
+    if (form.majorId && !isMajorEnabled(form.majorId, academicSettings.catalogVisibility)) {
+      setError(`Your major exists but is not activated yet. ${majorPreregCount} registered out of ${majorThreshold} required.`);
+      setSaving(false);
+      return;
+    }
+
+    if (!form.facultyId || !form.level || !form.majorId || !(form.subjectCodes?.length ?? 0)) {
+      setError('Merci de sélectionner une faculté, un niveau, une filière et les matières associées.');
       setSaving(false);
       return;
     }
@@ -438,7 +449,7 @@ const EditProfilePage: React.FC = () => {
     try {
       const selectedFaculty = faculties.find((item) => item.id === form.facultyId);
       const selectedMajor = majors.find((item) => item.id === form.majorId);
-      const selectedSemester = semesters.find((item) => item.id === form.semesterId);
+      const mappedSemesterId = getTermSemesterForLevel(form.level, academicSettings.academicTermType);
       const selectedSubjects = subjects;
 
       const { data } = await http.patch<{ profile: Profile }>('/users/me', {
@@ -448,8 +459,8 @@ const EditProfilePage: React.FC = () => {
         level: form.level,
         majorId: form.majorId,
         major: selectedMajor?.nameFr ?? '',
-        semesterId: form.semesterId,
-        semester: selectedSemester?.nameFr ?? '',
+        semesterId: mappedSemesterId,
+        semester: mappedSemesterId ?? '',
         subjects: form.subjectCodes,
         subjectCodes: form.subjectCodes,
         courses: selectedSubjects.map((subject) => subject.nameFr),
@@ -552,6 +563,13 @@ const EditProfilePage: React.FC = () => {
   const selectedSubjectItems = subjects;
   const selectedRemainingSubjectCodes = new Set((form.remainingSubjects ?? []).map((item) => item.subjectCode));
   const prioritySettingsMap = new Map((form.subjectsSettings ?? []).map((item) => [item.subjectCode, Boolean(item.isPriority)]));
+
+  const selectedMajorGate = form.majorId
+    ? academicSettings.catalogVisibility.majors?.[form.majorId]
+    : undefined;
+  const majorIsEnabled = form.majorId ? isMajorEnabled(form.majorId, academicSettings.catalogVisibility) : true;
+  const majorPreregCount = form.majorId ? academicSettings.preregCounts?.[form.majorId] ?? 0 : 0;
+  const majorThreshold = selectedMajorGate?.threshold ?? 20;
 
   const toggleSubjectPriority = (subjectCode: string) => {
     isDirtyRef.current = true;
@@ -771,38 +789,9 @@ const EditProfilePage: React.FC = () => {
             {form.facultyId && form.level && !majors.length && (
               <p className="text-xs text-amber-600">Aucune filière active pour cette combinaison.</p>
             )}
-          </div>
-          <div>
-            <label className="text-sm font-semibold text-slate-700">Semestre</label>
-            <select
-              value={form.semesterId ?? ''}
-              onChange={(e) => {
-                const value = e.target.value;
-                isDirtyRef.current = true;
-                setError('');
-                setSubjectsError('');
-                setMessage('');
-                setForm((prev) => ({
-                  ...prev,
-                  semesterId: value || undefined,
-                  subjectCodes: [],
-                  subjects: [],
-                  subjectsSettings: [],
-                  courses: [],
-                  remainingSubjects: []
-                }));
-              }}
-              className="w-full mt-1"
-              disabled={!form.majorId || !form.level || saving}
-            >
-              <option value="">Choisir</option>
-              {semesters.map((semester) => (
-                <option key={semester.id} value={semester.id}>
-                  {semester.nameFr}
-                </option>
-              ))}
-            </select>
-            {!form.majorId && <p className="text-xs text-slate-500">Sélectionnez d'abord une filière.</p>}
+            {!majorIsEnabled && form.majorId && (
+              <p className="text-xs text-amber-700">Your major exists but is not activated yet. {majorPreregCount} registered out of {majorThreshold} required.</p>
+            )}
           </div>
           <div className="md:col-span-2">
             <label className="text-sm font-semibold text-slate-700">Matières</label>
@@ -821,7 +810,7 @@ const EditProfilePage: React.FC = () => {
                 </div>
               )}
               {!selectedSubjectItems.length && (
-                <p className="text-sm text-slate-500">Choisissez d'abord la filière et le semestre pour récupérer automatiquement les matières.</p>
+                <p className="text-sm text-slate-500">Choisissez d'abord la filière pour récupérer automatiquement les matières du terme académique actif.</p>
               )}
               {subjectsError && <p className="text-xs text-red-600">{subjectsError}</p>}
               {!!selectedSubjectItems.length && (

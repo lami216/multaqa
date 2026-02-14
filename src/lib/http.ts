@@ -242,6 +242,20 @@ export interface AdminStatsResponse {
   events: AdminEventItem[];
 }
 
+export interface MajorVisibilityConfig {
+  enabled: boolean;
+  threshold: number;
+}
+
+export interface AcademicSettingsResponse {
+  academicTermType: 'odd' | 'even';
+  catalogVisibility: {
+    faculties: Record<string, boolean>;
+    majors: Record<string, MajorVisibilityConfig>;
+  };
+  preregCounts: Record<string, number>;
+}
+
 export const fetchMe = () =>
   http.get<{ user: ApiUser; profile?: Profile }>('/auth/me', {
     headers: {
@@ -304,3 +318,7 @@ export const deleteMajor = (id: string) => http.delete(`/admin/majors/${id}`);
 export const deleteSubject = (id: string) => http.delete(`/admin/subjects/${id}`);
 export const fetchAdminStats = (params?: { action?: string; limit?: number }) =>
   http.get<AdminStatsResponse>('/admin/stats', { params });
+export const fetchAcademicSettings = () => http.get<AcademicSettingsResponse>('/academic-settings');
+export const fetchAdminAcademicSettings = () => http.get<AcademicSettingsResponse>('/admin/settings/academic');
+export const updateAdminAcademicSettings = (payload: Partial<AcademicSettingsResponse>) =>
+  http.patch<AcademicSettingsResponse>('/admin/settings/academic', payload);

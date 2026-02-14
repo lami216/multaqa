@@ -5,7 +5,52 @@ import Faculty from '../models/Faculty.js';
 import Major from '../models/Major.js';
 import Subject from '../models/Subject.js';
 import Event from '../models/Event.js';
+import Profile from '../models/Profile.js';
+import AcademicSetting from '../models/AcademicSetting.js';
 import redis from '../config/redis.js';
+
+const normalizeMajorConfig = (input) => {
+  if (!input || typeof input !== 'object') return {};
+  return Object.entries(input).reduce((acc, [majorId, value]) => {
+    const enabled = value?.enabled !== false;
+    const parsedThreshold = Number.parseInt(String(value?.threshold ?? 20), 10);
+    acc[majorId] = {
+      enabled,
+      threshold: Number.isFinite(parsedThreshold) && parsedThreshold > 0 ? parsedThreshold : 20
+    };
+    return acc;
+  }, {});
+};
+
+const getAcademicSettingsRecord = async () => {
+  const settings = await AcademicSetting.findOneAndUpdate(
+    { key: 'academic' },
+    { $setOnInsert: { key: 'academic', academicTermType: 'odd', catalogVisibility: { faculties: {}, majors: {} } } },
+    { new: true, upsert: true, setDefaultsOnInsert: true }
+  );
+  return settings;
+};
+
+const buildAcademicSettingsPayload = async () => {
+  const settings = await getAcademicSettingsRecord();
+  const preregCountsAggregate = await Profile.aggregate([
+    { $match: { majorId: { $exists: true, $nin: [null, ''] } } },
+    { $group: { _id: '$majorId', count: { $sum: 1 } } }
+  ]);
+  const preregCounts = preregCountsAggregate.reduce((acc, item) => {
+    acc[item._id] = item.count;
+    return acc;
+  }, {});
+
+  return {
+    academicTermType: settings.academicTermType ?? 'odd',
+    catalogVisibility: {
+      faculties: Object.fromEntries(settings.catalogVisibility?.faculties ?? []),
+      majors: Object.fromEntries(settings.catalogVisibility?.majors ?? [])
+    },
+    preregCounts
+  };
+};
 
 export const getReports = async (req, res) => {
   try {
@@ -366,5 +411,55 @@ export const deleteSubject = async (req, res) => {
   } catch (error) {
     console.error('Delete subject error:', error);
     res.status(500).json({ error: 'Failed to delete subject' });
+  }
+};
+
+export const getAcademicSettings = async (req, res) => {
+  try {
+    const payload = await buildAcademicSettingsPayload();
+    res.json(payload);
+  } catch (error) {
+    console.error('Get academic settings error:', error);
+    res.status(500).json({ error: 'Failed to fetch academic settings' });
+  }
+};
+
+export const updateAcademicSettings = async (req, res) => {
+  try {
+    const { academicTermType, catalogVisibility } = req.body ?? {};
+    const updates = {};
+
+    if (academicTermType === 'odd' || academicTermType === 'even') {
+      updates.academicTermType = academicTermType;
+    }
+
+    if (catalogVisibility?.faculties || catalogVisibility?.majors) {
+      const faculties = catalogVisibility?.faculties && typeof catalogVisibility.faculties === 'object'
+        ? Object.fromEntries(
+            Object.entries(catalogVisibility.faculties).map(([facultyId, enabled]) => [facultyId, enabled !== false])
+          )
+        : undefined;
+      const majors = catalogVisibility?.majors ? normalizeMajorConfig(catalogVisibility.majors) : undefined;
+
+      updates.catalogVisibility = {
+        ...(faculties ? { faculties } : {}),
+        ...(majors ? { majors } : {})
+      };
+    }
+
+    await AcademicSetting.findOneAndUpdate(
+      { key: 'academic' },
+      {
+        ...(Object.keys(updates).length ? { $set: updates } : {}),
+        $setOnInsert: { key: 'academic', academicTermType: 'odd' }
+      },
+      { new: true, upsert: true, setDefaultsOnInsert: true }
+    );
+
+    const payload = await buildAcademicSettingsPayload();
+    res.json(payload);
+  } catch (error) {
+    console.error('Update academic settings error:', error);
+    res.status(500).json({ error: 'Failed to update academic settings' });
   }
 };
