@@ -52,14 +52,27 @@ export const getMajorAvailabilityMap = (settings, counts = {}) => {
       for (const major of level?.majors ?? []) {
         const key = buildAcademicMajorKey(faculty.facultyId, level.levelId, major.majorId);
         availability[key] = {
-          status: major.status === 'closed' ? 'collecting' : (major.status ?? 'active'),
-          threshold: (major.status === 'collecting' || major.status === 'closed') ? (major.threshold ?? 1) : null,
+          status: major.status ?? 'active',
+          threshold: major.status === 'collecting' ? (major.threshold ?? 1) : null,
           registeredCount: counts[key] ?? 0
         };
       }
     }
   }
   return availability;
+};
+
+
+export const getMajorAvailability = async (facultyId, levelId, majorId) => {
+  if (!facultyId || !levelId || !majorId) {
+    return { status: 'collecting', threshold: 0, registeredCount: 0 };
+  }
+
+  const settings = await getAcademicSettingsRecord();
+  const counts = await computeAcademicCounts();
+  const availabilityMap = getMajorAvailabilityMap(settings, counts);
+  const key = buildAcademicMajorKey(facultyId, levelId, majorId);
+  return availabilityMap[key] ?? { status: 'active', threshold: 0, registeredCount: counts[key] ?? 0 };
 };
 
 export const maybeActivateMajor = async (facultyId, levelId, majorId) => {
@@ -71,10 +84,6 @@ export const maybeActivateMajor = async (facultyId, levelId, majorId) => {
 
   if (!major) {
     return false;
-  }
-
-  if (major.status === 'closed') {
-    major.status = 'collecting';
   }
 
   if (major.status !== 'collecting' || !major.threshold || major.threshold <= 0) {
@@ -100,8 +109,13 @@ export const getAcademicSettingsPayload = async () => {
   const legacyMajors = Object.entries(majorAvailability).reduce((acc, [key, value]) => {
     const [, , majorId] = key.split('|');
     if (!majorId) return acc;
+    const enabled = value.status !== 'closed';
+    const threshold = value.status === 'collecting' ? (value.threshold ?? 0) : 0;
     if (!acc[majorId] || value.registeredCount >= (acc[majorId].registeredCount ?? -1)) {
-      acc[majorId] = { enabled: true, threshold: value.threshold ?? 0, registeredCount: value.registeredCount };
+      acc[majorId] = { enabled, threshold, registeredCount: value.registeredCount };
+    } else if (!enabled) {
+      acc[majorId].enabled = false;
+      acc[majorId].threshold = threshold;
     }
     return acc;
   }, {});

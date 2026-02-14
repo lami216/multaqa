@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { fetchAcademicSettings, generateTelegramLinkTokenRequest, http, type AcademicSettingsResponse, type Profile, type RemainingSubjectItem } from '../lib/http';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import {
+  buildAcademicMajorKey,
   getFaculties,
   getLevelsByFaculty,
   getMajorsByFacultyAndLevel,
@@ -262,12 +263,24 @@ const ProfilePage: React.FC = () => {
           </div>
         </div>
 
-        {majorStatus !== 'active' && (
-          <div className="card-surface p-4 text-amber-700 text-sm">
+        {(majorStatus === 'collecting' || majorStatus === 'closed') && (
+          <div className="card-surface p-4 text-amber-700 text-sm space-y-2">
             {majorStatus === 'collecting' ? (
-              <p>تخصصك موجود لكنه غير مُفعّل بعد. حاليا: {majorPreregCount} من {majorThreshold} مسجلين.</p>
+              <>
+                <p>تخصصك في وضع التجميع. التسجيل متاح والنشر غير متاح حالياً.</p>
+                <p>عدد المسجلين الحالي: {majorPreregCount} / {majorThreshold}</p>
+                <div className="h-2 w-full overflow-hidden rounded-full bg-amber-100">
+                  <div
+                    className="h-full bg-amber-500 transition-all"
+                    style={{ width: `${Math.min(100, majorThreshold > 0 ? (majorPreregCount / majorThreshold) * 100 : 0)}%` }}
+                  />
+                </div>
+                {majorThreshold > 0 && majorPreregCount >= majorThreshold && (
+                  <p className="text-emerald-700">Threshold reached. Posting is now enabled.</p>
+                )}
+              </>
             ) : (
-              <p>تخصصك موجود لكنه غير مُفعّل بعد.</p>
+              <p>هذا التخصص مغلق حالياً.</p>
             )}
           </div>
         )}

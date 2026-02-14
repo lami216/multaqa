@@ -251,7 +251,7 @@ export interface MajorVisibilityConfig {
 }
 
 export interface AcademicMajorAvailability {
-  status: 'active' | 'collecting';
+  status: 'active' | 'collecting' | 'closed';
   threshold: number | null;
   registeredCount: number;
 }
@@ -263,7 +263,7 @@ export interface AcademicSettingsNode {
     levelId: string;
     majors: Array<{
       majorId: string;
-      status: 'active' | 'collecting';
+      status: 'active' | 'collecting' | 'closed';
       threshold: number | null;
     }>;
   }>;

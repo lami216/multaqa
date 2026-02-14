@@ -48,7 +48,7 @@ const AdminAcademicSettingsPage: React.FC = () => {
   }, [selectedFaculty, selectedLevel, levels]);
 
   const majorDraftLookup = useMemo(() => {
-    const map = new Map<string, { status: 'active' | 'collecting'; threshold: number | null }>();
+    const map = new Map<string, { status: 'active' | 'collecting' | 'closed'; threshold: number | null }>();
     for (const faculty of draft?.faculties ?? []) {
       for (const level of faculty.levels ?? []) {
         for (const major of level.majors ?? []) {
@@ -68,7 +68,7 @@ const AdminAcademicSettingsPage: React.FC = () => {
     return JSON.stringify(draft) !== JSON.stringify(originalSettings);
   }, [draft, originalSettings]);
 
-  const updateMajor = (majorId: string, patch: Partial<{ status: 'active' | 'collecting'; threshold: number | null }>) => {
+  const updateMajor = (majorId: string, patch: Partial<{ status: 'active' | 'collecting' | 'closed'; threshold: number | null }>) => {
     if (!draft || !selectedFaculty || !selectedLevel) return;
     setDraft((prev) => {
       if (!prev) return prev;
@@ -162,9 +162,10 @@ const AdminAcademicSettingsPage: React.FC = () => {
             return (
               <div key={major.id} className="rounded-lg border border-slate-200 p-3 space-y-2">
                 <p className="font-medium text-slate-900">{major.nameFr}</p>
-                <select value={current.status} onChange={(event) => updateMajor(major.id, { status: event.target.value as 'active' | 'collecting' })} className="w-full" disabled={saving}>
+                <select value={current.status} onChange={(event) => updateMajor(major.id, { status: event.target.value as 'active' | 'collecting' | 'closed' })} className="w-full" disabled={saving}>
                   <option value="active">active</option>
                   <option value="collecting">collecting</option>
+                  <option value="closed">closed</option>
                 </select>
                 {current.status === 'collecting' && (
                   <input
