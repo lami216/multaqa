@@ -36,6 +36,10 @@ const postSchema = new mongoose.Schema({
     type: String,
     enum: ['need_help', 'can_help', 'td', 'archive']
   },
+  teamRoles: [{
+    type: String,
+    enum: ['general_review', 'td', 'archive']
+  }],
   // Legacy field kept for backward compatibility with old records.
   studentRole: {
     type: String,
@@ -92,6 +96,7 @@ postSchema.index({ category: 1 });
 postSchema.index({ faculty: 1 });
 postSchema.index({ level: 1 });
 postSchema.index({ postRole: 1 });
+postSchema.index({ teamRoles: 1 });
 postSchema.index({ subjectCodes: 1 });
 postSchema.index({ tags: 1 });
 postSchema.index({ status: 1 });

@@ -77,6 +77,7 @@ export interface SubjectPriorityItem {
 }
 
 export type PriorityRoleKey = 'need_help' | 'can_help' | 'td' | 'archive';
+export type StudyTeamRoleKey = 'general_review' | 'td' | 'archive';
 
 export interface Profile {
   displayName?: string;
@@ -114,6 +115,7 @@ export interface PostPayload {
   location?: 'campus' | 'online';
   subjectCodes?: string[];
   postRole?: PriorityRoleKey;
+  teamRoles?: StudyTeamRoleKey[];
   availabilityDate?: string;
   participantTargetCount?: number;
   status?: 'active' | 'matched' | 'expired' | 'closed';

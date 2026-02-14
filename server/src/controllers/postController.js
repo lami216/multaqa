@@ -486,7 +486,7 @@ export const createPost = async (req, res) => {
     description = maskContactInfo(description || '');
 
     if (category === 'project_team') {
-      const { subjectCodes, description: teamDescription, availabilityDate } = req.body;
+      const { subjectCodes, description: teamDescription, availabilityDate, teamRoles } = req.body;
       const profile = await Profile.findOne({ userId: req.user._id });
 
       if (!profile?.subjectCodes?.length) {
@@ -512,6 +512,17 @@ export const createPost = async (req, res) => {
         sanitizedDescription = maskContactInfo(sanitizedDescription);
       }
 
+      const allowedTeamRoles = new Set(['general_review', 'td', 'archive']);
+      const normalizedTeamRoles = Array.isArray(teamRoles)
+        ? [...new Set(teamRoles.map((role) => (typeof role === 'string' ? role.trim() : '')).filter(Boolean))]
+        : [];
+      if (!normalizedTeamRoles.length) {
+        return res.status(400).json({ error: 'Select at least one role for study team posts.' });
+      }
+      if (normalizedTeamRoles.some((role) => !allowedTeamRoles.has(role))) {
+        return res.status(400).json({ error: 'Invalid team role selection.' });
+      }
+
       const availabilityCutoff = getAvailabilityCutoff(availabilityDate);
       const participantTargetCount = Number(req.body.participantTargetCount);
       if (!availabilityCutoff) {
@@ -528,6 +539,7 @@ export const createPost = async (req, res) => {
         category,
         subjectCodes: normalizedCodes,
         availabilityDate: availabilityCutoff,
+        teamRoles: normalizedTeamRoles,
         participantTargetCount,
         faculty: profile.faculty,
         level: profile.level,
@@ -637,6 +649,19 @@ export const updatePost = async (req, res) => {
             return res.status(400).json({ error: 'Participant target count must be at least 3.' });
           }
           updates.participantTargetCount = participantTargetCount;
+        }
+        if (updates.teamRoles !== undefined) {
+          const allowedTeamRoles = new Set(['general_review', 'td', 'archive']);
+          const normalizedTeamRoles = Array.isArray(updates.teamRoles)
+            ? [...new Set(updates.teamRoles.map((role) => (typeof role === 'string' ? role.trim() : '')).filter(Boolean))]
+            : [];
+          if (!normalizedTeamRoles.length) {
+            return res.status(400).json({ error: 'Select at least one role for study team posts.' });
+          }
+          if (normalizedTeamRoles.some((role) => !allowedTeamRoles.has(role))) {
+            return res.status(400).json({ error: 'Invalid team role selection.' });
+          }
+          updates.teamRoles = normalizedTeamRoles;
         }
         if (updates.availabilityDate !== undefined) {
           const availabilityCutoff = getAvailabilityCutoff(updates.availabilityDate);
