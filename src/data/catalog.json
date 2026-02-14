@@ -166,7 +166,58 @@
                   "id": "S3",
                   "nameAr": "السداسي 3",
                   "nameFr": "Semestre 3",
-                  "subjects": []
+                  "subjects": [
+                    {
+                      "code": "DV1",
+                      "nameFr": "Diversité végétale I",
+                      "nameAr": "Diversité végétale I"
+                    },
+                    {
+                      "code": "DA1",
+                      "nameFr": "Diversité animale I",
+                      "nameAr": "Diversité animale I"
+                    },
+                    {
+                      "code": "PAR1",
+                      "nameFr": "Parasitologie I",
+                      "nameAr": "Parasitologie I"
+                    },
+                    {
+                      "code": "BAC1",
+                      "nameFr": "Bactériologie I",
+                      "nameAr": "Bactériologie I"
+                    },
+                    {
+                      "code": "GF",
+                      "nameFr": "Génétique formelle",
+                      "nameAr": "Génétique formelle"
+                    },
+                    {
+                      "code": "EV1",
+                      "nameFr": "Écologie végétale I",
+                      "nameAr": "Écologie végétale I"
+                    },
+                    {
+                      "code": "BS1",
+                      "nameFr": "Biochimie structurale I",
+                      "nameAr": "Biochimie structurale I"
+                    },
+                    {
+                      "code": "BM1",
+                      "nameFr": "Biologie moléculaire I",
+                      "nameAr": "Biologie moléculaire I"
+                    },
+                    {
+                      "code": "ANG",
+                      "nameFr": "Anglais",
+                      "nameAr": "Anglais"
+                    },
+                    {
+                      "code": "RS",
+                      "nameFr": "Rédaction scientifique",
+                      "nameAr": "Rédaction scientifique"
+                    }
+                  ]
                 },
                 {
                   "id": "S4",
@@ -1192,7 +1243,7 @@
                     {
                       "code": "GRH",
                       "nameAr": "إدارة الموارد البشرية",
-                      "nameFr": "GRH"
+                      "nameFr": "Gestion des ressources humaines"
                     },
                     {
                       "code": "FISC",

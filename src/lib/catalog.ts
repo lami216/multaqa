@@ -46,6 +46,31 @@ const LEVEL_SEMESTER_MAP: Record<string, string[]> = {
   M2: ['S9', 'S10']
 };
 
+
+const formatNameFromCode = (code: string): string =>
+  code
+    .replace(/[_-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLocaleLowerCase('fr-FR')
+    .replace(/(^|\s)\p{L}/gu, (match) => match.toLocaleUpperCase('fr-FR'));
+
+const normalizeCatalogSubject = (subject: CatalogSubject): CatalogSubject => {
+  const normalizedCode = subject.code?.trim() ?? '';
+  const normalizedNameFr = subject.nameFr?.trim() ?? '';
+  const normalizedNameAr = subject.nameAr?.trim() ?? '';
+  const fallbackName = normalizedCode ? formatNameFromCode(normalizedCode) : '';
+  const resolvedNameFr = !normalizedNameFr || normalizedNameFr.toLowerCase() === normalizedCode.toLowerCase() ? fallbackName : normalizedNameFr;
+  const resolvedNameAr = !normalizedNameAr || normalizedNameAr.toLowerCase() === normalizedCode.toLowerCase() ? resolvedNameFr : normalizedNameAr;
+
+  return {
+    ...subject,
+    code: normalizedCode,
+    nameFr: resolvedNameFr,
+    nameAr: resolvedNameAr
+  };
+};
+
 const catalogData = catalog as CatalogData;
 
 export const getFaculties = (): CatalogFaculty[] => catalogData.faculties;
@@ -81,5 +106,5 @@ export const getSubjectsByMajorAndSemester = (
 ): CatalogSubject[] => {
   if (!facultyId || !levelId || !majorId || !semesterId) return [];
   const semesters = getSemestersByMajorAndLevel(facultyId, levelId, majorId);
-  return semesters.find((semester) => semester.id === semesterId)?.subjects ?? [];
+  return (semesters.find((semester) => semester.id === semesterId)?.subjects ?? []).map(normalizeCatalogSubject);
 };
