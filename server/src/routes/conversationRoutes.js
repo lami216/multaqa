@@ -14,5 +14,6 @@ router.patch('/:id/delete-for-me', authenticate, conversationController.deleteCo
 router.post('/:id/messages', authenticate, conversationController.sendMessage);
 router.get('/:id/messages', authenticate, conversationController.getMessages);
 router.post('/:id/read', authenticate, conversationController.markRead);
+router.post('/:id/extend', authenticate, conversationController.extendConversation);
 
 export default router;

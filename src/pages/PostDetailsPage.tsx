@@ -1,7 +1,7 @@
 import axios from 'axios';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Calendar, Clock3, Globe, Lock, MessageCircle, Trash2, Users } from 'lucide-react';
+import { Calendar, Globe, Lock, MessageCircle, Trash2, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   acceptJoinRequest,
@@ -13,7 +13,6 @@ import {
   fetchPost,
   rejectJoinRequest,
   requestJoinPost,
-  updatePost,
   type ConversationSummary,
   type JoinRequestItem,
   type PostResponse
@@ -39,8 +38,6 @@ const PostDetailsPage: React.FC = () => {
   const [actionError, setActionError] = useState('');
   const [actionNotice, setActionNotice] = useState('');
   const [saving, setSaving] = useState(false);
-  const [extendChoice, setExtendChoice] = useState<'24' | '48' | '72' | 'custom'>('24');
-  const [customExtend, setCustomExtend] = useState('');
   const [closeReason, setCloseReason] = useState('');
   const [joinRequests, setJoinRequests] = useState<JoinRequestItem[]>([]);
   const [loadingRequests, setLoadingRequests] = useState(false);
@@ -139,7 +136,7 @@ const PostDetailsPage: React.FC = () => {
   }, [joinRequests, isAuthor]);
 
   const isStudyPartner = post?.category === 'study_partner';
-  const extendHours = extendChoice === 'custom' ? Number(customExtend) : Number(extendChoice);
+  const isStudyTeam = post?.category === 'project_team';
   const authorUsername = post?.author?.username ?? 'Utilisateur';
   const isJoined = Boolean(
     joinRequestStatus === 'accepted' ||
@@ -171,48 +168,6 @@ const PostDetailsPage: React.FC = () => {
       navigate(`/messages/${data.conversationId}`);
     } catch (error) {
       reportRequestError('Failed to create post conversation', error, 'Impossible de contacter cet utilisateur.');
-    }
-  };
-
-  const handleStatusUpdate = async () => {
-    if (!id) return;
-    setSaving(true);
-    setActionError('');
-    try {
-      const { data } = await updatePost(id, { status: 'matched' });
-      setPost((prev) => (prev ? { ...prev, ...data.post } : prev));
-      if (data.post.status === 'matched') {
-        const key = 'matchedPostsHidden';
-        const stored = sessionStorage.getItem(key);
-        const hiddenIds = stored ? (JSON.parse(stored) as string[]) : [];
-        if (!hiddenIds.includes(id)) {
-          sessionStorage.setItem(key, JSON.stringify([...hiddenIds, id]));
-        }
-      }
-    } catch (error) {
-      reportRequestError('Failed to update post status', error, "Impossible de mettre à jour l'annonce.");
-      setActionError("Impossible de mettre à jour l'annonce.");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleExtend = async () => {
-    if (!id) return;
-    if (!Number.isFinite(extendHours) || extendHours <= 0) {
-      setActionError('Sélectionnez une durée de prolongation valide.');
-      return;
-    }
-    setSaving(true);
-    setActionError('');
-    try {
-      const { data } = await updatePost(id, { extendHours });
-      setPost((prev) => (prev ? { ...prev, ...data.post } : prev));
-    } catch (error) {
-      reportRequestError('Failed to extend post', error, "Impossible de prolonger l'annonce.");
-      setActionError("Impossible de prolonger l'annonce.");
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -351,7 +306,7 @@ const PostDetailsPage: React.FC = () => {
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-2">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="badge-soft inline-flex">{post?.category}</span>
+            <span className="badge-soft inline-flex">{post?.category === 'project_team' ? 'study_team' : post?.category}</span>
             {post.postRole ? (
               <span className="badge-soft bg-slate-100 text-slate-700">
                 Rôle {roleLabels[post.postRole] ?? post.postRole}
@@ -373,9 +328,9 @@ const PostDetailsPage: React.FC = () => {
                   </span>
                 ))}
               </div>
-              {post?.expiresAt && (
+              {post?.availabilityDate && (
                 <p className="text-sm text-slate-500">
-                  Expire le {new Date(post?.expiresAt).toLocaleString()}
+                  Disponible jusqu'au {new Date(post?.availabilityDate).toLocaleString()}
                 </p>
               )}
             </div>
@@ -406,6 +361,10 @@ const PostDetailsPage: React.FC = () => {
           {post?.status && <p className="badge-soft inline-flex">{post.status}</p>}
         </div>
       </div>
+
+      {isStudyTeam ? (
+        <p className="text-sm text-slate-600">Approved: {post?.acceptedUserIds?.length ?? 0} / {post?.participantTargetCount ?? 0}</p>
+      ) : null}
 
       {isStudyPartner && post?.description ? (
         <div>
@@ -442,98 +401,43 @@ const PostDetailsPage: React.FC = () => {
         </div>
       )}
 
-      {isStudyPartner && isAuthor && (
+      {isAuthor && (
         <div className="card-surface p-4 space-y-3">
-          <div className="flex items-start justify-between gap-2">
-            <h3 className="font-semibold text-slate-900">Gérer votre annonce</h3>
-            {(post.pendingJoinRequestsCount || post.unreadPostMessagesCount) ? (
-              <span className="badge-soft bg-amber-50 text-amber-700">
-                {post.pendingJoinRequestsCount ?? 0} demandes · {post.unreadPostMessagesCount ?? 0} messages
-              </span>
-            ) : null}
+          <h3 className="font-semibold text-slate-900">Gérer votre annonce</h3>
+          <div className="flex flex-wrap gap-2">
+            <button
+              className="secondary-btn"
+              type="button"
+              disabled={saving}
+              onClick={handleClosePost}
+            >
+              <Lock size={16} className="me-1" /> Clôturer
+            </button>
+            <button
+              className="primary-btn bg-rose-600 hover:bg-rose-700 text-white"
+              type="button"
+              disabled={saving}
+              onClick={handleDeletePost}
+            >
+              <Trash2 size={16} className="me-1" /> Supprimer
+            </button>
           </div>
-          {post?.status === 'matched' ? (
-            <p className="text-sm text-slate-500">Annonce marquée comme matched. Elle est désormais en lecture seule.</p>
-          ) : post?.status === 'closed' ? (
-            <p className="text-sm text-slate-500">Annonce clôturée. Vous pouvez la supprimer si besoin.</p>
-          ) : (
-            <>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  className="secondary-btn"
-                  type="button"
-                  disabled={saving}
-                  onClick={handleStatusUpdate}
-                >
-                  Marquer comme matched
-                </button>
-                <button
-                  className="secondary-btn"
-                  type="button"
-                  disabled={saving}
-                  onClick={handleClosePost}
-                >
-                  <Lock size={16} className="me-1" /> Clôturer
-                </button>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-sm text-slate-600">Motif :</span>
-                <input
-                  value={closeReason}
-                  onChange={(e) => setCloseReason(e.target.value)}
-                  placeholder="Optionnel"
-                  className="w-56"
-                />
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-sm text-slate-600">Prolonger :</span>
-                {(['24', '48', '72', 'custom'] as const).map((option) => (
-                  <button
-                    key={option}
-                    type="button"
-                    className={`tab-btn ${extendChoice === option ? 'active' : 'bg-white border border-slate-200'}`}
-                    onClick={() => setExtendChoice(option)}
-                  >
-                    <Clock3 size={14} className="me-1" />
-                    {option === 'custom' ? 'Personnalisé' : `${option}h`}
-                  </button>
-                ))}
-                {extendChoice === 'custom' && (
-                  <input
-                    value={customExtend}
-                    onChange={(e) => setCustomExtend(e.target.value)}
-                    type="number"
-                    min={1}
-                    max={168}
-                    placeholder="Heures"
-                    className="w-32"
-                  />
-                )}
-                <button className="primary-btn" type="button" disabled={saving} onClick={handleExtend}>
-                  Prolonger
-                </button>
-              </div>
-            </>
-          )}
-          {post?.status !== 'matched' && (
-            <div>
-              <button
-                className="primary-btn bg-rose-600 hover:bg-rose-700 text-white"
-                type="button"
-                disabled={saving}
-                onClick={handleDeletePost}
-              >
-                <Trash2 size={16} className="me-1" /> Supprimer
-              </button>
-            </div>
-          )}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm text-slate-600">Motif :</span>
+            <input
+              value={closeReason}
+              onChange={(e) => setCloseReason(e.target.value)}
+              placeholder="Optionnel"
+              className="w-56"
+            />
+          </div>
           {actionError && <p className="text-sm text-rose-600">{actionError}</p>}
           {actionNotice && <p className="text-sm text-emerald-600">{actionNotice}</p>}
         </div>
       )}
 
       {isAuthor ? (
-        isStudyPartner ? (
+        (isStudyPartner || isStudyTeam) ? (
           <div className="grid md:grid-cols-2 gap-4">
             <div className="card-surface p-4 space-y-3">
               <div className="flex items-center justify-between">
@@ -645,16 +549,14 @@ const PostDetailsPage: React.FC = () => {
               >
                 <Lock size={16} className="me-1" /> Clôturer
               </button>
-              {post?.status !== 'matched' && (
-                <button
-                  className="primary-btn bg-rose-600 hover:bg-rose-700 text-white"
-                  type="button"
-                  disabled={saving}
-                  onClick={handleDeletePost}
-                >
-                  <Trash2 size={16} className="me-1" /> Supprimer
-                </button>
-              )}
+<button
+                className="primary-btn bg-rose-600 hover:bg-rose-700 text-white"
+                type="button"
+                disabled={saving}
+                onClick={handleDeletePost}
+              >
+                <Trash2 size={16} className="me-1" /> Supprimer
+              </button>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-sm text-slate-600">Motif :</span>
@@ -671,7 +573,7 @@ const PostDetailsPage: React.FC = () => {
         )
       ) : (
         <div className="flex flex-wrap gap-3">
-          {isStudyPartner && !isJoined ? (
+          {(isStudyPartner || isStudyTeam) && !isJoined ? (
             joinRequestStatus === 'rejected' ? (
               <div className="space-y-2">
                 <p className="text-sm text-rose-600">Demande refusée</p>

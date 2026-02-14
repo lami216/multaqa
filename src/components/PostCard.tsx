@@ -12,6 +12,8 @@ const roleLabels: Record<string, string> = {
   archive: 'حل الأرشيف',
 };
 
+const categoryLabel = (category: string) => (category === 'project_team' ? 'study_team' : category);
+
 interface PostCardProps {
   post: PostResponse;
   currentUserId?: string | null;
@@ -39,7 +41,7 @@ const PostCard: React.FC<PostCardProps> = ({
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1">
           <div className="flex flex-wrap gap-2 items-center text-xs font-semibold text-emerald-700">
-            <span className="badge-soft">{post.category}</span>
+            <span className="badge-soft">{categoryLabel(post.category)}</span>
             {post.level ? <span className="badge-soft bg-blue-50 text-blue-700">{post.level}</span> : null}
             {post.languagePref ? <span className="badge-soft bg-emerald-50 text-emerald-700">{post.languagePref}</span> : null}
           </div>
@@ -54,15 +56,24 @@ const PostCard: React.FC<PostCardProps> = ({
                 ))}
                 <span className="badge-soft bg-slate-100 text-slate-700">Rôle {roleLabel}</span>
               </div>
+              {post.availabilityDate ? (
+                <p className="text-xs text-slate-500">Available until {new Date(post.availabilityDate).toLocaleDateString()}</p>
+              ) : null}
               {post.description ? (
                 <p className={descriptionClassName}>{post.description}</p>
               ) : null}
             </div>
           ) : (
             <>
+              {post.category === 'project_team' ? (
+                <p className="text-sm font-semibold text-slate-700">Approved: {post.acceptedUserIds?.length ?? 0} / {post.participantTargetCount ?? 0}</p>
+              ) : null}
               <p className="text-sm text-slate-600">
                 {[post.faculty ?? 'Faculté non renseignée', post.languagePref ?? 'Langue libre'].filter(Boolean).join(' · ')}
               </p>
+              {post.availabilityDate ? (
+                <p className="text-xs text-slate-500">Available until {new Date(post.availabilityDate).toLocaleDateString()}</p>
+              ) : null}
               {post.description ? (
                 <p className={descriptionClassName}>{post.description}</p>
               ) : null}

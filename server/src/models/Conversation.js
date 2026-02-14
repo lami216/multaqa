@@ -19,6 +19,18 @@ const conversationSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Post'
   },
+  firstOpenedAt: {
+    type: Date,
+    default: null
+  },
+  expiresAt: {
+    type: Date,
+    default: null
+  },
+  maxExpiresAt: {
+    type: Date,
+    default: null
+  },
   lastMessageAt: {
     type: Date,
     default: null
@@ -44,6 +56,7 @@ const conversationSchema = new mongoose.Schema({
 
 conversationSchema.index({ participants: 1 });
 conversationSchema.index({ lastMessageAt: -1 });
+conversationSchema.index({ expiresAt: 1 });
 conversationSchema.index(
   { type: 1, postId: 1, participantsKey: 1 },
   { unique: true, partialFilterExpression: { type: 'post' } }

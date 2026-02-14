@@ -6,13 +6,6 @@ import redis from '../config/redis.js';
 export const getPublicProfile = async (req, res) => {
   try {
     const { username } = req.params;
-    const now = new Date();
-
-    await Post.updateMany(
-      { status: 'active', expiresAt: { $lte: now } },
-      { $set: { status: 'expired' } }
-    );
-
     const cacheKey = `profile:${username}`;
     const cached = await redis.get(cacheKey);
     if (cached) {
@@ -27,8 +20,7 @@ export const getPublicProfile = async (req, res) => {
     const profile = await Profile.findOne({ userId: user._id });
     const posts = await Post.find({
       authorId: user._id,
-      status: 'active',
-      $or: [{ expiresAt: { $exists: false } }, { expiresAt: { $gt: now } }]
+      status: 'active'
     })
       .sort({ createdAt: -1 })
       .limit(10);

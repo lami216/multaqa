@@ -21,6 +21,9 @@ const postSchema = new mongoose.Schema({
     required: true,
     enum: ['study_partner', 'project_team', 'tutor_offer']
   },
+  availabilityDate: {
+    type: Date
+  },
   tags: [{
     type: String,
     trim: true
@@ -74,7 +77,11 @@ const postSchema = new mongoose.Schema({
   acceptedUserIds: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
-  }]
+  }],
+  participantTargetCount: {
+    type: Number,
+    min: 3
+  }
 }, {
   timestamps: true
 });
@@ -89,6 +96,7 @@ postSchema.index({ subjectCodes: 1 });
 postSchema.index({ tags: 1 });
 postSchema.index({ status: 1 });
 postSchema.index({ expiresAt: 1 });
+postSchema.index({ availabilityDate: 1 });
 postSchema.index({ createdAt: -1 });
 
 const Post = mongoose.model('Post', postSchema);

@@ -9,12 +9,11 @@ import redis from '../config/redis.js';
 import { maskContactInfo } from '../utils/contentMasking.js';
 import { containsProfanity, maskProfanity } from '../utils/profanityFilter.js';
 
-const expirePosts = async () => {
-  const now = new Date();
-  await Post.updateMany(
-    { status: 'active', expiresAt: { $lte: now } },
-    { $set: { status: 'expired' } }
-  );
+const getAvailabilityCutoff = (value) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  date.setHours(23, 59, 59, 999);
+  return date;
 };
 
 const buildStudyPartnerTitle = (subjectCodes) => `Study partner • ${subjectCodes.join(' & ')}`;
@@ -183,12 +182,8 @@ export const getPosts = async (req, res) => {
       limit = 20
     } = req.query;
 
-    await expirePosts();
-    const now = new Date();
-
     const query = {
-      status: 'active',
-      $or: [{ expiresAt: { $exists: false } }, { expiresAt: { $gt: now } }]
+      status: 'active'
     };
 
     if (category) query.category = category;
@@ -337,8 +332,6 @@ export const getPosts = async (req, res) => {
 export const getPost = async (req, res) => {
   try {
     const { id } = req.params;
-    const now = new Date();
-
     const post = await Post.findById(id).populate('authorId', 'username');
     if (!post) {
       return res.status(404).json({ error: 'Post not found' });
@@ -346,11 +339,6 @@ export const getPost = async (req, res) => {
 
     const isAuthor = post.authorId._id.toString() === req.user._id.toString();
     const isAdmin = req.user.role === 'admin';
-    if (post.expiresAt && post.expiresAt <= now && post.status === 'active') {
-      post.status = 'expired';
-      await post.save();
-    }
-
     if (!isAuthor && !isAdmin && post.status !== 'active') {
       return res.status(404).json({ error: 'Post not found' });
     }
@@ -431,7 +419,7 @@ export const createPost = async (req, res) => {
     const { category } = req.body;
 
     if (category === 'study_partner') {
-      const { subjectCodes, postRole, durationHours, description } = req.body;
+      const { subjectCodes, postRole, description, availabilityDate } = req.body;
       const profile = await Profile.findOne({ userId: req.user._id });
 
       if (!profile?.subjectCodes?.length) {
@@ -458,7 +446,10 @@ export const createPost = async (req, res) => {
       }
 
       const title = buildStudyPartnerTitle(normalizedCodes);
-      const expiresAt = new Date(Date.now() + durationHours * 60 * 60 * 1000);
+      const availabilityCutoff = getAvailabilityCutoff(availabilityDate);
+      if (!availabilityCutoff) {
+        return res.status(400).json({ error: 'Availability date is required.' });
+      }
 
       const post = await Post.create({
         authorId: req.user._id,
@@ -467,7 +458,7 @@ export const createPost = async (req, res) => {
         category,
         subjectCodes: normalizedCodes,
         postRole,
-        expiresAt,
+        availabilityDate: availabilityCutoff,
         faculty: profile.faculty,
         level: profile.level,
         languagePref: profile.languages?.[0]
@@ -493,6 +484,19 @@ export const createPost = async (req, res) => {
     }
 
     description = maskContactInfo(description);
+
+    if (category === 'project_team') {
+      const availabilityCutoff = getAvailabilityCutoff(rest.availabilityDate);
+      const participantTargetCount = Number(rest.participantTargetCount);
+      if (!availabilityCutoff) {
+        return res.status(400).json({ error: 'Availability date is required.' });
+      }
+      if (!Number.isInteger(participantTargetCount) || participantTargetCount < 3) {
+        return res.status(400).json({ error: 'Participant target count must be at least 3.' });
+      }
+      rest.availabilityDate = availabilityCutoff;
+      rest.participantTargetCount = participantTargetCount;
+    }
 
     const post = await Post.create({
       authorId: req.user._id,
@@ -536,13 +540,13 @@ export const updatePost = async (req, res) => {
     }
 
     if (post.category === 'study_partner') {
-      const allowedFields = ['description', 'subjectCodes', 'postRole', 'status', 'extendHours'];
+      const allowedFields = ['description', 'subjectCodes', 'postRole', 'availabilityDate'];
       const invalidFields = Object.keys(updates).filter((key) => !allowedFields.includes(key));
       if (invalidFields.length) {
-        return res.status(400).json({ error: 'Study partner posts accept only subjects, role, status, and duration updates.' });
+        return res.status(400).json({ error: 'Study partner posts accept only subjects, role, description, and availability date updates.' });
       }
 
-      if (post.status === 'matched' && updates.status !== 'matched') {
+      if (post.status === 'matched') {
         return res.status(400).json({ error: 'Matched study partner posts are read-only.' });
       }
 
@@ -570,25 +574,30 @@ export const updatePost = async (req, res) => {
         }
         updates.description = updates.description ? maskContactInfo(updates.description) : '';
       }
-
-      if (updates.extendHours !== undefined) {
-        const extendHoursValue = Number(updates.extendHours);
-        if (!Number.isFinite(extendHoursValue) || extendHoursValue <= 0) {
-          return res.status(400).json({ error: 'Extend hours must be a positive number.' });
+      if (updates.availabilityDate !== undefined) {
+        const availabilityCutoff = getAvailabilityCutoff(updates.availabilityDate);
+        if (!availabilityCutoff) {
+          return res.status(400).json({ error: 'Availability date is required.' });
         }
-        const now = new Date();
-        const base = post.expiresAt && post.expiresAt > now ? post.expiresAt : now;
-        post.expiresAt = new Date(base.getTime() + extendHoursValue * 60 * 60 * 1000);
-        post.status = 'active';
-        delete updates.extendHours;
-      }
-
-      if (updates.status) {
-        if (updates.status !== 'matched') {
-          return res.status(400).json({ error: 'Study partner posts can only be marked as matched.' });
-        }
+        updates.availabilityDate = availabilityCutoff;
       }
     } else {
+      if (post.category === 'project_team') {
+        if (updates.participantTargetCount !== undefined) {
+          const participantTargetCount = Number(updates.participantTargetCount);
+          if (!Number.isInteger(participantTargetCount) || participantTargetCount < 3) {
+            return res.status(400).json({ error: 'Participant target count must be at least 3.' });
+          }
+          updates.participantTargetCount = participantTargetCount;
+        }
+        if (updates.availabilityDate !== undefined) {
+          const availabilityCutoff = getAvailabilityCutoff(updates.availabilityDate);
+          if (!availabilityCutoff) {
+            return res.status(400).json({ error: 'Availability date is required.' });
+          }
+          updates.availabilityDate = availabilityCutoff;
+        }
+      }
       if (updates.title && containsProfanity(updates.title)) {
         updates.title = maskProfanity(updates.title);
       }
@@ -685,8 +694,8 @@ export const createJoinRequest = async (req, res) => {
       return res.status(404).json({ error: 'Post not found' });
     }
 
-    if (post.category !== 'study_partner') {
-      return res.status(400).json({ error: 'Join requests are only available for study partner posts.' });
+    if (!['study_partner', 'project_team'].includes(post.category)) {
+      return res.status(400).json({ error: 'Join requests are only available for study partner or study team posts.' });
     }
 
     if (post.authorId.toString() === req.user._id.toString()) {
@@ -694,18 +703,12 @@ export const createJoinRequest = async (req, res) => {
     }
 
     const now = new Date();
-    if (post.expiresAt && post.expiresAt <= now && post.status === 'active') {
-      post.status = 'expired';
-      await post.save();
-    }
-
     if (post.status !== 'active') {
       return res.status(400).json({ error: 'Post is not accepting join requests.' });
     }
 
     const acceptedCount = post.acceptedUserIds?.length ?? 0;
-    const maxAccepted = maxAcceptedForRole(resolvePostRole(post));
-    if (acceptedCount >= maxAccepted) {
+    if (post.category === 'project_team' && post.participantTargetCount && acceptedCount >= post.participantTargetCount) {
       return res.status(400).json({ error: 'Capacity reached for this post.' });
     }
 
@@ -714,6 +717,11 @@ export const createJoinRequest = async (req, res) => {
       requesterId: req.user._id,
       status: 'pending'
     });
+
+    if (post.category === 'study_partner') {
+      post.status = 'matched';
+      await post.save();
+    }
 
     await recordEvent({
       action: 'join_requested',
@@ -787,8 +795,7 @@ export const acceptJoinRequest = async (req, res) => {
     }
 
     const acceptedCount = post.acceptedUserIds?.length ?? 0;
-    const maxAccepted = maxAcceptedForRole(resolvePostRole(post));
-    if (acceptedCount >= maxAccepted) {
+    if (post.category === 'project_team' && post.participantTargetCount && acceptedCount >= post.participantTargetCount) {
       return res.status(400).json({ error: 'Capacity reached for this post.' });
     }
 
@@ -800,6 +807,11 @@ export const acceptJoinRequest = async (req, res) => {
     post.acceptedUserIds.addToSet(joinRequest.requesterId);
     if (post.category === 'study_partner' && post.acceptedUserIds.length >= 1) {
       post.status = 'matched';
+    }
+    if (post.category === 'project_team' && post.participantTargetCount && post.acceptedUserIds.length >= post.participantTargetCount) {
+      post.status = 'closed';
+      post.closedAt = new Date();
+      post.closeReason = 'target_reached';
     }
     await post.save();
 

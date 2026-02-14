@@ -90,19 +90,11 @@ export const deletePostAdmin = async (req, res) => {
 export const getDashboardStats = async (req, res) => {
   try {
     const { action, limit = 10 } = req.query;
-    const now = new Date();
-
     const activePosts = await Post.countDocuments({
-      status: 'active',
-      $or: [{ expiresAt: { $exists: false } }, { expiresAt: { $gt: now } }]
+      status: 'active'
     });
 
-    const expiredPosts = await Post.countDocuments({
-      $or: [
-        { status: 'expired' },
-        { status: 'active', expiresAt: { $lte: now } }
-      ]
-    });
+    const expiredPosts = await Post.countDocuments({ status: 'expired' });
 
     const matchedOrClosedPosts = await Post.countDocuments({
       status: { $in: ['matched', 'closed'] }

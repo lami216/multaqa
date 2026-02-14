@@ -114,8 +114,8 @@ export interface PostPayload {
   location?: 'campus' | 'online';
   subjectCodes?: string[];
   postRole?: PriorityRoleKey;
-  durationHours?: number;
-  extendHours?: number;
+  availabilityDate?: string;
+  participantTargetCount?: number;
   status?: 'active' | 'matched' | 'expired' | 'closed';
 }
 
@@ -123,7 +123,7 @@ export interface PostResponse extends PostPayload {
   _id: string;
   authorId: string | { _id: string; username?: string };
   status: 'active' | 'matched' | 'expired' | 'closed';
-  expiresAt?: string;
+  availabilityDate?: string;
   closedAt?: string | null;
   closeReason?: string;
   acceptedUserIds?: string[];
@@ -180,6 +180,9 @@ export interface ConversationSummary {
   lastMessageAt?: string | null;
   pinnedBy?: string[];
   updatedAt?: string;
+  firstOpenedAt?: string | null;
+  expiresAt?: string | null;
+  maxExpiresAt?: string | null;
 }
 
 export interface ConversationMessageItem {
@@ -275,6 +278,8 @@ export const unpinConversation = (conversationId: string) =>
   http.patch(`/conversations/${conversationId}/unpin`);
 export const deleteConversationForMe = (conversationId: string) =>
   http.patch(`/conversations/${conversationId}/delete-for-me`);
+export const extendConversation = (conversationId: string) =>
+  http.post<{ conversation: ConversationSummary }>(`/conversations/${conversationId}/extend`);
 export const fetchNotifications = () => http.get<{ notifications: NotificationItem[]; unread: number }>('/notifications');
 export const fetchFaculties = () => http.get<{ faculties: FacultyItem[] }>('/faculties');
 export const fetchMajors = (params?: Record<string, string>) => http.get<{ majors: MajorItem[] }>('/majors', { params });
