@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle2, Languages, PenSquare } from 'lucide-react';
+import { CheckCircle2, PenSquare } from 'lucide-react';
 import { createPost, type PostPayload } from '../lib/http';
 import { useAuth } from '../context/AuthContext';
 import { PRIORITY_ROLE_OPTIONS } from '../lib/priorities';
@@ -26,12 +26,13 @@ const CreatePostPage: React.FC = () => {
   });
   const [tagsInput, setTagsInput] = useState('');
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
-  const [postRole, setPostRole] = useState<PostPayload['postRole']>();
+  const [selectedRoles, setSelectedRoles] = useState<PostPayload['postRole'][]>([]);
   const [availabilityDate, setAvailabilityDate] = useState('');
-  const [participantTargetCount, setParticipantTargetCount] = useState('3');
+  const [participantTargetCount, setParticipantTargetCount] = useState(3);
   const [shortDescription, setShortDescription] = useState('');
   const [subjectsLimitWarning, setSubjectsLimitWarning] = useState('');
   const [subjectsLimitHighlight, setSubjectsLimitHighlight] = useState(false);
+  const [rolesLimitWarning, setRolesLimitWarning] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const subjectsLimitTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -40,13 +41,20 @@ const CreatePostPage: React.FC = () => {
   const isStudyPartner = form.category === 'study_partner';
 
   const isStudyTeam = form.category === 'project_team';
+  const roleSelectionValid = selectedRoles.length >= 1 && selectedRoles.length <= 2;
   const studyPartnerValid =
     selectedSubjects.length >= 1 &&
     selectedSubjects.length <= 2 &&
-    Boolean(postRole) &&
+    roleSelectionValid &&
     Boolean(availabilityDate);
 
-  const standardPostValid = Boolean(form.title?.trim() && form.description?.trim()) && (!isStudyTeam || (Boolean(availabilityDate) && Number(participantTargetCount) >= 3));
+  const studyTeamValid =
+    selectedSubjects.length >= 1 &&
+    selectedSubjects.length <= 2 &&
+    Boolean(availabilityDate) &&
+    participantTargetCount >= 3;
+
+  const standardPostValid = Boolean(form.title?.trim() && form.description?.trim());
 
   const handleChange = (field: keyof PostPayload, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -75,6 +83,40 @@ const CreatePostPage: React.FC = () => {
     });
   };
 
+  const toggleRole = (role: PostPayload['postRole']) => {
+    if (!role) return;
+
+    setRolesLimitWarning('');
+    setSelectedRoles((prev) => {
+      if (prev.includes(role)) {
+        return prev.filter((item) => item !== role);
+      }
+
+      if (prev.length >= 2) {
+        return prev;
+      }
+
+      const isConflict =
+        (role === 'need_help' && prev.includes('can_help')) ||
+        (role === 'can_help' && prev.includes('need_help'));
+
+      if (isConflict) {
+        setRolesLimitWarning('لا يمكن الجمع بين محتاج مساعدة وأقدر أساعد');
+        return prev;
+      }
+
+      return [...prev, role];
+    });
+  };
+
+  const incrementParticipants = () => {
+    setParticipantTargetCount((prev) => prev + 1);
+  };
+
+  const decrementParticipants = () => {
+    setParticipantTargetCount((prev) => Math.max(3, prev - 1));
+  };
+
   useEffect(() => () => {
     if (subjectsLimitTimeoutRef.current) {
       clearTimeout(subjectsLimitTimeoutRef.current);
@@ -92,18 +134,32 @@ const CreatePostPage: React.FC = () => {
       return;
     }
 
+    if (isStudyTeam && !studyTeamValid) {
+      setError('Sélectionnez vos matières, une date de disponibilité et le nombre de participants.');
+      setSaving(false);
+      return;
+    }
+
     const payload: PostPayload = isStudyPartner
       ? {
         category: 'study_partner',
         subjectCodes: selectedSubjects,
-        postRole: postRole!,
+        postRole: selectedRoles[0],
         availabilityDate,
+        description: shortDescription.trim() ? shortDescription.trim() : undefined,
+      }
+      : isStudyTeam
+      ? {
+        category: 'project_team',
+        subjectCodes: selectedSubjects,
+        availabilityDate,
+        participantTargetCount,
         description: shortDescription.trim() ? shortDescription.trim() : undefined,
       }
       : {
         ...form,
         availabilityDate: availabilityDate || undefined,
-        participantTargetCount: isStudyTeam ? Number(participantTargetCount) : undefined,
+        participantTargetCount: undefined,
         tags: tagsInput
           .split(',')
           .map((tag) => tag.trim())
@@ -145,7 +201,7 @@ const CreatePostPage: React.FC = () => {
             </div>
           </div>
 
-          {isStudyPartner ? (
+          {isStudyPartner || isStudyTeam ? (
             <>
               <div className="md:col-span-2 space-y-2">
                 <label className="text-sm font-semibold text-slate-700">Matières (1-2)</label>
@@ -174,24 +230,56 @@ const CreatePostPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="md:col-span-2 space-y-2">
-                <label className="text-sm font-semibold text-slate-700">الدور</label>
-                <div className="grid sm:grid-cols-2 gap-2">
-                  {PRIORITY_ROLE_OPTIONS.map((role) => (
-                    <button
-                      key={role.key}
-                      type="button"
-                      onClick={() => setPostRole(role.key)}
-                      className={`rounded-xl border px-3 py-2 text-left transition ${
-                        postRole === role.key ? 'border-emerald-400 bg-emerald-50 shadow-sm' : 'border-slate-200 bg-white'
-                      }`}
-                    >
-                      <p className="text-sm font-semibold text-slate-800">{role.label}</p>
-                      <p className="text-xs text-slate-500">{role.helper}</p>
-                    </button>
-                  ))}
+              {isStudyPartner && (
+                <div className="md:col-span-2 space-y-2">
+                  <label className="text-sm font-semibold text-slate-700">الدور</label>
+                  {rolesLimitWarning && (
+                    <p className="text-xs text-amber-700">{rolesLimitWarning}</p>
+                  )}
+                  <div className="grid sm:grid-cols-2 gap-2">
+                    {PRIORITY_ROLE_OPTIONS.map((role) => (
+                      <button
+                        key={role.key}
+                        type="button"
+                        onClick={() => toggleRole(role.key)}
+                        className={`rounded-xl border px-3 py-2 text-left transition ${
+                          selectedRoles.includes(role.key) ? 'border-emerald-400 bg-emerald-50 shadow-sm' : 'border-slate-200 bg-white'
+                        }`}
+                      >
+                        <p className="text-sm font-semibold text-slate-800">{role.label}</p>
+                        <p className="text-xs text-slate-500">{role.helper}</p>
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {isStudyTeam && (
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-slate-700">Nombre cible de participants</label>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      className="tab-btn bg-white border border-slate-200 px-3"
+                      onClick={decrementParticipants}
+                      disabled={participantTargetCount <= 3}
+                    >
+                      -
+                    </button>
+                    <div className="min-w-12 text-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700">
+                      {participantTargetCount}
+                    </div>
+                    <button
+                      type="button"
+                      className="tab-btn bg-white border border-slate-200 px-3"
+                      onClick={incrementParticipants}
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-slate-700">Date de disponibilité</label>
                 <input type="date" value={availabilityDate} onChange={(e) => setAvailabilityDate(e.target.value)} className="w-full" />
@@ -210,12 +298,6 @@ const CreatePostPage: React.FC = () => {
             </>
           ) : (
             <>
-              {isStudyTeam && (
-                <div>
-                  <label className="text-sm font-semibold text-slate-700">Nombre cible de participants (min 3)</label>
-                  <input className="w-full mt-1" type="number" min={3} value={participantTargetCount} onChange={(e) => setParticipantTargetCount(e.target.value)} />
-                </div>
-              )}
               <div>
                 <label className="text-sm font-semibold text-slate-700">Titre</label>
                 <input className="w-full mt-1" value={form.title ?? ''} onChange={(e) => handleChange('title', e.target.value)} />
@@ -243,7 +325,7 @@ const CreatePostPage: React.FC = () => {
                       onClick={() => handleChange('languagePref', lng as PostPayload['languagePref'])}
                       className={`tab-btn ${form.languagePref === lng ? 'active' : 'bg-white border border-slate-200'}`}
                     >
-                      <Languages size={14} className="me-1" /> {lng}
+                      {lng}
                     </button>
                   ))}
                 </div>
@@ -276,7 +358,7 @@ const CreatePostPage: React.FC = () => {
         <button
           type="submit"
           className="primary-btn w-full sm:w-auto"
-          disabled={saving || (isStudyPartner ? !studyPartnerValid : !standardPostValid)}
+          disabled={saving || (isStudyPartner ? !studyPartnerValid : isStudyTeam ? !studyTeamValid : !standardPostValid)}
         >
           {saving ? 'Publication...' : 'Publier'}
         </button>
