@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle2, Clock3, Languages, PenSquare } from 'lucide-react';
 import { createPost, type PostPayload } from '../lib/http';
@@ -38,8 +38,11 @@ const CreatePostPage: React.FC = () => {
   const [customDurationInput, setCustomDurationInput] = useState('');
   const [customDurationHours, setCustomDurationHours] = useState<number | null>(null);
   const [shortDescription, setShortDescription] = useState('');
+  const [subjectsLimitWarning, setSubjectsLimitWarning] = useState('');
+  const [subjectsLimitHighlight, setSubjectsLimitHighlight] = useState(false);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const subjectsLimitTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const subjectOptions = useMemo(() => profile?.subjectCodes?.filter(Boolean) ?? [], [profile?.subjectCodes]);
   const isStudyPartner = form.category === 'study_partner';
@@ -74,17 +77,32 @@ const CreatePostPage: React.FC = () => {
 
   const toggleSubject = (subject: string) => {
     setError('');
+    setSubjectsLimitWarning('');
     setSelectedSubjects((prev) => {
       if (prev.includes(subject)) {
         return prev.filter((item) => item !== subject);
       }
       if (prev.length >= 2) {
-        setError('Vous pouvez sélectionner deux matières maximum.');
+        setSubjectsLimitWarning('Vous pouvez sélectionner deux matières maximum.');
+        setSubjectsLimitHighlight(false);
+        if (subjectsLimitTimeoutRef.current) {
+          clearTimeout(subjectsLimitTimeoutRef.current);
+        }
+        requestAnimationFrame(() => {
+          setSubjectsLimitHighlight(true);
+          subjectsLimitTimeoutRef.current = setTimeout(() => setSubjectsLimitHighlight(false), 650);
+        });
         return prev;
       }
       return [...prev, subject];
     });
   };
+
+  useEffect(() => () => {
+    if (subjectsLimitTimeoutRef.current) {
+      clearTimeout(subjectsLimitTimeoutRef.current);
+    }
+  }, []);
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
@@ -153,7 +171,12 @@ const CreatePostPage: React.FC = () => {
               <div className="md:col-span-2 space-y-2">
                 <label className="text-sm font-semibold text-slate-700">Matières (1-2)</label>
                 <p className="helper-text">Sélectionnez les matières déjà présentes dans votre profil.</p>
-                <div className="flex flex-wrap gap-2">
+                {subjectsLimitWarning && (
+                  <p className="text-xs text-red-700 bg-red-50 border border-red-100 rounded-md px-2 py-1">{subjectsLimitWarning}</p>
+                )}
+                <div
+                  className={`flex flex-wrap gap-2 rounded-lg border p-2 transition ${subjectsLimitHighlight ? 'border-red-300 bg-red-50/70' : 'border-transparent'}`}
+                >
                   {subjectOptions.map((subject) => {
                     const selected = selectedSubjects.includes(subject);
                     return (
