@@ -19,8 +19,17 @@ const expirePosts = async () => {
 
 const buildStudyPartnerTitle = (subjectCodes) => `Study partner • ${subjectCodes.join(' & ')}`;
 
-const maxAcceptedForRole = (studentRole) => {
-  if (studentRole === 'helper') return 3;
+const toLegacyRole = (postRole) => {
+  if (postRole === 'can_help') return 'helper';
+  if (postRole === 'need_help') return 'learner';
+  if (postRole === 'td' || postRole === 'archive') return 'partner';
+  return undefined;
+};
+
+const resolvePostRole = (post) => post?.postRole ?? toLegacyRole(post?.studentRole);
+
+const maxAcceptedForRole = (postRole) => {
+  if (postRole === 'can_help') return 3;
   return 1;
 };
 
@@ -120,15 +129,15 @@ const resolveIntentBoost = (intent, post) => {
   if (!intent) return 0;
   if (intent === 'NEED_HELP') {
     if (post.category === 'tutor_offer') return 2;
-    if (post.category === 'study_partner' && post.studentRole === 'helper') return 2;
+    if (post.category === 'study_partner' && resolvePostRole(post) === 'can_help') return 2;
     return 0;
   }
   if (intent === 'STUDY_TOGETHER') {
-    if (post.category === 'study_partner' && post.studentRole === 'partner') return 2;
+    if (post.category === 'study_partner' && (resolvePostRole(post) === 'td' || resolvePostRole(post) === 'archive')) return 2;
     return 0;
   }
   if (intent === 'I_CAN_HELP') {
-    if (post.category === 'study_partner' && post.studentRole === 'learner') return 2;
+    if (post.category === 'study_partner' && resolvePostRole(post) === 'need_help') return 2;
     return 0;
   }
   return 0;
@@ -422,7 +431,7 @@ export const createPost = async (req, res) => {
     const { category } = req.body;
 
     if (category === 'study_partner') {
-      const { subjectCodes, studentRole, durationHours, description } = req.body;
+      const { subjectCodes, postRole, durationHours, description } = req.body;
       const profile = await Profile.findOne({ userId: req.user._id });
 
       if (!profile?.subjectCodes?.length) {
@@ -457,7 +466,7 @@ export const createPost = async (req, res) => {
         description: sanitizedDescription,
         category,
         subjectCodes: normalizedCodes,
-        studentRole,
+        postRole,
         expiresAt,
         faculty: profile.faculty,
         level: profile.level,
@@ -527,7 +536,7 @@ export const updatePost = async (req, res) => {
     }
 
     if (post.category === 'study_partner') {
-      const allowedFields = ['description', 'subjectCodes', 'studentRole', 'status', 'extendHours'];
+      const allowedFields = ['description', 'subjectCodes', 'postRole', 'status', 'extendHours'];
       const invalidFields = Object.keys(updates).filter((key) => !allowedFields.includes(key));
       if (invalidFields.length) {
         return res.status(400).json({ error: 'Study partner posts accept only subjects, role, status, and duration updates.' });
@@ -695,7 +704,7 @@ export const createJoinRequest = async (req, res) => {
     }
 
     const acceptedCount = post.acceptedUserIds?.length ?? 0;
-    const maxAccepted = maxAcceptedForRole(post.studentRole);
+    const maxAccepted = maxAcceptedForRole(resolvePostRole(post));
     if (acceptedCount >= maxAccepted) {
       return res.status(400).json({ error: 'Capacity reached for this post.' });
     }
@@ -710,7 +719,7 @@ export const createJoinRequest = async (req, res) => {
       action: 'join_requested',
       actorId: req.user._id,
       postId: post._id,
-      meta: { studentRole: post.studentRole }
+      meta: { postRole: resolvePostRole(post) }
     });
 
     await redis.del('posts:*');
@@ -778,7 +787,7 @@ export const acceptJoinRequest = async (req, res) => {
     }
 
     const acceptedCount = post.acceptedUserIds?.length ?? 0;
-    const maxAccepted = maxAcceptedForRole(post.studentRole);
+    const maxAccepted = maxAcceptedForRole(resolvePostRole(post));
     if (acceptedCount >= maxAccepted) {
       return res.status(400).json({ error: 'Capacity reached for this post.' });
     }

@@ -71,6 +71,13 @@ export interface ApiUser {
   avatarUrl?: string;
 }
 
+export interface SubjectPriorityItem {
+  subjectCode: string;
+  isPriority: boolean;
+}
+
+export type PriorityRoleKey = 'need_help' | 'can_help' | 'td' | 'archive';
+
 export interface Profile {
   displayName?: string;
   faculty?: string;
@@ -82,6 +89,8 @@ export interface Profile {
   semesterId?: string;
   subjects?: string[];
   subjectCodes?: string[];
+  subjectsSettings?: SubjectPriorityItem[];
+  prioritiesOrder?: PriorityRoleKey[];
   skills?: string[];
   courses?: string[];
   availability?: string;
@@ -104,7 +113,7 @@ export interface PostPayload {
   languagePref?: 'Arabic' | 'French';
   location?: 'campus' | 'online';
   subjectCodes?: string[];
-  studentRole?: 'helper' | 'partner' | 'learner';
+  postRole?: PriorityRoleKey;
   durationHours?: number;
   extendHours?: number;
   status?: 'active' | 'matched' | 'expired' | 'closed';

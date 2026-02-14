@@ -6,9 +6,10 @@ import { resolveAuthorId } from '../lib/postUtils';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 
 const roleLabels: Record<string, string> = {
-  helper: 'Aide',
-  partner: 'Partenaire',
-  learner: 'Apprenant',
+  need_help: 'محتاج مساعدة',
+  can_help: 'اقدر اساعد',
+  td: 'حل TD',
+  archive: 'حل الأرشيف',
 };
 
 interface PostCardProps {
@@ -25,7 +26,7 @@ const PostCard: React.FC<PostCardProps> = ({
   clampDescription = false,
 }) => {
   const isAuthor = currentUserId ? resolveAuthorId(post) === currentUserId : false;
-  const roleLabel = post.studentRole ? roleLabels[post.studentRole] ?? post.studentRole : 'Non précisé';
+  const roleLabel = post.postRole ? roleLabels[post.postRole] ?? post.postRole : 'Non précisé';
   const descriptionClassName = `text-sm text-slate-700 leading-relaxed${clampDescription ? ' line-clamp-3' : ''}`;
 
   return (
@@ -65,7 +66,7 @@ const PostCard: React.FC<PostCardProps> = ({
               {post.description ? (
                 <p className={descriptionClassName}>{post.description}</p>
               ) : null}
-              {post.studentRole ? (
+              {post.postRole ? (
                 <p className="text-sm font-semibold text-slate-700">Rôle {roleLabel}</p>
               ) : null}
             </>

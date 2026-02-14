@@ -23,9 +23,10 @@ import { resolveAuthorId } from '../lib/postUtils';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 
 const roleLabels: Record<string, string> = {
-  helper: 'Helper',
-  partner: 'Partner',
-  learner: 'Learner',
+  need_help: 'محتاج مساعدة',
+  can_help: 'اقدر اساعد',
+  td: 'حل TD',
+  archive: 'حل الأرشيف',
 };
 
 const PostDetailsPage: React.FC = () => {
@@ -351,9 +352,9 @@ const PostDetailsPage: React.FC = () => {
         <div className="space-y-2">
           <div className="flex flex-wrap items-center gap-2">
             <span className="badge-soft inline-flex">{post?.category}</span>
-            {post.studentRole ? (
+            {post.postRole ? (
               <span className="badge-soft bg-slate-100 text-slate-700">
-                Rôle {roleLabels[post.studentRole] ?? post.studentRole}
+                Rôle {roleLabels[post.postRole] ?? post.postRole}
               </span>
             ) : null}
             {typeof post.matchPercent === 'number' ? (
