@@ -20,6 +20,7 @@ import { useAuth } from '../context/AuthContext';
 import { processImageFile } from '../lib/imageProcessing';
 import { uploadToImageKit } from '../lib/imagekitClient';
 import { DEFAULT_PRIORITIES_ORDER, PRIORITY_ROLE_OPTIONS, type PriorityRoleKey } from '../lib/priorities';
+import { buildSubjectInitials } from '../lib/subjectDisplay';
 
 const EditProfilePage: React.FC = () => {
   const [form, setForm] = useState<Profile>({ subjects: [], subjectCodes: [], subjectsSettings: [], remainingSubjects: [], prioritiesOrder: DEFAULT_PRIORITIES_ORDER });
@@ -814,7 +815,7 @@ const EditProfilePage: React.FC = () => {
                       className="badge-soft"
                       title={uiLanguage === 'ar' ? subject.nameAr : subject.nameFr}
                     >
-                      {subject.code}
+                      {buildSubjectInitials(uiLanguage === 'ar' ? subject.nameAr : subject.nameFr, subject.code)}
                     </span>
                   ))}
                 </div>
@@ -841,7 +842,7 @@ const EditProfilePage: React.FC = () => {
                         className={`rounded-xl border px-3 py-2 text-left transition ${active ? 'border-amber-300 bg-amber-50 text-amber-900 shadow-sm' : 'border-slate-200 bg-white text-slate-700'}`}
                       >
                         <div className="flex items-center justify-between">
-                          <span className="font-semibold">{subject.code}</span>
+                          <span className="font-semibold">{uiLanguage === 'ar' ? subject.nameAr : subject.nameFr}</span>
                           <Star className={`h-4 w-4 ${active ? 'fill-amber-400 text-amber-500' : 'text-slate-400'}`} />
                         </div>
                         <p className="text-xs mt-1">{active ? 'مادة مهمة للإشعارات' : 'مادة عادية'}</p>
@@ -918,7 +919,7 @@ const EditProfilePage: React.FC = () => {
                               className={`rounded-xl border px-3 py-2 text-left transition ${active ? 'border-emerald-300 bg-emerald-50 text-emerald-900 shadow-sm' : 'border-slate-200 bg-white text-slate-700'}`}
                             >
                               <div className="flex items-center justify-between">
-                                <span className="font-semibold">{subject.code}</span>
+                                <span className="font-semibold">{buildSubjectInitials(uiLanguage === 'ar' ? subject.nameAr : subject.nameFr, subject.code)}</span>
                                 <span className="badge-soft text-[10px] px-2 py-0.5">{previousLevel}</span>
                               </div>
                               <p className="text-xs mt-1">{uiLanguage === 'ar' ? subject.nameAr : subject.nameFr}</p>

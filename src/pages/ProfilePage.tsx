@@ -17,6 +17,7 @@ import {
   type CatalogSubject
 } from '../lib/catalog';
 import { PRIORITY_ROLE_LABELS } from '../lib/priorities';
+import { buildSubjectInitials } from '../lib/subjectDisplay';
 
 const ProfilePage: React.FC = () => {
   const { user, profile: authProfile } = useAuth();
@@ -228,7 +229,7 @@ const ProfilePage: React.FC = () => {
             <h3 className="font-semibold text-slate-900 mb-2">Matières suivies</h3>
             <div className="flex flex-wrap gap-2">
               {(courseLabels ?? []).map((subject) => (
-                <span key={subject} className="badge-soft">{subject}</span>
+                <span key={subject} className="badge-soft" title={subject}>{buildSubjectInitials(subject, subject)}</span>
               ))}
               {!courseLabels?.length && <span className="text-sm text-slate-500">Ajoutez vos matières suivies.</span>}
             </div>
