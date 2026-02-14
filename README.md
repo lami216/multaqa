@@ -457,7 +457,7 @@ After running the seed script:
 - Prendre une photo et choisir une image existante : l'aperçu doit se mettre à jour immédiatement dans l'avatar.
 - Enregistrer puis actualiser / se reconnecter pour vérifier que l'avatar persiste sur toutes les vues (en-tête, profil).
 
-## 🧪 Testing
+## 🧪 Testing.
 
 ### Backend Testing
 ```bash
