@@ -96,7 +96,6 @@ const profileSchema = new mongoose.Schema({
   timestamps: true
 });
 
-profileSchema.index({ userId: 1 });
 
 const Profile = mongoose.model('Profile', profileSchema);
 
