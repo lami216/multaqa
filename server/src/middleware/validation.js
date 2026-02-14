@@ -124,3 +124,10 @@ export const reportSchema = z.object({
   reason: z.string().min(1),
   details: z.string().max(1000).optional()
 });
+
+
+export const profileRemainingSubjectsSchema = z.object({
+  remainingSubjects: z.array(remainingSubjectSchema)
+}).strict();
+
+export const profileUpdateSchema = z.union([profileSchema, profileRemainingSubjectsSchema]);
