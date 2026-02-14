@@ -45,6 +45,8 @@ export interface CatalogVisibilityConfig {
 
 export type AcademicTermType = 'odd' | 'even';
 
+export const buildAcademicMajorKey = (facultyId?: string, levelId?: string, majorId?: string) => `${facultyId ?? ''}|${levelId ?? ''}|${majorId ?? ''}`;
+
 const LEVEL_SEMESTER_MAP: Record<string, string[]> = {
   L1: ['S1', 'S2'],
   L2: ['S3', 'S4'],

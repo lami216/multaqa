@@ -10,8 +10,8 @@ import {
   getMajorsByFacultyAndLevel,
   getSubjectsByMajorAndSemester,
   getTermSemesterForLevel,
+  buildAcademicMajorKey,
   isFacultyEnabled,
-  isMajorEnabled,
   type CatalogFaculty,
   type CatalogLevel,
   type CatalogMajor,
@@ -34,7 +34,8 @@ const ProfilePage: React.FC = () => {
   const [academicSettings, setAcademicSettings] = useState<AcademicSettingsResponse>({
     academicTermType: 'odd',
     catalogVisibility: { faculties: {}, majors: {} },
-    preregCounts: {}
+    preregCounts: {},
+    majorAvailability: {}
   });
 
   const handleTelegramLink = async () => {
@@ -95,7 +96,12 @@ const ProfilePage: React.FC = () => {
   const levels = resolvedFaculty ? getLevelsByFaculty(resolvedFaculty.id, academicSettings.catalogVisibility) : [];
   const resolvedLevel = matchByIdOrName<CatalogLevel>(levels, profile?.level);
   const majors =
-    resolvedFaculty && resolvedLevel ? getMajorsByFacultyAndLevel(resolvedFaculty.id, resolvedLevel.id, academicSettings.catalogVisibility) : [];
+    resolvedFaculty && resolvedLevel
+      ? getMajorsByFacultyAndLevel(resolvedFaculty.id, resolvedLevel.id, academicSettings.catalogVisibility).filter((major) => {
+          const key = buildAcademicMajorKey(resolvedFaculty.id, resolvedLevel.id, major.id);
+          return (academicSettings.majorAvailability?.[key]?.status ?? 'active') !== 'closed';
+        })
+      : [];
   const resolvedMajor = matchByIdOrName<CatalogMajor>(majors, profile?.majorId ?? profile?.major);
   const mappedSemesterId = resolvedLevel ? getTermSemesterForLevel(resolvedLevel.id, academicSettings.academicTermType) : undefined;
   const catalogSubjects =
@@ -126,9 +132,11 @@ const ProfilePage: React.FC = () => {
   const majorLabel = resolvedMajor?.nameFr ?? profile?.major ?? 'Filière non renseignée';
   const courseLabels = profile?.courses?.length ? profile.courses : resolvedSubjectNames;
   const prioritiesOrder = profile?.prioritiesOrder ?? ['need_help', 'can_help', 'td', 'archive'];
-  const majorEnabled = resolvedMajor ? isMajorEnabled(resolvedMajor.id, academicSettings.catalogVisibility) : true;
-  const majorPreregCount = resolvedMajor ? academicSettings.preregCounts?.[resolvedMajor.id] ?? 0 : 0;
-  const majorThreshold = resolvedMajor ? academicSettings.catalogVisibility.majors?.[resolvedMajor.id]?.threshold ?? 20 : 20;
+  const majorKey = resolvedFaculty && resolvedLevel && resolvedMajor ? buildAcademicMajorKey(resolvedFaculty.id, resolvedLevel.id, resolvedMajor.id) : '';
+  const majorAvailability = majorKey ? academicSettings.majorAvailability?.[majorKey] : undefined;
+  const majorStatus = majorAvailability?.status ?? 'active';
+  const majorPreregCount = majorAvailability?.registeredCount ?? 0;
+  const majorThreshold = majorAvailability?.threshold ?? 0;
 
   const currentLevelId = resolvedLevel?.id ?? profile?.level;
   const previousLevelMap: Record<string, string> = { L2: 'L1', L3: 'L2' };
@@ -247,10 +255,13 @@ const ProfilePage: React.FC = () => {
           </div>
         </div>
 
-        {!majorEnabled && (
+        {majorStatus !== 'active' && (
           <div className="card-surface p-4 text-amber-700 text-sm">
-            <p>Your major exists but is not activated yet.</p>
-            <p>{majorPreregCount} registered out of {majorThreshold} required.</p>
+            {majorStatus === 'collecting' ? (
+              <p>تخصصك موجود لكنه غير مُفعّل بعد. حاليا: {majorPreregCount} من {majorThreshold} مسجلين.</p>
+            ) : (
+              <p>تخصصك موجود لكنه غير مُفعّل بعد.</p>
+            )}
           </div>
         )}
 

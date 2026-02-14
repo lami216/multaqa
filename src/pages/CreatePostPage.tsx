@@ -184,7 +184,7 @@ const CreatePostPage: React.FC = () => {
 
     createPost(payload)
       .then(() => navigate('/posts'))
-      .catch(() => setError('Impossible de publier cette annonce pour le moment.'))
+      .catch((err) => setError(err?.response?.data?.error ?? 'Impossible de publier cette annonce pour le moment.'))
       .finally(() => setSaving(false));
   };
 
