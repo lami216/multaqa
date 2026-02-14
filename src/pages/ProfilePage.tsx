@@ -354,7 +354,7 @@ const ProfilePage: React.FC = () => {
                           className={`rounded-xl border px-3 py-2 text-left transition ${active ? 'border-emerald-300 bg-emerald-50 text-emerald-900 shadow-sm' : 'border-slate-200 bg-white text-slate-700'}`}
                         >
                           <div className="flex items-center justify-between">
-                            <span className="font-semibold">{subject.code}</span>
+                            <span className="font-semibold">{subject.nameFr || subject.nameAr || subject.name || 'Matière'}</span>
                             <span className="badge-soft text-[10px] px-2 py-0.5">{previousLevel}</span>
                           </div>
                           <p className="text-xs mt-1">{subject.nameAr}</p>

@@ -1,7 +1,11 @@
 import catalog from '../data/catalog.json';
+import { buildSubjectShortName } from './subjectDisplay';
 
 export interface CatalogSubject {
+  id: string;
   code: string;
+  name: string;
+  shortName: string;
   nameAr: string;
   nameFr: string;
 }
@@ -64,23 +68,56 @@ const formatNameFromCode = (code: string): string =>
     .toLocaleLowerCase('fr-FR')
     .replace(/(^|\s)\p{L}/gu, (match) => match.toLocaleUpperCase('fr-FR'));
 
-const normalizeCatalogSubject = (subject: CatalogSubject): CatalogSubject => {
+const normalizeCatalogSubject = (subject: Partial<CatalogSubject> & { code?: string; nameFr?: string; nameAr?: string }): CatalogSubject => {
   const normalizedCode = subject.code?.trim() ?? '';
   const normalizedNameFr = subject.nameFr?.trim() ?? '';
   const normalizedNameAr = subject.nameAr?.trim() ?? '';
   const fallbackName = normalizedCode ? formatNameFromCode(normalizedCode) : '';
   const resolvedNameFr = !normalizedNameFr || normalizedNameFr.toLowerCase() === normalizedCode.toLowerCase() ? fallbackName : normalizedNameFr;
   const resolvedNameAr = !normalizedNameAr || normalizedNameAr.toLowerCase() === normalizedCode.toLowerCase() ? resolvedNameFr : normalizedNameAr;
+  const resolvedName = resolvedNameFr || resolvedNameAr || fallbackName;
 
   return {
     ...subject,
+    id: subject.id?.trim() || normalizedCode,
     code: normalizedCode,
+    name: subject.name?.trim() || resolvedName,
+    shortName: subject.shortName?.trim() || buildSubjectShortName(resolvedName),
     nameFr: resolvedNameFr,
     nameAr: resolvedNameAr
   };
 };
 
 const catalogData = catalog as CatalogData;
+
+const getAllCatalogSubjects = (): CatalogSubject[] =>
+  catalogData.faculties
+    .flatMap((faculty) => faculty.levels)
+    .flatMap((level) => level.majors)
+    .flatMap((major) => major.semesters)
+    .flatMap((semester) => semester.subjects)
+    .map((subject) => normalizeCatalogSubject(subject));
+
+const subjectByCodeMap = new Map(getAllCatalogSubjects().map((subject) => [subject.code, subject]));
+
+export const getCatalogSubjectByCode = (code?: string): CatalogSubject | undefined => {
+  const normalizedCode = code?.trim();
+  if (!normalizedCode) return undefined;
+  return subjectByCodeMap.get(normalizedCode);
+};
+
+export const getSubjectShortNameByCode = (code?: string): string => {
+  const subject = getCatalogSubjectByCode(code);
+  if (!subject) return '';
+  return subject.shortName || buildSubjectShortName(subject.nameFr || subject.nameAr || subject.name);
+};
+
+export const getSubjectNameByCode = (code?: string): string => {
+  const subject = getCatalogSubjectByCode(code);
+  if (!subject) return '';
+  return subject.nameFr || subject.nameAr || subject.name;
+};
+
 
 const matchesTermParity = (semesterId: string, academicTermType: AcademicTermType): boolean => {
   const semesterNumber = Number.parseInt((semesterId || '').replace(/\D/g, ''), 10);
