@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { PostResponse } from '../lib/http';
 import { resolveAuthorId } from '../lib/postUtils';
-import { getSubjectShortNameByCode } from '../lib/catalog';
+import { getCatalogSubjectByCode, getSubjectShortNameByCode } from '../lib/catalog';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 
 const roleLabels: Record<string, string> = {
   need_help: 'محتاج مساعدة',
@@ -32,6 +33,7 @@ const PostCard: React.FC<PostCardProps> = ({
   const isAuthor = currentUserId ? resolveAuthorId(post) === currentUserId : false;
   const roleLabel = post.postRole ? roleLabels[post.postRole] ?? post.postRole : 'Non précisé';
   const descriptionClassName = `text-sm text-slate-700 leading-relaxed${clampDescription ? ' line-clamp-3' : ''}`;
+  const [selectedSubjectName, setSelectedSubjectName] = useState('');
 
   return (
     <div className="card-surface p-4 sm:p-5 flex flex-col gap-3 relative">
@@ -53,9 +55,19 @@ const PostCard: React.FC<PostCardProps> = ({
           {post.category === 'study_partner' ? (
             <div className="space-y-2">
               <div className="flex flex-wrap gap-2">
-                {(post.subjectCodes ?? []).map((subject) => (
-                  <span key={subject} className="badge-soft bg-emerald-50 text-emerald-700">{getSubjectShortNameByCode(subject) || 'M'}</span>
-                ))}
+                {(post.subjectCodes ?? []).map((subjectCode) => {
+                  const subject = getCatalogSubjectByCode(subjectCode);
+                  return (
+                    <button
+                      key={subjectCode}
+                      type="button"
+                      className="badge-soft bg-emerald-50 text-emerald-700"
+                      onClick={() => setSelectedSubjectName(subject?.name || subject?.nameFr || subjectCode)}
+                    >
+                      {subject?.shortName || getSubjectShortNameByCode(subjectCode) || 'M'}
+                    </button>
+                  );
+                })}
                 <span className="badge-soft bg-slate-100 text-slate-700">Rôle {roleLabel}</span>
               </div>
               {post.availabilityDate ? (
@@ -126,6 +138,14 @@ const PostCard: React.FC<PostCardProps> = ({
           <Users size={16} className="me-1" /> Consulter
         </Link>
       </div>
+      <Dialog open={Boolean(selectedSubjectName)} onOpenChange={(open) => !open && setSelectedSubjectName('')}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Nom complet de la matière</DialogTitle>
+          </DialogHeader>
+          <p className="text-slate-700">{selectedSubjectName}</p>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
