@@ -28,6 +28,127 @@
                   "subjects": []
                 }
               ]
+            },
+            {
+              "id": "BIO-GEO",
+              "nameAr": "بيولوجيا – جيولوجيا",
+              "nameFr": "Biologie – Géologie",
+              "semesters": [
+                {
+                  "id": "S1",
+                  "nameAr": "السداسي 1",
+                  "nameFr": "Semestre 1",
+                  "subjects": [
+                    {
+                      "code": "BGS101",
+                      "nameAr": "Découverte de la biologie",
+                      "nameFr": "Découverte de la biologie"
+                    },
+                    {
+                      "code": "BGS102",
+                      "nameAr": "Biologie cellulaire I",
+                      "nameFr": "Biologie cellulaire I"
+                    },
+                    {
+                      "code": "BGS103",
+                      "nameAr": "Système Terre I",
+                      "nameFr": "Système Terre I"
+                    },
+                    {
+                      "code": "BGS104",
+                      "nameAr": "Géodynamique interne",
+                      "nameFr": "Géodynamique interne"
+                    },
+                    {
+                      "code": "BGS105",
+                      "nameAr": "Chimie Générale",
+                      "nameFr": "Chimie Générale"
+                    },
+                    {
+                      "code": "BGS106",
+                      "nameAr": "Chimie organique I",
+                      "nameFr": "Chimie organique I"
+                    },
+                    {
+                      "code": "BGS107",
+                      "nameAr": "Mathématiques I",
+                      "nameFr": "Mathématiques I"
+                    },
+                    {
+                      "code": "BGS108",
+                      "nameAr": "Physique I",
+                      "nameFr": "Physique I"
+                    },
+                    {
+                      "code": "BGS109",
+                      "nameAr": "Arabe I",
+                      "nameFr": "Arabe I"
+                    },
+                    {
+                      "code": "BGS110",
+                      "nameAr": "Anglais I",
+                      "nameFr": "Anglais I"
+                    }
+                  ]
+                },
+                {
+                  "id": "S2",
+                  "nameAr": "السداسي 2",
+                  "nameFr": "Semestre 2",
+                  "subjects": [
+                    {
+                      "code": "BGS201",
+                      "nameAr": "Biologie cellulaire II",
+                      "nameFr": "Biologie cellulaire II"
+                    },
+                    {
+                      "code": "BGS202",
+                      "nameAr": "Embryologie et Histologie",
+                      "nameFr": "Embryologie et Histologie"
+                    },
+                    {
+                      "code": "BGS203",
+                      "nameAr": "Système Terre II",
+                      "nameFr": "Système Terre II"
+                    },
+                    {
+                      "code": "BGS204",
+                      "nameAr": "Géodynamique externe",
+                      "nameFr": "Géodynamique externe"
+                    },
+                    {
+                      "code": "BGS205",
+                      "nameAr": "Chimie organique II",
+                      "nameFr": "Chimie organique II"
+                    },
+                    {
+                      "code": "BGS206",
+                      "nameAr": "Chimie inorganique",
+                      "nameFr": "Chimie inorganique"
+                    },
+                    {
+                      "code": "BGS207",
+                      "nameAr": "Physique II",
+                      "nameFr": "Physique II"
+                    },
+                    {
+                      "code": "BGS208",
+                      "nameAr": "Mathématiques II",
+                      "nameFr": "Mathématiques II"
+                    },
+                    {
+                      "code": "BGS209",
+                      "nameAr": "Arabe II",
+                      "nameFr": "Arabe II"
+                    },
+                    {
+                      "code": "BGS210",
+                      "nameAr": "Certificat Informatique et Internet",
+                      "nameFr": "Certificat Informatique et Internet"
+                    }
+                  ]
+                }
+              ]
             }
           ]
         },
@@ -112,13 +233,110 @@
                   "id": "S5",
                   "nameAr": "السداسي 5",
                   "nameFr": "Semestre 5",
-                  "subjects": []
+                  "subjects": [
+                    {
+                      "code": "BIO5220",
+                      "nameAr": "BIO 5220 Écologie Végétale II",
+                      "nameFr": "BIO 5220 Écologie Végétale II"
+                    },
+                    {
+                      "code": "BIO5230",
+                      "nameAr": "BIO 5230 Biologie marine",
+                      "nameFr": "BIO 5230 Biologie marine"
+                    },
+                    {
+                      "code": "BIO5200",
+                      "nameAr": "BIO 5200 Diversité animale II",
+                      "nameFr": "BIO 5200 Diversité animale II"
+                    },
+                    {
+                      "code": "BIO5210",
+                      "nameAr": "BIO 5210 Diversité végétale II",
+                      "nameFr": "BIO 5210 Diversité végétale II"
+                    },
+                    {
+                      "code": "BIO4030",
+                      "nameAr": "BIO 4030 Écologie Animale II",
+                      "nameFr": "BIO 4030 Écologie Animale II"
+                    },
+                    {
+                      "code": "BIO5240",
+                      "nameAr": "BIO 5240 Ornithologie",
+                      "nameFr": "BIO 5240 Ornithologie"
+                    },
+                    {
+                      "code": "LAN5700",
+                      "nameAr": "LAN5700 Anglais II",
+                      "nameFr": "LAN5700 Anglais II"
+                    },
+                    {
+                      "code": "LSAD",
+                      "nameAr": "Logiciel statistique : analyse des données",
+                      "nameFr": "Logiciel statistique : analyse des données"
+                    },
+                    {
+                      "code": "BIO5000",
+                      "nameAr": "BIO 5000 Bio statistique",
+                      "nameFr": "BIO 5000 Bio statistique"
+                    },
+                    {
+                      "code": "FST5700",
+                      "nameAr": "FST5700 Droit",
+                      "nameFr": "FST5700 Droit"
+                    }
+                  ]
                 },
                 {
                   "id": "S6",
                   "nameAr": "السداسي 6",
                   "nameFr": "Semestre 6",
-                  "subjects": []
+                  "subjects": [
+                    {
+                      "code": "FST6700",
+                      "nameAr": "FST6700 Economie",
+                      "nameFr": "FST6700 Economie"
+                    },
+                    {
+                      "code": "BIO6200",
+                      "nameAr": "BIO 6200 Microbiologie des sols et des eaux",
+                      "nameFr": "BIO 6200 Microbiologie des sols et des eaux"
+                    },
+                    {
+                      "code": "BIO6210",
+                      "nameAr": "BIO 6210 Dynamique des écosystèmes",
+                      "nameFr": "BIO 6210 Dynamique des écosystèmes"
+                    },
+                    {
+                      "code": "BIO6230",
+                      "nameAr": "BIO 6230 Pédologie",
+                      "nameFr": "BIO 6230 Pédologie"
+                    },
+                    {
+                      "code": "BIO6220",
+                      "nameAr": "BIO 6220 Eco toxicologie générale",
+                      "nameFr": "BIO 6220 Eco toxicologie générale"
+                    },
+                    {
+                      "code": "BIO6000",
+                      "nameAr": "BIO 6000 Projet de fin d’études",
+                      "nameFr": "BIO 6000 Projet de fin d’études"
+                    },
+                    {
+                      "code": "PIENV",
+                      "nameAr": "Photo interprétation et Environnement",
+                      "nameFr": "Photo interprétation et Environnement"
+                    },
+                    {
+                      "code": "ECOM",
+                      "nameAr": "Ecologie des microorganismes",
+                      "nameFr": "Ecologie des microorganismes"
+                    },
+                    {
+                      "code": "LAN6700",
+                      "nameAr": "LAN6700 Anglais III",
+                      "nameFr": "LAN6700 Anglais III"
+                    }
+                  ]
                 }
               ]
             }
