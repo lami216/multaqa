@@ -219,6 +219,7 @@ export interface JoinRequestItem {
   _id: string;
   postId: string;
   requesterId: { _id: string; username: string } | string;
+  receiverId?: { _id: string; username: string } | string;
   status: 'pending' | 'accepted' | 'rejected';
   createdAt: string;
   updatedAt: string;

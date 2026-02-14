@@ -19,8 +19,9 @@ import {
 } from '../lib/http';
 import { useAuth } from '../context/AuthContext';
 import { resolveAuthorId } from '../lib/postUtils';
-import { getSubjectShortNameByCode } from '../lib/catalog';
+import { getCatalogSubjectByCode, getSubjectShortNameByCode } from '../lib/catalog';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
 
 const roleLabels: Record<string, string> = {
   need_help: 'محتاج مساعدة',
@@ -45,6 +46,7 @@ const PostDetailsPage: React.FC = () => {
   const [loadingRequests, setLoadingRequests] = useState(false);
   const [postConversations, setPostConversations] = useState<ConversationSummary[]>([]);
   const [joinRequestStatus, setJoinRequestStatus] = useState<'none' | 'pending' | 'accepted' | 'rejected'>('none');
+  const [selectedSubjectName, setSelectedSubjectName] = useState('');
   const authorId = useMemo(() => resolveAuthorId(post), [post]);
   const isAuthor = useMemo(() => (authorId ? authorId === currentUserId : false), [authorId, currentUserId]);
 
@@ -330,11 +332,19 @@ const PostDetailsPage: React.FC = () => {
           {isStudyPartner ? (
             <div className="space-y-2">
               <div className="flex flex-wrap gap-2">
-                {(post.subjectCodes ?? []).map((subject) => (
-                  <span key={subject} className="badge-soft bg-emerald-50 text-emerald-700">
-                    {getSubjectShortNameByCode(subject) || 'M'}
-                  </span>
-                ))}
+                {(post.subjectCodes ?? []).map((subjectCode) => {
+                  const subject = getCatalogSubjectByCode(subjectCode);
+                  return (
+                    <button
+                      key={subjectCode}
+                      type="button"
+                      className="badge-soft bg-emerald-50 text-emerald-700"
+                      onClick={() => setSelectedSubjectName(subject?.name || subject?.nameFr || subjectCode)}
+                    >
+                      {subject?.shortName || getSubjectShortNameByCode(subjectCode) || 'M'}
+                    </button>
+                  );
+                })}
               </div>
               {post?.availabilityDate && (
                 <p className="text-sm text-slate-500">
@@ -628,6 +638,14 @@ const PostDetailsPage: React.FC = () => {
           {actionNotice && <p className="text-sm text-emerald-600 w-full">{actionNotice}</p>}
         </div>
       )}
+      <Dialog open={Boolean(selectedSubjectName)} onOpenChange={(open) => !open && setSelectedSubjectName('')}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Nom complet de la matière</DialogTitle>
+          </DialogHeader>
+          <p className="text-slate-700">{selectedSubjectName}</p>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
