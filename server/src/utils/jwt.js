@@ -31,3 +31,20 @@ export const verifyRefreshToken = (token) => {
     return null;
   }
 };
+
+
+export const generateTelegramLinkToken = (userId) => {
+  return jwt.sign(
+    { userId, purpose: 'telegram_link' },
+    process.env.JWT_TELEGRAM_SECRET || process.env.JWT_ACCESS_SECRET,
+    { expiresIn: '10m' }
+  );
+};
+
+export const verifyTelegramLinkToken = (token) => {
+  try {
+    return jwt.verify(token, process.env.JWT_TELEGRAM_SECRET || process.env.JWT_ACCESS_SECRET);
+  } catch (error) {
+    return null;
+  }
+};
