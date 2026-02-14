@@ -2,18 +2,19 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Edit3, GraduationCap, MapPin, Notebook, User } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { generateTelegramLinkTokenRequest, http, type Profile, type RemainingSubjectItem } from '../lib/http';
+import { fetchAcademicSettings, generateTelegramLinkTokenRequest, http, type AcademicSettingsResponse, type Profile, type RemainingSubjectItem } from '../lib/http';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import {
   getFaculties,
   getLevelsByFaculty,
   getMajorsByFacultyAndLevel,
-  getSemestersByMajorAndLevel,
   getSubjectsByMajorAndSemester,
+  getTermSemesterForLevel,
+  isFacultyEnabled,
+  isMajorEnabled,
   type CatalogFaculty,
   type CatalogLevel,
   type CatalogMajor,
-  type CatalogSemester,
   type CatalogSubject
 } from '../lib/catalog';
 import { PRIORITY_ROLE_LABELS } from '../lib/priorities';
@@ -30,6 +31,11 @@ const ProfilePage: React.FC = () => {
   const [remainingError, setRemainingError] = useState('');
 
   const [linkingTelegram, setLinkingTelegram] = useState(false);
+  const [academicSettings, setAcademicSettings] = useState<AcademicSettingsResponse>({
+    academicTermType: 'odd',
+    catalogVisibility: { faculties: {}, majors: {} },
+    preregCounts: {}
+  });
 
   const handleTelegramLink = async () => {
     if (linkingTelegram) return;
@@ -46,7 +52,7 @@ const ProfilePage: React.FC = () => {
       setLinkingTelegram(false);
     }
   };
-  const faculties = getFaculties();
+  const faculties = getFaculties().filter((faculty) => isFacultyEnabled(faculty.id, academicSettings.catalogVisibility));
 
   const cacheBustedAvatar = (url?: string, version?: string | number) => {
     if (!url) return undefined;
@@ -57,8 +63,12 @@ const ProfilePage: React.FC = () => {
   useEffect(() => {
     const load = async () => {
       if (!user?.username) return;
-      const { data } = await http.get<{ user: unknown; profile: Profile; posts: unknown }>(`/users/${user.username}`);
+      const [{ data }, { data: settingsData }] = await Promise.all([
+        http.get<{ user: unknown; profile: Profile; posts: unknown }>(`/users/${user.username}`),
+        fetchAcademicSettings()
+      ]);
       setProfile(data.profile);
+      setAcademicSettings(settingsData);
     };
 
     void load();
@@ -82,23 +92,21 @@ const ProfilePage: React.FC = () => {
   };
 
   const resolvedFaculty = matchByIdOrName<CatalogFaculty>(faculties, profile?.facultyId ?? profile?.faculty);
-  const levels = resolvedFaculty ? getLevelsByFaculty(resolvedFaculty.id) : [];
+  const levels = resolvedFaculty ? getLevelsByFaculty(resolvedFaculty.id, academicSettings.catalogVisibility) : [];
   const resolvedLevel = matchByIdOrName<CatalogLevel>(levels, profile?.level);
   const majors =
-    resolvedFaculty && resolvedLevel ? getMajorsByFacultyAndLevel(resolvedFaculty.id, resolvedLevel.id) : [];
+    resolvedFaculty && resolvedLevel ? getMajorsByFacultyAndLevel(resolvedFaculty.id, resolvedLevel.id, academicSettings.catalogVisibility) : [];
   const resolvedMajor = matchByIdOrName<CatalogMajor>(majors, profile?.majorId ?? profile?.major);
-  const semesters =
-    resolvedFaculty && resolvedLevel && resolvedMajor
-      ? getSemestersByMajorAndLevel(resolvedFaculty.id, resolvedLevel.id, resolvedMajor.id)
-      : [];
-  const resolvedSemester = matchByIdOrName<CatalogSemester>(semesters, profile?.semesterId ?? profile?.semester);
+  const mappedSemesterId = resolvedLevel ? getTermSemesterForLevel(resolvedLevel.id, academicSettings.academicTermType) : undefined;
   const catalogSubjects =
-    resolvedFaculty && resolvedLevel && resolvedMajor && resolvedSemester
+    resolvedFaculty && resolvedLevel && resolvedMajor && mappedSemesterId
       ? getSubjectsByMajorAndSemester(
           resolvedFaculty.id,
           resolvedLevel.id,
           resolvedMajor.id,
-          resolvedSemester.id
+          mappedSemesterId,
+          academicSettings.academicTermType,
+          academicSettings.catalogVisibility
         )
       : [];
   const subjectCandidates = [...(profile?.subjectCodes ?? []), ...(profile?.subjects ?? [])].filter(Boolean);
@@ -118,6 +126,9 @@ const ProfilePage: React.FC = () => {
   const majorLabel = resolvedMajor?.nameFr ?? profile?.major ?? 'Filière non renseignée';
   const courseLabels = profile?.courses?.length ? profile.courses : resolvedSubjectNames;
   const prioritiesOrder = profile?.prioritiesOrder ?? ['need_help', 'can_help', 'td', 'archive'];
+  const majorEnabled = resolvedMajor ? isMajorEnabled(resolvedMajor.id, academicSettings.catalogVisibility) : true;
+  const majorPreregCount = resolvedMajor ? academicSettings.preregCounts?.[resolvedMajor.id] ?? 0 : 0;
+  const majorThreshold = resolvedMajor ? academicSettings.catalogVisibility.majors?.[resolvedMajor.id]?.threshold ?? 20 : 20;
 
   const currentLevelId = resolvedLevel?.id ?? profile?.level;
   const previousLevelMap: Record<string, string> = { L2: 'L1', L3: 'L2' };
@@ -125,16 +136,16 @@ const ProfilePage: React.FC = () => {
   const shouldAskRemaining = Boolean(profile?.profileLocked && resolvedFaculty && previousLevel);
 
   const previousMajors = useMemo(
-    () => (resolvedFaculty && previousLevel ? getMajorsByFacultyAndLevel(resolvedFaculty.id, previousLevel) : []),
+    () => (resolvedFaculty && previousLevel ? getMajorsByFacultyAndLevel(resolvedFaculty.id, previousLevel, academicSettings.catalogVisibility) : []),
     [resolvedFaculty, previousLevel]
   );
 
   const remainingSubjectsCatalog = useMemo(() => {
     if (!resolvedFaculty || !previousLevel || !previousMajorId) return [];
-    const prevSemesters = getSemestersByMajorAndLevel(resolvedFaculty.id, previousLevel, previousMajorId);
-    const generated = prevSemesters.flatMap((semester) =>
-      getSubjectsByMajorAndSemester(resolvedFaculty.id, previousLevel, previousMajorId, semester.id)
-    );
+    const mappedPreviousSemesterId = getTermSemesterForLevel(previousLevel, academicSettings.academicTermType);
+    const generated = mappedPreviousSemesterId
+      ? getSubjectsByMajorAndSemester(resolvedFaculty.id, previousLevel, previousMajorId, mappedPreviousSemesterId, academicSettings.academicTermType, academicSettings.catalogVisibility)
+      : [];
     return Array.from(new Map(generated.map((subject) => [subject.code, subject])).values());
   }, [resolvedFaculty, previousLevel, previousMajorId]);
 
@@ -235,6 +246,13 @@ const ProfilePage: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {!majorEnabled && (
+          <div className="card-surface p-4 text-amber-700 text-sm">
+            <p>Your major exists but is not activated yet.</p>
+            <p>{majorPreregCount} registered out of {majorThreshold} required.</p>
+          </div>
+        )}
 
         {!!allRemaining.length && (
           <div className="card-surface p-4">

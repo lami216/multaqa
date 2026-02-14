@@ -16,6 +16,7 @@ import MessagesPage from './pages/MessagesPage';
 import ConversationPage from './pages/ConversationPage';
 import NotificationsPage from './pages/NotificationsPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
+import AdminAcademicSettingsPage from './pages/AdminAcademicSettingsPage';
 import { LoginPage, SignupPage } from './pages/AuthPages';
 
 const AdminRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
@@ -133,6 +134,18 @@ const App: React.FC = () => {
                       <AdminRoute>
                         <Layout>
                           <AdminDashboardPage />
+                        </Layout>
+                      </AdminRoute>
+                    </ProtectedRoute>
+                  )}
+                />
+                <Route
+                  path="/admin/academic-settings"
+                  element={(
+                    <ProtectedRoute>
+                      <AdminRoute>
+                        <Layout>
+                          <AdminAcademicSettingsPage />
                         </Layout>
                       </AdminRoute>
                     </ProtectedRoute>
