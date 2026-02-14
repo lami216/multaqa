@@ -252,6 +252,7 @@ export const fetchMe = () =>
 export const loginRequest = (payload: { email: string; password: string }) => http.post('/auth/login', payload);
 export const signupRequest = (payload: { email: string; password: string; username: string }) => http.post('/auth/register', payload);
 export const logoutRequest = () => http.post('/auth/logout');
+export const generateTelegramLinkTokenRequest = () => http.post<{ token: string }>('/telegram/link-token');
 export const fetchPosts = (params?: Record<string, string>) => http.get<{ posts: PostResponse[] }>('/posts', { params });
 export const createPost = (payload: PostPayload) => http.post('/posts', payload);
 export const updatePost = (id: string, payload: Partial<PostPayload>) => http.patch(`/posts/${id}`, payload);

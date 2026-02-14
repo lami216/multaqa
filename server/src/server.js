@@ -18,6 +18,7 @@ import postRoutes from './routes/postRoutes.js';
 import conversationRoutes from './routes/conversationRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
+import telegramRoutes from './routes/telegramRoutes.js';
 import { authenticate } from './middleware/auth.js';
 import lookupRoutes from './routes/lookupRoutes.js';
 import { startLifecycleJob } from './jobs/lifecycleJob.js';
@@ -79,6 +80,7 @@ app.use('/api/posts', postRoutes);
 app.use('/api/conversations', conversationRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/telegram', telegramRoutes);
 app.use('/api', lookupRoutes);
 
 if (isProduction) {

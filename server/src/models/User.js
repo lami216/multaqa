@@ -36,7 +36,12 @@ const userSchema = new mongoose.Schema({
   verificationToken: String,
   resetPasswordToken: String,
   resetPasswordExpires: Date,
-  refreshToken: String
+  refreshToken: String,
+  telegramChatId: String,
+  telegramLinked: {
+    type: Boolean,
+    default: false
+  }
 }, {
   timestamps: true
 });

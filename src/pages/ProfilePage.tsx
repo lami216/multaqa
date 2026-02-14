@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Edit3, GraduationCap, MapPin, Notebook, User } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { http, type Profile, type RemainingSubjectItem } from '../lib/http';
+import { generateTelegramLinkTokenRequest, http, type Profile, type RemainingSubjectItem } from '../lib/http';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import {
   getFaculties,
@@ -27,6 +27,21 @@ const ProfilePage: React.FC = () => {
   const [savingRemaining, setSavingRemaining] = useState(false);
   const [remainingMessage, setRemainingMessage] = useState('');
   const [remainingError, setRemainingError] = useState('');
+
+  const [linkingTelegram, setLinkingTelegram] = useState(false);
+
+  const handleTelegramLink = async () => {
+    if (linkingTelegram) return;
+    setLinkingTelegram(true);
+    try {
+      const { data } = await generateTelegramLinkTokenRequest();
+      const botUsername = (import.meta as unknown as { env?: Record<string, string | undefined> }).env?.VITE_TELEGRAM_BOT_USERNAME;
+      if (!botUsername) return;
+      window.location.href = `https://t.me/${botUsername}?start=${encodeURIComponent(data.token)}`;
+    } finally {
+      setLinkingTelegram(false);
+    }
+  };
   const faculties = getFaculties();
 
   const cacheBustedAvatar = (url?: string, version?: string | number) => {
@@ -182,12 +197,15 @@ const ProfilePage: React.FC = () => {
             </p>
             <p className="text-slate-700 leading-relaxed text-sm">{profile?.bio ?? 'Ajoutez une bio pour présenter votre parcours.'}</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             {!profile?.profileLocked && (
               <Link to="/profile/edit" className="secondary-btn">
                 <Edit3 size={16} className="me-1" /> Modifier
               </Link>
             )}
+            <button type="button" className="secondary-btn" onClick={() => void handleTelegramLink()} disabled={linkingTelegram}>
+              ربط حسابي بتيليغرام
+            </button>
             <Link to="/posts" className="primary-btn">
               <Notebook size={16} className="me-1" /> Ses posts
             </Link>
