@@ -746,25 +746,28 @@ const EditProfilePage: React.FC = () => {
               )}
             </div>
             {!!selectedSubjectItems.length && (
-              <div className="mt-3 grid sm:grid-cols-2 gap-2">
-                {selectedSubjectItems.map((subject) => {
-                  const active = prioritySettingsMap.get(subject.code) ?? false;
-                  return (
-                    <button
-                      key={subject.code}
-                      type="button"
-                      onClick={() => toggleSubjectPriority(subject.code)}
-                      className={`rounded-xl border px-3 py-2 text-left transition ${active ? 'border-amber-300 bg-amber-50 text-amber-900 shadow-sm' : 'border-slate-200 bg-white text-slate-700'}`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="font-semibold">{subject.code}</span>
-                        <Star className={`h-4 w-4 ${active ? 'fill-amber-400 text-amber-500' : 'text-slate-400'}`} />
-                      </div>
-                      <p className="text-xs mt-1">{active ? 'مادة مهمة للإشعارات' : 'مادة عادية'}</p>
-                    </button>
-                  );
-                })}
-              </div>
+              <>
+                <p className="mt-3 text-xs text-slate-500">⭐ اختر المواد الأهم لديك ليصلك كل جديد عنها أولاً.</p>
+                <div className="mt-2 grid sm:grid-cols-2 gap-2">
+                  {selectedSubjectItems.map((subject) => {
+                    const active = prioritySettingsMap.get(subject.code) ?? false;
+                    return (
+                      <button
+                        key={subject.code}
+                        type="button"
+                        onClick={() => toggleSubjectPriority(subject.code)}
+                        className={`rounded-xl border px-3 py-2 text-left transition ${active ? 'border-amber-300 bg-amber-50 text-amber-900 shadow-sm' : 'border-slate-200 bg-white text-slate-700'}`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold">{subject.code}</span>
+                          <Star className={`h-4 w-4 ${active ? 'fill-amber-400 text-amber-500' : 'text-slate-400'}`} />
+                        </div>
+                        <p className="text-xs mt-1">{active ? 'مادة مهمة للإشعارات' : 'مادة عادية'}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
             )}
           </div>
         </div>
