@@ -5,6 +5,7 @@ import Faculty from '../models/Faculty.js';
 import Major from '../models/Major.js';
 import Subject from '../models/Subject.js';
 import Event from '../models/Event.js';
+import Profile from '../models/Profile.js';
 import AcademicSetting from '../models/AcademicSetting.js';
 import redis from '../config/redis.js';
 import { getAcademicSettingsPayload } from '../services/academicSettingsService.js';
@@ -179,6 +180,33 @@ export const banUser = async (req, res) => {
   } catch (error) {
     console.error('Ban user error:', error);
     res.status(500).json({ error: 'Failed to ban/unban user' });
+  }
+};
+
+
+export const resetUserRemainingSubjects = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = await User.findByIdAndUpdate(
+      id,
+      { $set: { remainingSubjects: [], remainingSubjectsConfirmed: false } },
+      { new: true }
+    ).select('-passwordHash -refreshToken');
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    await Profile.findOneAndUpdate(
+      { userId: id },
+      { $set: { remainingSubjects: [] } },
+      { new: true }
+    );
+
+    res.json({ message: 'Remaining subjects reset successfully', user });
+  } catch (error) {
+    console.error('Reset user remaining subjects error:', error);
+    res.status(500).json({ error: 'Failed to reset remaining subjects' });
   }
 };
 
@@ -404,11 +432,11 @@ const normalizeIncomingAcademicSettings = (body = {}) => {
                     .filter((major) => major?.majorId)
                     .map((major) => ({
                       majorId: String(major.majorId),
-                      status: ['active', 'collecting', 'closed'].includes(major.status) ? major.status : 'active',
+                      status: major.status === 'collecting' || major.status === 'closed' ? 'collecting' : 'active',
                       threshold:
-                        ['active', 'collecting', 'closed'].includes(major.status) && major.status !== 'active'
+                        (major.status === 'collecting' || major.status === 'closed')
                           ? Math.max(1, Number.parseInt(String(major.threshold ?? 1), 10) || 1)
-                          : 0
+                          : null
                     }))
                 : []
             }))

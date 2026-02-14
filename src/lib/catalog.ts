@@ -82,6 +82,12 @@ const normalizeCatalogSubject = (subject: CatalogSubject): CatalogSubject => {
 
 const catalogData = catalog as CatalogData;
 
+const matchesTermParity = (semesterId: string, academicTermType: AcademicTermType): boolean => {
+  const semesterNumber = Number.parseInt((semesterId || '').replace(/\D/g, ''), 10);
+  if (!semesterNumber) return true;
+  return academicTermType === 'odd' ? semesterNumber % 2 === 1 : semesterNumber % 2 === 0;
+};
+
 export const getFaculties = (): CatalogFaculty[] => catalogData.faculties;
 
 export const getTermSemesterForLevel = (levelId?: string, academicTermType: AcademicTermType = 'odd'): string | undefined => {
@@ -131,8 +137,29 @@ export const getSemestersByMajorAndLevel = (
   return major.semesters.filter(
     (semester) =>
       (allowedSemesters.size ? allowedSemesters.has(semester.id) : true) &&
-      (mappedSemester ? semester.id === mappedSemester : true)
+      (mappedSemester ? semester.id === mappedSemester : true) &&
+      matchesTermParity(semester.id, academicTermType)
   );
+};
+
+
+export const getSubjectsByMajorAndSemesters = (
+  facultyId?: string,
+  levelId?: string,
+  majorId?: string,
+  semesterIds: string[] = [],
+  academicTermType: AcademicTermType = 'odd',
+  visibility?: CatalogVisibilityConfig
+): CatalogSubject[] => {
+  if (!facultyId || !levelId || !majorId || !semesterIds.length) return [];
+  const levels = getLevelsByFaculty(facultyId, visibility);
+  const major = (levels.find((level) => level.id === levelId)?.majors ?? []).find((item) => item.id === majorId);
+  if (!major) return [];
+  const allowed = new Set(semesterIds);
+  return major.semesters
+    .filter((semester) => allowed.has(semester.id) && matchesTermParity(semester.id, academicTermType))
+    .flatMap((semester) => semester.subjects)
+    .map(normalizeCatalogSubject);
 };
 
 export const getSubjectsByMajorAndSemester = (

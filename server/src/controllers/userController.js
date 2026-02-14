@@ -55,6 +55,11 @@ export const updateProfile = async (req, res) => {
       Array.isArray(updates.remainingSubjects);
 
     if (isRemainingSubjectsOnlyUpdate) {
+      const currentUser = await User.findById(req.user._id).select('remainingSubjectsConfirmed');
+      if (currentUser?.remainingSubjectsConfirmed) {
+        return res.status(409).json({ error: 'Remaining subjects are already confirmed' });
+      }
+
       const profile = await Profile.findOneAndUpdate(
         { userId: req.user._id },
         {
@@ -63,6 +68,13 @@ export const updateProfile = async (req, res) => {
         },
         { new: true, runValidators: true, upsert: true, setDefaultsOnInsert: true }
       );
+
+      await User.findByIdAndUpdate(req.user._id, {
+        $set: {
+          remainingSubjects: updates.remainingSubjects.map((item) => item.subjectCode),
+          remainingSubjectsConfirmed: true
+        }
+      });
 
       await redis.del(`profile:${req.user.username}`);
       return res.json({ message: 'Profile updated successfully', profile });

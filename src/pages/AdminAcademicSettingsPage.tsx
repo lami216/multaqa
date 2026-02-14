@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { toast } from 'sonner';
 import { getFaculties, buildAcademicMajorKey } from '../lib/catalog';
 import {
   fetchAdminAcademicSettings,
@@ -12,10 +13,10 @@ const AdminAcademicSettingsPage: React.FC = () => {
   const faculties = useMemo(() => getFaculties(), []);
   const [settings, setSettings] = useState<AcademicSettingsResponse | null>(null);
   const [draft, setDraft] = useState<{ currentTermType: 'odd' | 'even'; faculties: AcademicSettingsNode[] } | null>(null);
+  const [savedSnapshot, setSavedSnapshot] = useState<string>('');
   const [selectedFaculty, setSelectedFaculty] = useState<string>('');
   const [selectedLevel, setSelectedLevel] = useState<string>('');
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState('');
 
   useEffect(() => {
     const load = async () => {
@@ -26,6 +27,7 @@ const AdminAcademicSettingsPage: React.FC = () => {
       };
       setSettings(data);
       setDraft(nextDraft);
+      setSavedSnapshot(JSON.stringify(nextDraft));
       setSelectedFaculty(nextDraft.faculties[0]?.facultyId ?? faculties[0]?.id ?? '');
     };
     void load();
@@ -45,7 +47,7 @@ const AdminAcademicSettingsPage: React.FC = () => {
   }, [selectedFaculty, selectedLevel, levels]);
 
   const majorDraftLookup = useMemo(() => {
-    const map = new Map<string, { status: 'active' | 'collecting' | 'closed'; threshold: number }>();
+    const map = new Map<string, { status: 'active' | 'collecting'; threshold: number | null }>();
     for (const faculty of draft?.faculties ?? []) {
       for (const level of faculty.levels ?? []) {
         for (const major of level.majors ?? []) {
@@ -60,10 +62,10 @@ const AdminAcademicSettingsPage: React.FC = () => {
   }, [draft]);
 
   const majors = levels.find((level) => level.id === selectedLevel)?.majors ?? [];
+  const isDirty = Boolean(draft) && JSON.stringify(draft) !== savedSnapshot;
 
-  const updateMajor = (majorId: string, patch: Partial<{ status: 'active' | 'collecting' | 'closed'; threshold: number }>) => {
+  const updateMajor = (majorId: string, patch: Partial<{ status: 'active' | 'collecting'; threshold: number | null }>) => {
     if (!draft || !selectedFaculty || !selectedLevel) return;
-    setMessage('');
     setDraft((prev) => {
       if (!prev) return prev;
       const nextFaculties = [...prev.faculties];
@@ -79,29 +81,31 @@ const AdminAcademicSettingsPage: React.FC = () => {
       }
       let major = level.majors.find((item) => item.majorId === majorId);
       if (!major) {
-        major = { majorId, status: 'active', threshold: 0 };
+        major = { majorId, status: 'active', threshold: null };
         level.majors.push(major);
       }
       major.status = patch.status ?? major.status;
-      major.threshold = major.status === 'active' ? 0 : Math.max(1, patch.threshold ?? major.threshold ?? 1);
+      major.threshold = major.status === 'collecting' ? Math.max(1, patch.threshold ?? major.threshold ?? 1) : null;
       return { ...prev, faculties: nextFaculties };
     });
   };
 
   const saveChanges = async () => {
-    if (!draft) return;
+    if (!draft || !isDirty) return;
     setSaving(true);
-    setMessage('');
     try {
-      const { data } = await updateAdminAcademicSettings(draft);
-      setSettings(data);
-      setDraft({
-        currentTermType: data.settings?.currentTermType ?? data.academicTermType,
-        faculties: data.settings?.faculties ?? []
-      });
-      setMessage('Saved successfully.');
+      await updateAdminAcademicSettings(draft);
+      const { data: refreshed } = await fetchAdminAcademicSettings();
+      const syncedDraft = {
+        currentTermType: refreshed.settings?.currentTermType ?? refreshed.academicTermType,
+        faculties: refreshed.settings?.faculties ?? []
+      };
+      setSettings(refreshed);
+      setDraft(syncedDraft);
+      setSavedSnapshot(JSON.stringify(syncedDraft));
+      toast.success('Academic settings saved.');
     } catch {
-      setMessage('Failed to save changes.');
+      toast.error('Failed to save academic settings.');
     } finally {
       setSaving(false);
     }
@@ -149,17 +153,16 @@ const AdminAcademicSettingsPage: React.FC = () => {
           {!selectedLevel && <p className="text-sm text-slate-500">Select level first.</p>}
           {majors.map((major) => {
             const key = buildAcademicMajorKey(selectedFaculty, selectedLevel, major.id);
-            const current = majorDraftLookup.get(key) ?? { status: 'active', threshold: 0 };
+            const current = majorDraftLookup.get(key) ?? { status: 'active', threshold: null };
             const registered = settings.counts?.[key] ?? settings.majorAvailability?.[key]?.registeredCount ?? 0;
             return (
               <div key={major.id} className="rounded-lg border border-slate-200 p-3 space-y-2">
                 <p className="font-medium text-slate-900">{major.nameFr}</p>
-                <select value={current.status} onChange={(event) => updateMajor(major.id, { status: event.target.value as 'active' | 'collecting' | 'closed' })} className="w-full" disabled={saving}>
+                <select value={current.status} onChange={(event) => updateMajor(major.id, { status: event.target.value as 'active' | 'collecting' })} className="w-full" disabled={saving}>
                   <option value="active">active</option>
                   <option value="collecting">collecting</option>
-                  <option value="closed">closed</option>
                 </select>
-                {current.status !== 'active' && (
+                {current.status === 'collecting' && (
                   <input
                     type="number"
                     min={1}
@@ -177,9 +180,8 @@ const AdminAcademicSettingsPage: React.FC = () => {
       </div>
 
       <div className="fixed bottom-0 left-0 right-0 border-t border-slate-200 bg-white/95 p-3 backdrop-blur">
-        <div className="mx-auto max-w-5xl flex items-center justify-between gap-3">
-          <span className="text-sm text-slate-600">{message}</span>
-          <button type="button" className="primary-btn" onClick={() => void saveChanges()} disabled={saving}>{saving ? 'Saving...' : 'Save changes'}</button>
+        <div className="mx-auto max-w-5xl flex items-center justify-end gap-3">
+          <button type="button" className="primary-btn" onClick={() => void saveChanges()} disabled={saving || !isDirty}>{saving ? 'Saving...' : 'Save Changes'}</button>
         </div>
       </div>
     </div>
