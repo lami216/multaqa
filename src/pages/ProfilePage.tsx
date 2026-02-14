@@ -35,9 +35,12 @@ const ProfilePage: React.FC = () => {
     setLinkingTelegram(true);
     try {
       const { data } = await generateTelegramLinkTokenRequest();
-      const botUsername = (import.meta as unknown as { env?: Record<string, string | undefined> }).env?.VITE_TELEGRAM_BOT_USERNAME;
-      if (!botUsername) return;
-      window.location.href = `https://t.me/${botUsername}?start=${encodeURIComponent(data.token)}`;
+      const { token, botUsername } = data;
+      if (!botUsername) {
+        console.error('Telegram bot username is missing in link token response');
+        return;
+      }
+      window.location.href = `https://t.me/${botUsername}?start=${encodeURIComponent(token)}`;
     } finally {
       setLinkingTelegram(false);
     }
