@@ -6,10 +6,9 @@ import {
   getFaculties,
   getLevelsByFaculty,
   getMajorsByFacultyAndLevel,
-  getSemestersByMajorAndLevel,
   getSubjectsByMajorAndSemester,
   getTermSemesterForLevel,
-  isMajorEnabled,
+  buildAcademicMajorKey,
   isFacultyEnabled,
   type CatalogFaculty,
   type CatalogLevel,
@@ -40,7 +39,8 @@ const EditProfilePage: React.FC = () => {
   const [academicSettings, setAcademicSettings] = useState<AcademicSettingsResponse>({
     academicTermType: 'odd',
     catalogVisibility: { faculties: {}, majors: {} },
-    preregCounts: {}
+    preregCounts: {},
+    majorAvailability: {}
   });
   const [previousLevelMajors, setPreviousLevelMajors] = useState<CatalogMajor[]>([]);
   const [remainingSubjectsCatalog, setRemainingSubjectsCatalog] = useState<CatalogSubject[]>([]);
@@ -80,11 +80,17 @@ const EditProfilePage: React.FC = () => {
       label: level.nameFr
     }));
 
+  const getMajorsIncludingClosed = (facultyId?: string, levelId?: string): CatalogMajor[] => {
+    if (!facultyId || !levelId) return [];
+    const faculty = getFaculties().find((item) => item.id === facultyId);
+    return faculty?.levels.find((level) => level.id === levelId)?.majors ?? [];
+  };
+
   const matchByIdOrName = <T extends { id: string; nameFr: string; nameAr: string }>(
     items: T[],
     value?: string
   ) => {
-    if (!value) return undefined;
+    if (!value || typeof value !== 'string') return undefined;
     const normalized = value.trim().toLowerCase();
     return items.find(
       (item) =>
@@ -93,13 +99,13 @@ const EditProfilePage: React.FC = () => {
   };
 
   const normalizeProfileWithCatalog = (rawProfile?: Profile): Profile => {
-    const catalogFaculties = getFaculties().filter((faculty) => isFacultyEnabled(faculty.id, settingsData.catalogVisibility));
+    const catalogFaculties = getFaculties().filter((faculty) => isFacultyEnabled(faculty.id, academicSettings.catalogVisibility));
     const facultyMatch = matchByIdOrName(catalogFaculties, rawProfile?.facultyId ?? rawProfile?.faculty);
 
     const levels = facultyMatch ? getLevelsByFaculty(facultyMatch.id, academicSettings.catalogVisibility) : [];
     const levelMatch = matchByIdOrName(levels, rawProfile?.level);
 
-    const majors = facultyMatch && levelMatch ? getMajorsByFacultyAndLevel(facultyMatch.id, levelMatch.id, academicSettings.catalogVisibility) : [];
+    const majors = facultyMatch && levelMatch ? getMajorsIncludingClosed(facultyMatch.id, levelMatch.id) : [];
     const majorMatch = matchByIdOrName(majors, rawProfile?.majorId ?? rawProfile?.major);
     const mappedSemesterId = levelMatch ? getTermSemesterForLevel(levelMatch.id, academicSettings.academicTermType) : undefined;
 
@@ -301,7 +307,7 @@ const EditProfilePage: React.FC = () => {
     }
 
     setMajorsError('');
-    const availableMajors = getMajorsByFacultyAndLevel(form.facultyId, form.level, academicSettings.catalogVisibility);
+    const availableMajors = getMajorsIncludingClosed(form.facultyId, form.level);
     setMajors(availableMajors);
     const hasMajor = availableMajors.some((major) => major.id === form.majorId);
     if (!hasMajor) {
@@ -434,8 +440,12 @@ const EditProfilePage: React.FC = () => {
       return;
     }
 
-    if (form.majorId && !isMajorEnabled(form.majorId, academicSettings.catalogVisibility)) {
-      setError(`Your major exists but is not activated yet. ${majorPreregCount} registered out of ${majorThreshold} required.`);
+    if (majorStatus !== 'active') {
+      if (majorStatus === 'collecting') {
+        setError(`تخصصك موجود لكنه غير مُفعّل بعد. حاليا: ${majorPreregCount} من ${majorThreshold} مسجلين.`);
+      } else {
+        setError('تخصصك موجود لكنه غير مُفعّل بعد.');
+      }
       setSaving(false);
       return;
     }
@@ -564,12 +574,13 @@ const EditProfilePage: React.FC = () => {
   const selectedRemainingSubjectCodes = new Set((form.remainingSubjects ?? []).map((item) => item.subjectCode));
   const prioritySettingsMap = new Map((form.subjectsSettings ?? []).map((item) => [item.subjectCode, Boolean(item.isPriority)]));
 
-  const selectedMajorGate = form.majorId
-    ? academicSettings.catalogVisibility.majors?.[form.majorId]
-    : undefined;
-  const majorIsEnabled = form.majorId ? isMajorEnabled(form.majorId, academicSettings.catalogVisibility) : true;
-  const majorPreregCount = form.majorId ? academicSettings.preregCounts?.[form.majorId] ?? 0 : 0;
-  const majorThreshold = selectedMajorGate?.threshold ?? 20;
+  const selectedMajorKey = form.majorId && form.facultyId && form.level
+    ? buildAcademicMajorKey(form.facultyId, form.level, form.majorId)
+    : '';
+  const majorAvailability = selectedMajorKey ? academicSettings.majorAvailability?.[selectedMajorKey] : undefined;
+  const majorStatus = majorAvailability?.status ?? 'active';
+  const majorPreregCount = majorAvailability?.registeredCount ?? 0;
+  const majorThreshold = majorAvailability?.threshold ?? 0;
 
   const toggleSubjectPriority = (subjectCode: string) => {
     isDirtyRef.current = true;
@@ -779,18 +790,28 @@ const EditProfilePage: React.FC = () => {
               disabled={!form.facultyId || !form.level || saving}
             >
               <option value="">Choisir</option>
-              {majors.map((major) => (
-                <option key={major.id} value={major.id}>
-                  {major.nameFr}
-                </option>
-              ))}
+              {majors.map((major) => {
+                const majorKey = buildAcademicMajorKey(form.facultyId, form.level, major.id);
+                const status = academicSettings.majorAvailability?.[majorKey]?.status ?? 'active';
+                return (
+                  <option key={major.id} value={major.id} disabled={status === 'closed'}>
+                    {major.nameFr}{status === 'closed' ? ' (مغلق)' : ''}
+                  </option>
+                );
+              })}
             </select>
             {majorsError && <p className="text-xs text-red-600">{majorsError}</p>}
+            {form.facultyId && form.level && majors.some((major) => {
+              const majorKey = buildAcademicMajorKey(form.facultyId, form.level, major.id);
+              return (academicSettings.majorAvailability?.[majorKey]?.status ?? 'active') === 'closed';
+            }) && (
+              <p className="text-xs text-amber-700">بعض التخصصات مغلقة حاليا ولا يمكن اختيارها.</p>
+            )}
             {form.facultyId && form.level && !majors.length && (
               <p className="text-xs text-amber-600">Aucune filière active pour cette combinaison.</p>
             )}
-            {!majorIsEnabled && form.majorId && (
-              <p className="text-xs text-amber-700">Your major exists but is not activated yet. {majorPreregCount} registered out of {majorThreshold} required.</p>
+            {majorStatus !== 'active' && form.majorId && (
+              <p className="text-xs text-amber-700">{majorStatus === 'collecting' ? `تخصصك موجود لكنه غير مُفعّل بعد. حاليا: ${majorPreregCount} من ${majorThreshold} مسجلين.` : 'تخصصك موجود لكنه غير مُفعّل بعد.'}</p>
             )}
           </div>
           <div className="md:col-span-2">
