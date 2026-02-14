@@ -42,7 +42,8 @@ const standardPostCreateSchema = z.discriminatedUnion('category', [
     subjectCodes: z.array(z.string().min(1)).min(1).max(2),
     description: z.string().max(500).optional(),
     availabilityDate: z.coerce.date(),
-    participantTargetCount: z.number().int().min(3)
+    participantTargetCount: z.number().int().min(3),
+    teamRoles: z.array(z.enum(['general_review', 'td', 'archive'])).min(1)
   }).strict(),
   z.object({
     category: z.literal('tutor_offer'),
@@ -70,6 +71,7 @@ export const updatePostSchema = z.object({
   postRole: z.enum(['need_help', 'can_help', 'td', 'archive']).optional(),
   availabilityDate: z.coerce.date().optional(),
   participantTargetCount: z.number().int().min(3).optional(),
+  teamRoles: z.array(z.enum(['general_review', 'td', 'archive'])).min(1).optional(),
   status: z.enum(['active', 'matched', 'expired', 'closed']).optional()
 }).strict();
 

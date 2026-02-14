@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle2, PenSquare } from 'lucide-react';
-import { createPost, type PostPayload } from '../lib/http';
+import { createPost, type PostPayload, type StudyTeamRoleKey } from '../lib/http';
 import { useAuth } from '../context/AuthContext';
 import { PRIORITY_ROLE_OPTIONS } from '../lib/priorities';
 
@@ -9,6 +9,12 @@ const requestTypes: { value: PostPayload['category']; label: string }[] = [
   { value: 'study_partner', label: 'Study partner' },
   { value: 'project_team', label: 'Study team' },
   { value: 'tutor_offer', label: 'Tutor offer' },
+];
+
+const STUDY_TEAM_ROLE_OPTIONS: { key: StudyTeamRoleKey; label: string; helper: string }[] = [
+  { key: 'general_review', label: 'مراجعة عامة', helper: 'طلب تعاون عام مناسب لمحتاج مساعدة وأقدر أساعد.' },
+  { key: 'td', label: 'حل TD', helper: 'أركز على حل وتمرينات TD.' },
+  { key: 'archive', label: 'حل الأرشيف', helper: 'أركز على الأسئلة والأرشيف.' },
 ];
 
 const CreatePostPage: React.FC = () => {
@@ -27,12 +33,12 @@ const CreatePostPage: React.FC = () => {
   const [tagsInput, setTagsInput] = useState('');
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
   const [selectedRoles, setSelectedRoles] = useState<PostPayload['postRole'][]>([]);
+  const [selectedTeamRoles, setSelectedTeamRoles] = useState<StudyTeamRoleKey[]>([]);
   const [availabilityDate, setAvailabilityDate] = useState('');
   const [participantTargetCount, setParticipantTargetCount] = useState(3);
   const [shortDescription, setShortDescription] = useState('');
   const [subjectsLimitWarning, setSubjectsLimitWarning] = useState('');
   const [subjectsLimitHighlight, setSubjectsLimitHighlight] = useState(false);
-  const [rolesLimitWarning, setRolesLimitWarning] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const subjectsLimitTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -51,6 +57,7 @@ const CreatePostPage: React.FC = () => {
   const studyTeamValid =
     selectedSubjects.length >= 1 &&
     selectedSubjects.length <= 2 &&
+    selectedTeamRoles.length >= 1 &&
     Boolean(availabilityDate) &&
     participantTargetCount >= 3;
 
@@ -86,7 +93,6 @@ const CreatePostPage: React.FC = () => {
   const toggleRole = (role: PostPayload['postRole']) => {
     if (!role) return;
 
-    setRolesLimitWarning('');
     setSelectedRoles((prev) => {
       if (prev.includes(role)) {
         return prev.filter((item) => item !== role);
@@ -101,10 +107,19 @@ const CreatePostPage: React.FC = () => {
         (role === 'can_help' && prev.includes('need_help'));
 
       if (isConflict) {
-        setRolesLimitWarning('لا يمكن الجمع بين محتاج مساعدة وأقدر أساعد');
         return prev;
       }
 
+      return [...prev, role];
+    });
+  };
+
+
+  const toggleTeamRole = (role: StudyTeamRoleKey) => {
+    setSelectedTeamRoles((prev) => {
+      if (prev.includes(role)) {
+        return prev.filter((item) => item !== role);
+      }
       return [...prev, role];
     });
   };
@@ -135,7 +150,7 @@ const CreatePostPage: React.FC = () => {
     }
 
     if (isStudyTeam && !studyTeamValid) {
-      setError('Sélectionnez vos matières, une date de disponibilité et le nombre de participants.');
+      setError('Sélectionnez vos matières, les rôles, une date de disponibilité et le nombre de participants.');
       setSaving(false);
       return;
     }
@@ -153,6 +168,7 @@ const CreatePostPage: React.FC = () => {
         category: 'project_team',
         subjectCodes: selectedSubjects,
         availabilityDate,
+        teamRoles: selectedTeamRoles,
         participantTargetCount,
         description: shortDescription.trim() ? shortDescription.trim() : undefined,
       }
@@ -233,9 +249,6 @@ const CreatePostPage: React.FC = () => {
               {isStudyPartner && (
                 <div className="md:col-span-2 space-y-2">
                   <label className="text-sm font-semibold text-slate-700">الدور</label>
-                  {rolesLimitWarning && (
-                    <p className="text-xs text-amber-700">{rolesLimitWarning}</p>
-                  )}
                   <div className="grid sm:grid-cols-2 gap-2">
                     {PRIORITY_ROLE_OPTIONS.map((role) => (
                       <button
@@ -244,6 +257,28 @@ const CreatePostPage: React.FC = () => {
                         onClick={() => toggleRole(role.key)}
                         className={`rounded-xl border px-3 py-2 text-left transition ${
                           selectedRoles.includes(role.key) ? 'border-emerald-400 bg-emerald-50 shadow-sm' : 'border-slate-200 bg-white'
+                        }`}
+                      >
+                        <p className="text-sm font-semibold text-slate-800">{role.label}</p>
+                        <p className="text-xs text-slate-500">{role.helper}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+
+              {isStudyTeam && (
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-slate-700">الأدوار</label>
+                  <div className="grid sm:grid-cols-2 gap-2">
+                    {STUDY_TEAM_ROLE_OPTIONS.map((role) => (
+                      <button
+                        key={role.key}
+                        type="button"
+                        onClick={() => toggleTeamRole(role.key)}
+                        className={`rounded-xl border px-3 py-2 text-left transition ${
+                          selectedTeamRoles.includes(role.key) ? 'border-emerald-400 bg-emerald-50 shadow-sm' : 'border-slate-200 bg-white'
                         }`}
                       >
                         <p className="text-sm font-semibold text-slate-800">{role.label}</p>

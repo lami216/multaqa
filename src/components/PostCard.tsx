@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 const roleLabels: Record<string, string> = {
   need_help: 'محتاج مساعدة',
   can_help: 'اقدر اساعد',
+  general_review: 'مراجعة عامة',
   td: 'حل TD',
   archive: 'حل الأرشيف',
 };
@@ -66,7 +67,16 @@ const PostCard: React.FC<PostCardProps> = ({
           ) : (
             <>
               {post.category === 'project_team' ? (
-                <p className="text-sm font-semibold text-slate-700">Approved: {post.acceptedUserIds?.length ?? 0} / {post.participantTargetCount ?? 0}</p>
+                <div className="space-y-2">
+                  <p className="text-sm font-semibold text-slate-700">Approved: {post.acceptedUserIds?.length ?? 0} / {post.participantTargetCount ?? 0}</p>
+                  {(post.teamRoles?.length ?? 0) > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {post.teamRoles?.map((role) => (
+                        <span key={role} className="badge-soft bg-slate-100 text-slate-700">Rôle {roleLabels[role] ?? role}</span>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
               ) : null}
               <p className="text-sm text-slate-600">
                 {[post.faculty ?? 'Faculté non renseignée', post.languagePref ?? 'Langue libre'].filter(Boolean).join(' · ')}
