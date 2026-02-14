@@ -87,6 +87,12 @@ const subjectSettingsSchema = z.object({
   isPriority: z.boolean()
 });
 
+const remainingSubjectSchema = z.object({
+  subjectCode: z.string().min(1),
+  level: z.enum(['L1', 'L2', 'L3', 'M1', 'M2']),
+  majorId: z.string().min(1)
+});
+
 export const profileSchema = z.object({
   displayName: z.string().optional(),
   facultyId: z.string().min(1),
@@ -104,6 +110,7 @@ export const profileSchema = z.object({
   bio: z.string().max(500).optional(),
   semester: z.string().optional(),
   subjectsSettings: z.array(subjectSettingsSchema).optional(),
+  remainingSubjects: z.array(remainingSubjectSchema).optional(),
   prioritiesOrder: z.array(z.enum(['need_help', 'can_help', 'td', 'archive'])).length(4).optional()
 });
 

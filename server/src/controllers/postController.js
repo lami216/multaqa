@@ -142,6 +142,12 @@ const resolveIntentBoost = (intent, post) => {
   return 0;
 };
 
+const extractRemainingSubjectCodes = (remainingSubjects = []) =>
+  remainingSubjects
+    .map((item) => (typeof item === 'string' ? item : item?.subjectCode))
+    .map((code) => (typeof code === 'string' ? code.trim() : ''))
+    .filter(Boolean);
+
 const extractQueryArray = (value) => {
   if (!value) return [];
   if (Array.isArray(value)) {
@@ -224,7 +230,8 @@ export const getPosts = async (req, res) => {
       ? selectedSubjectList
       : [
           ...(userProfile?.subjectCodes ?? []),
-          ...(userProfile?.subjects ?? [])
+          ...(userProfile?.subjects ?? []),
+          ...extractRemainingSubjectCodes(userProfile?.remainingSubjects ?? [])
         ];
 
     const postsWithProfiles = await Promise.all(
@@ -255,7 +262,8 @@ export const getPosts = async (req, res) => {
           ? post.subjectCodes
           : [
               ...(profile?.subjectCodes ?? []),
-              ...(profile?.subjects ?? [])
+              ...(profile?.subjects ?? []),
+              ...extractRemainingSubjectCodes(profile?.remainingSubjects ?? [])
             ];
         const sharedSubjectsCount = countSharedSubjects(fallbackSubjects, postSubjects);
         const hasSharedSubject = sharedSubjectsCount > 0;
@@ -378,13 +386,15 @@ export const getPost = async (req, res) => {
     const userProfile = req.user?._id ? await Profile.findOne({ userId: req.user._id }) : null;
     const fallbackSubjects = [
       ...(userProfile?.subjectCodes ?? []),
-      ...(userProfile?.subjects ?? [])
+      ...(userProfile?.subjects ?? []),
+      ...extractRemainingSubjectCodes(userProfile?.remainingSubjects ?? [])
     ];
     const postSubjects = post.subjectCodes?.length
       ? post.subjectCodes
       : [
           ...(profile?.subjectCodes ?? []),
-          ...(profile?.subjects ?? [])
+          ...(profile?.subjects ?? []),
+          ...extractRemainingSubjectCodes(profile?.remainingSubjects ?? [])
         ];
     const matchingPercent = calculateMatchingPercent({
       userProfile,

@@ -76,6 +76,12 @@ export interface SubjectPriorityItem {
   isPriority: boolean;
 }
 
+export interface RemainingSubjectItem {
+  subjectCode: string;
+  level: string;
+  majorId: string;
+}
+
 export type PriorityRoleKey = 'need_help' | 'can_help' | 'td' | 'archive';
 export type StudyTeamRoleKey = 'general_review' | 'td' | 'archive';
 
@@ -91,6 +97,7 @@ export interface Profile {
   subjects?: string[];
   subjectCodes?: string[];
   subjectsSettings?: SubjectPriorityItem[];
+  remainingSubjects?: RemainingSubjectItem[];
   prioritiesOrder?: PriorityRoleKey[];
   skills?: string[];
   courses?: string[];
