@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Camera, Loader2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, Camera, Loader2, Star } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
@@ -19,9 +19,10 @@ import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { useAuth } from '../context/AuthContext';
 import { processImageFile } from '../lib/imageProcessing';
 import { uploadToImageKit } from '../lib/imagekitClient';
+import { DEFAULT_PRIORITIES_ORDER, PRIORITY_ROLE_OPTIONS, type PriorityRoleKey } from '../lib/priorities';
 
 const EditProfilePage: React.FC = () => {
-  const [form, setForm] = useState<Profile>({ subjects: [], subjectCodes: [] });
+  const [form, setForm] = useState<Profile>({ subjects: [], subjectCodes: [], subjectsSettings: [], prioritiesOrder: DEFAULT_PRIORITIES_ORDER });
   const [serverProfile, setServerProfile] = useState<Profile | null>(null);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
@@ -47,6 +48,21 @@ const EditProfilePage: React.FC = () => {
   const { user, profile, setProfile, refresh } = useAuth();
   const navigate = useNavigate();
   const isProfileLocked = Boolean(profile?.profileLocked);
+
+  const syncSubjectSettings = (subjectCodes: string[], currentSettings?: Profile['subjectsSettings']) => {
+    const settingsMap = new Map((currentSettings ?? []).map((item) => [item.subjectCode, Boolean(item.isPriority)]));
+    return subjectCodes.map((subjectCode) => ({
+      subjectCode,
+      isPriority: settingsMap.get(subjectCode) ?? false
+    }));
+  };
+
+  const normalizePrioritiesOrder = (order?: Profile['prioritiesOrder']) => {
+    const incoming = Array.isArray(order) ? order.filter((item): item is PriorityRoleKey => DEFAULT_PRIORITIES_ORDER.includes(item as PriorityRoleKey)) : [];
+    const rest = DEFAULT_PRIORITIES_ORDER.filter((item) => !incoming.includes(item));
+    return [...incoming, ...rest];
+  };
+
   const getAvailableLevels = (facultyId?: string) =>
     (facultyId ? getLevelsByFaculty(facultyId) : []).map((level: CatalogLevel) => ({
       value: level.id,
@@ -112,6 +128,11 @@ const EditProfilePage: React.FC = () => {
       semesterId: semesterMatch?.id,
       subjectCodes: resolvedSubjectCodes.length ? resolvedSubjectCodes : catalogSubjects.map((s) => s.code),
       subjects: resolvedSubjectCodes.length ? resolvedSubjectCodes : catalogSubjects.map((s) => s.code),
+      subjectsSettings: syncSubjectSettings(
+        resolvedSubjectCodes.length ? resolvedSubjectCodes : catalogSubjects.map((s) => s.code),
+        rawProfile?.subjectsSettings
+      ),
+      prioritiesOrder: normalizePrioritiesOrder(rawProfile?.prioritiesOrder),
       courses: catalogSubjects.map((subject) => subject.nameFr)
     } as Profile;
   };
@@ -150,7 +171,9 @@ const EditProfilePage: React.FC = () => {
           ...meData.profile,
           subjects: meData.profile?.subjects ?? meData.profile?.subjectCodes ?? [],
           subjectCodes: meData.profile?.subjectCodes ?? meData.profile?.subjects ?? [],
-          semesterId: meData.profile?.semesterId ?? meData.profile?.semester
+          semesterId: meData.profile?.semesterId ?? meData.profile?.semester,
+          subjectsSettings: meData.profile?.subjectsSettings ?? [],
+          prioritiesOrder: normalizePrioritiesOrder(meData.profile?.prioritiesOrder)
         } as Profile;
 
         const catalogFaculties = getFaculties();
@@ -213,6 +236,7 @@ const EditProfilePage: React.FC = () => {
         semesterId: undefined,
         subjectCodes: [],
         subjects: [],
+        subjectsSettings: [],
         courses: []
       }));
       setSubjects([]);
@@ -232,6 +256,7 @@ const EditProfilePage: React.FC = () => {
         semesterId: undefined,
         subjectCodes: [],
         subjects: [],
+        subjectsSettings: [],
         courses: []
       }));
       setSubjects([]);
@@ -301,6 +326,7 @@ const EditProfilePage: React.FC = () => {
       ...prev,
       subjectCodes: nextSubjects.map((subject) => subject.code),
       subjects: nextSubjects.map((subject) => subject.code),
+      subjectsSettings: syncSubjectSettings(nextSubjects.map((subject) => subject.code), prev.subjectsSettings),
       courses: nextSubjects.map((subject) => subject.nameFr),
     }));
   }, [form.majorId, form.facultyId, form.level, form.semesterId]);
@@ -350,6 +376,8 @@ const EditProfilePage: React.FC = () => {
         subjects: form.subjectCodes,
         subjectCodes: form.subjectCodes,
         courses: selectedSubjects.map((subject) => subject.nameFr),
+        subjectsSettings: syncSubjectSettings(form.subjectCodes ?? [], form.subjectsSettings),
+        prioritiesOrder: normalizePrioritiesOrder(form.prioritiesOrder),
         availability: form.availability,
         languages: form.languages ?? [],
         bio: form.bio,
@@ -444,6 +472,28 @@ const EditProfilePage: React.FC = () => {
   const uiLanguage = useMemo(() => (document.documentElement.lang?.toLowerCase().startsWith('ar') ? 'ar' : 'fr'), []);
 
   const selectedSubjectItems = subjects;
+  const prioritySettingsMap = new Map((form.subjectsSettings ?? []).map((item) => [item.subjectCode, Boolean(item.isPriority)]));
+
+  const toggleSubjectPriority = (subjectCode: string) => {
+    isDirtyRef.current = true;
+    setForm((prev) => ({
+      ...prev,
+      subjectsSettings: syncSubjectSettings(prev.subjectCodes ?? [], prev.subjectsSettings).map((item) =>
+        item.subjectCode === subjectCode ? { ...item, isPriority: !item.isPriority } : item
+      )
+    }));
+  };
+
+  const movePriorityRole = (index: number, direction: -1 | 1) => {
+    isDirtyRef.current = true;
+    const current = normalizePrioritiesOrder(form.prioritiesOrder);
+    const nextIndex = index + direction;
+    if (nextIndex < 0 || nextIndex >= current.length) return;
+    const reordered = [...current];
+    const [item] = reordered.splice(index, 1);
+    reordered.splice(nextIndex, 0, item);
+    setForm((prev) => ({ ...prev, prioritiesOrder: reordered }));
+  };
 
   useEffect(() => revokePreview, []);
 
@@ -555,6 +605,7 @@ const EditProfilePage: React.FC = () => {
                   semesterId: undefined,
                   subjectCodes: [],
                   subjects: [],
+                  subjectsSettings: [],
                   courses: []
                 }));
               }}
@@ -588,6 +639,7 @@ const EditProfilePage: React.FC = () => {
                   semesterId: undefined,
                   subjectCodes: [],
                   subjects: [],
+                  subjectsSettings: [],
                   courses: []
                 }));
               }}
@@ -619,6 +671,7 @@ const EditProfilePage: React.FC = () => {
                   semesterId: undefined,
                   subjectCodes: [],
                   subjects: [],
+                  subjectsSettings: [],
                   courses: []
                 }));
               }}
@@ -652,6 +705,7 @@ const EditProfilePage: React.FC = () => {
                   semesterId: value || undefined,
                   subjectCodes: [],
                   subjects: [],
+                  subjectsSettings: [],
                   courses: []
                 }));
               }}
@@ -691,6 +745,51 @@ const EditProfilePage: React.FC = () => {
                 <p className="mt-1 text-xs text-slate-500">Les matières sont générées automatiquement à partir du catalogue académique.</p>
               )}
             </div>
+            {!!selectedSubjectItems.length && (
+              <div className="mt-3 grid sm:grid-cols-2 gap-2">
+                {selectedSubjectItems.map((subject) => {
+                  const active = prioritySettingsMap.get(subject.code) ?? false;
+                  return (
+                    <button
+                      key={subject.code}
+                      type="button"
+                      onClick={() => toggleSubjectPriority(subject.code)}
+                      className={`rounded-xl border px-3 py-2 text-left transition ${active ? 'border-amber-300 bg-amber-50 text-amber-900 shadow-sm' : 'border-slate-200 bg-white text-slate-700'}`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold">{subject.code}</span>
+                        <Star className={`h-4 w-4 ${active ? 'fill-amber-400 text-amber-500' : 'text-slate-400'}`} />
+                      </div>
+                      <p className="text-xs mt-1">{active ? 'مادة مهمة للإشعارات' : 'مادة عادية'}</p>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-sm font-semibold text-slate-700">ترتيب الأولوية</label>
+          <div className="grid gap-2">
+            {normalizePrioritiesOrder(form.prioritiesOrder).map((item, index) => {
+              const option = PRIORITY_ROLE_OPTIONS.find((entry) => entry.key === item);
+              return (
+                <div
+                  key={item}
+                  className="flex items-center justify-between rounded-xl border border-emerald-100 bg-emerald-50/50 px-3 py-2"
+                >
+                  <div>
+                    <p className="text-sm font-semibold text-slate-800">#{index + 1} {option?.label ?? item}</p>
+                    <p className="text-xs text-slate-500">{option?.helper}</p>
+                  </div>
+                  <div className="flex gap-1">
+                    <button type="button" onClick={() => movePriorityRole(index, -1)} disabled={index === 0} className="secondary-btn px-2 py-1 disabled:opacity-40"><ArrowUp className="h-4 w-4" /></button>
+                    <button type="button" onClick={() => movePriorityRole(index, 1)} disabled={index === 3} className="secondary-btn px-2 py-1 disabled:opacity-40"><ArrowDown className="h-4 w-4" /></button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
         <div>

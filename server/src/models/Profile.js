@@ -56,6 +56,24 @@ const profileSchema = new mongoose.Schema({
     type: String,
     trim: true
   }],
+  subjectsSettings: [{
+    subjectCode: {
+      type: String,
+      trim: true,
+      required: true
+    },
+    isPriority: {
+      type: Boolean,
+      default: false
+    }
+  }],
+  prioritiesOrder: {
+    type: [{
+      type: String,
+      enum: ['need_help', 'can_help', 'td', 'archive']
+    }],
+    default: ['need_help', 'can_help', 'td', 'archive']
+  },
   availability: {
     type: String,
     trim: true

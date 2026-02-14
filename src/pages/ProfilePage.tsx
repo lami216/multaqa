@@ -16,6 +16,7 @@ import {
   type CatalogSemester,
   type CatalogSubject
 } from '../lib/catalog';
+import { PRIORITY_ROLE_LABELS } from '../lib/priorities';
 
 const ProfilePage: React.FC = () => {
   const { user, profile: authProfile } = useAuth();
@@ -91,6 +92,7 @@ const ProfilePage: React.FC = () => {
   const levelLabel = resolvedLevel?.nameFr ?? profile?.level ?? 'Niveau libre';
   const majorLabel = resolvedMajor?.nameFr ?? profile?.major ?? 'Filière non renseignée';
   const courseLabels = profile?.courses?.length ? profile.courses : resolvedSubjectNames;
+  const prioritiesOrder = profile?.prioritiesOrder ?? ['need_help', 'can_help', 'td', 'archive'];
 
   return (
     <div className="space-y-4">
@@ -138,6 +140,14 @@ const ProfilePage: React.FC = () => {
               ))}
               {!courseLabels?.length && <span className="text-sm text-slate-500">Ajoutez vos matières suivies.</span>}
             </div>
+          </div>
+        </div>
+        <div className="card-surface p-4">
+          <h3 className="font-semibold text-slate-900 mb-2">ترتيب الأولوية</h3>
+          <div className="flex flex-wrap gap-2">
+            {prioritiesOrder.map((item, index) => (
+              <span key={item} className="badge-soft bg-emerald-50 text-emerald-700">#{index + 1} {PRIORITY_ROLE_LABELS[item as keyof typeof PRIORITY_ROLE_LABELS] ?? item}</span>
+            ))}
           </div>
         </div>
         <div className="flex flex-wrap gap-2 text-sm text-slate-600">

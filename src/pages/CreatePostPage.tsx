@@ -3,18 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { CheckCircle2, Clock3, Languages, PenSquare } from 'lucide-react';
 import { createPost, type PostPayload } from '../lib/http';
 import { useAuth } from '../context/AuthContext';
+import { PRIORITY_ROLE_OPTIONS } from '../lib/priorities';
 
 const requestTypes: { value: PostPayload['category']; label: string }[] = [
   { value: 'study_partner', label: 'Study partner' },
   { value: 'project_team', label: 'Project team' },
   { value: 'tutor_offer', label: 'Tutor offer' },
 ];
-
-const studentRoles = [
-  { value: 'helper', label: 'Helper', helper: 'Je maîtrise la matière et je veux aider.' },
-  { value: 'partner', label: 'Partner', helper: 'Niveau moyen, je veux réviser ensemble.' },
-  { value: 'learner', label: 'Learner', helper: 'Je débute et j’ai besoin d’aide.' },
-] as const;
 
 const durationOptions = [
   { value: '24', label: '24h' },
@@ -38,7 +33,7 @@ const CreatePostPage: React.FC = () => {
   });
   const [tagsInput, setTagsInput] = useState('');
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
-  const [studentRole, setStudentRole] = useState<PostPayload['studentRole']>();
+  const [postRole, setPostRole] = useState<PostPayload['postRole']>();
   const [durationChoice, setDurationChoice] = useState<(typeof durationOptions)[number]['value']>('24');
   const [customDurationInput, setCustomDurationInput] = useState('');
   const [customDurationHours, setCustomDurationHours] = useState<number | null>(null);
@@ -53,7 +48,7 @@ const CreatePostPage: React.FC = () => {
   const studyPartnerValid =
     selectedSubjects.length >= 1 &&
     selectedSubjects.length <= 2 &&
-    Boolean(studentRole) &&
+    Boolean(postRole) &&
     Number.isFinite(durationHours) &&
     Number.isInteger(durationHours) &&
     durationHours > 0;
@@ -62,10 +57,6 @@ const CreatePostPage: React.FC = () => {
 
   const handleChange = (field: keyof PostPayload, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const handleDurationChoice = (value: (typeof durationOptions)[number]['value']) => {
-    setDurationChoice(value);
   };
 
   const confirmCustomDuration = () => {
@@ -110,7 +101,7 @@ const CreatePostPage: React.FC = () => {
       ? {
         category: 'study_partner',
         subjectCodes: selectedSubjects,
-        studentRole: studentRole!,
+        postRole: postRole!,
         durationHours,
         description: shortDescription.trim() ? shortDescription.trim() : undefined,
       }
@@ -122,7 +113,6 @@ const CreatePostPage: React.FC = () => {
           .filter(Boolean),
       };
 
-    console.log('[createPost] durationHours=', durationHours);
     createPost(payload)
       .then(() => navigate('/posts'))
       .catch(() => setError('Impossible de publier cette annonce pour le moment.'))
@@ -159,40 +149,39 @@ const CreatePostPage: React.FC = () => {
           </div>
 
           {isStudyPartner ? (
-            <div className="md:col-span-2 space-y-3">
-              <div>
-                <label className="text-sm font-semibold text-slate-700">Vos matières (max 2)</label>
+            <>
+              <div className="md:col-span-2 space-y-2">
+                <label className="text-sm font-semibold text-slate-700">Matières (1-2)</label>
                 <p className="helper-text">Sélectionnez les matières déjà présentes dans votre profil.</p>
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {subjectOptions.length === 0 ? (
-                    <span className="text-sm text-rose-600">Ajoutez des matières dans votre profil pour continuer.</span>
-                  ) : (
-                    subjectOptions.map((subject) => (
+                <div className="flex flex-wrap gap-2">
+                  {subjectOptions.map((subject) => {
+                    const selected = selectedSubjects.includes(subject);
+                    return (
                       <button
-                        key={subject}
                         type="button"
+                        key={subject}
                         onClick={() => toggleSubject(subject)}
-                        className={`badge-soft ${selectedSubjects.includes(subject) ? 'bg-emerald-100 text-emerald-700' : 'bg-white border border-slate-200 text-slate-600'}`}
+                        className={`rounded-full border px-3 py-1 text-sm transition ${
+                          selected ? 'border-emerald-400 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-white text-slate-600'
+                        }`}
                       >
                         {subject}
                       </button>
-                    ))
-                  )}
+                    );
+                  })}
                 </div>
               </div>
 
-              <div>
-                <label className="text-sm font-semibold text-slate-700">Votre rôle</label>
-                <div className="grid sm:grid-cols-3 gap-2 mt-2">
-                  {studentRoles.map((role) => (
+              <div className="md:col-span-2 space-y-2">
+                <label className="text-sm font-semibold text-slate-700">الدور</label>
+                <div className="grid sm:grid-cols-2 gap-2">
+                  {PRIORITY_ROLE_OPTIONS.map((role) => (
                     <button
-                      key={role.value}
+                      key={role.key}
                       type="button"
-                      onClick={() => setStudentRole(role.value)}
-                      className={`card-surface text-left p-3 border transition ${
-                        studentRole === role.value
-                          ? 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-200 shadow-sm'
-                          : 'border-slate-200'
+                      onClick={() => setPostRole(role.key)}
+                      className={`rounded-xl border px-3 py-2 text-left transition ${
+                        postRole === role.key ? 'border-emerald-400 bg-emerald-50 shadow-sm' : 'border-slate-200 bg-white'
                       }`}
                     >
                       <p className="text-sm font-semibold text-slate-800">{role.label}</p>
@@ -202,139 +191,120 @@ const CreatePostPage: React.FC = () => {
                 </div>
               </div>
 
-              <div>
-                <label className="text-sm font-semibold text-slate-700">Durée de publication</label>
-                <div className="grid sm:grid-cols-4 gap-2 mt-2">
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-slate-700">Durée</label>
+                <div className="flex flex-wrap gap-2">
                   {durationOptions.map((option) => (
                     <button
                       key={option.value}
                       type="button"
-                      onClick={() => handleDurationChoice(option.value)}
-                      className={`tab-btn ${durationChoice === option.value ? 'active' : 'bg-white border border-slate-200'}`}
+                      onClick={() => setDurationChoice(option.value)}
+                      className={`rounded-full border px-3 py-1 text-sm transition ${
+                        durationChoice === option.value ? 'border-blue-400 bg-blue-50 text-blue-700' : 'border-slate-200 bg-white text-slate-600'
+                      }`}
                     >
-                      <Clock3 size={14} className="me-1" />
                       {option.label}
                     </button>
                   ))}
                 </div>
-                {durationChoice === 'custom' && (
-                  <div className="mt-2 flex flex-wrap items-center gap-2">
+              </div>
+
+              {durationChoice === 'custom' && (
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-slate-700">Durée personnalisée (heures)</label>
+                  <div className="flex gap-2">
                     <input
                       value={customDurationInput}
                       onChange={(e) => setCustomDurationInput(e.target.value)}
-                      type="number"
-                      min={1}
-                      max={168}
-                      placeholder="Durée en heures"
-                      className="flex-1 min-w-[160px]"
+                      className="w-full"
+                      inputMode="numeric"
+                      placeholder="Ex: 96"
                     />
                     <button type="button" className="secondary-btn" onClick={confirmCustomDuration}>
-                      OK
+                      Confirmer
                     </button>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
 
-              <div>
-                <label className="text-sm font-semibold text-slate-700">Description courte (optionnel)</label>
+              <div className="md:col-span-2 space-y-2">
+                <label className="text-sm font-semibold text-slate-700">Description courte (optionnelle)</label>
                 <textarea
+                  rows={3}
                   value={shortDescription}
                   onChange={(e) => setShortDescription(e.target.value)}
-                  rows={3}
-                  maxLength={500}
-                  placeholder="Ex: préparation d'examen, rythme souhaité, créneaux." 
-                  className="w-full mt-1"
+                  className="w-full"
+                  placeholder="Ajoutez un contexte en restant bref."
                 />
               </div>
-            </div>
+            </>
           ) : (
             <>
               <div>
-                <label className="text-sm font-semibold text-slate-700">Matières</label>
-                <input
-                  value={form.title}
-                  onChange={(e) => handleChange('title', e.target.value)}
-                  placeholder="Titre de l'annonce"
+                <label className="text-sm font-semibold text-slate-700">Titre</label>
+                <input className="w-full mt-1" value={form.title ?? ''} onChange={(e) => handleChange('title', e.target.value)} />
+              </div>
+              <div>
+                <label className="text-sm font-semibold text-slate-700">Tags (séparés par des virgules)</label>
+                <input className="w-full mt-1" value={tagsInput} onChange={(e) => setTagsInput(e.target.value)} />
+              </div>
+              <div className="md:col-span-2">
+                <label className="text-sm font-semibold text-slate-700">Description</label>
+                <textarea
+                  rows={5}
                   className="w-full mt-1"
-                  required
+                  value={form.description ?? ''}
+                  onChange={(e) => handleChange('description', e.target.value)}
                 />
               </div>
               <div>
-                <label className="text-sm font-semibold text-slate-700">Compétences / outils</label>
-                <input
-                  value={tagsInput}
-                  onChange={(e) => setTagsInput(e.target.value)}
-                  placeholder="Python, Figma, SQL"
-                  className="w-full mt-1"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-semibold text-slate-700">Faculté / département</label>
-                <input
-                  value={form.faculty ?? ''}
-                  onChange={(e) => handleChange('faculty', e.target.value)}
-                  placeholder="Ex: Informatique"
-                  className="w-full mt-1"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-semibold text-slate-700">Niveau</label>
-                <select value={form.level ?? ''} onChange={(e) => handleChange('level', e.target.value)} className="w-full mt-1">
-                  <option value="">Sélectionnez</option>
-                  <option value="L1">Licence 1</option>
-                  <option value="L2">Licence 2</option>
-                  <option value="L3">Licence 3</option>
-                  <option value="M1">Master 1</option>
-                  <option value="M2">Master 2</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-sm font-semibold text-slate-700">Langue préférée</label>
+                <label className="text-sm font-semibold text-slate-700">Langue</label>
                 <div className="flex gap-2 mt-1">
                   {['French', 'Arabic'].map((lng) => (
                     <button
                       key={lng}
                       type="button"
                       onClick={() => handleChange('languagePref', lng as PostPayload['languagePref'])}
-                      className={`tab-btn flex-1 ${form.languagePref === lng ? 'active' : 'bg-white border border-slate-200'}`}
+                      className={`tab-btn ${form.languagePref === lng ? 'active' : 'bg-white border border-slate-200'}`}
                     >
-                      <Languages size={14} className="me-1" />
-                      {lng}
+                      <Languages size={14} className="me-1" /> {lng}
                     </button>
                   ))}
                 </div>
               </div>
               <div>
-                <label className="text-sm font-semibold text-slate-700">Disponibilité</label>
-                <input
-                  value={form.location ?? ''}
-                  onChange={(e) => handleChange('location', e.target.value)}
-                  placeholder="Campus, en ligne ou hybride"
-                  className="w-full mt-1"
-                />
-              </div>
-              <div className="md:col-span-2">
-                <label className="text-sm font-semibold text-slate-700">Description</label>
-                <textarea
-                  value={form.description}
-                  onChange={(e) => handleChange('description', e.target.value)}
-                  rows={4}
-                  placeholder="Ajoutez les objectifs, le rythme souhaité et le contexte."
-                  className="w-full mt-1"
-                  required
-                />
+                <label className="text-sm font-semibold text-slate-700">Lieu</label>
+                <div className="flex gap-2 mt-1">
+                  {['campus', 'online'].map((loc) => (
+                    <button
+                      key={loc}
+                      type="button"
+                      onClick={() => handleChange('location', loc as PostPayload['location'])}
+                      className={`tab-btn ${form.location === loc ? 'active' : 'bg-white border border-slate-200'}`}
+                    >
+                      {loc}
+                    </button>
+                  ))}
+                </div>
               </div>
             </>
           )}
         </div>
-        {error && <div className="text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-lg p-3">{error}</div>}
+
+        {error && <div className="text-sm text-red-700 bg-red-50 border border-red-100 rounded-lg p-2">{error}</div>}
+
         <button
           type="submit"
           className="primary-btn w-full sm:w-auto"
           disabled={saving || (isStudyPartner ? !studyPartnerValid : !standardPostValid)}
         >
-          <CheckCircle2 className="me-2" size={18} /> {saving ? 'Publication...' : 'Publier la demande'}
+          {saving ? 'Publication...' : 'Publier'}
         </button>
+
+        <div className="flex flex-wrap gap-2 text-xs text-slate-500">
+          <span className="inline-flex items-center gap-1"><CheckCircle2 size={14} /> Les annonces respectent vos matières sélectionnées.</span>
+          <span className="inline-flex items-center gap-1"><Clock3 size={14} /> Durée configurable par tranches de 24h.</span>
+        </div>
       </form>
     </div>
   );
