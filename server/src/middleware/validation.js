@@ -39,13 +39,8 @@ const studyPartnerCreateSchema = z.object({
 const standardPostCreateSchema = z.discriminatedUnion('category', [
   z.object({
     category: z.literal('project_team'),
-    title: z.string().min(1).max(200),
-    description: z.string().min(1).max(2000),
-    tags: z.array(z.string()).optional(),
-    faculty: z.string().optional(),
-    level: z.enum(['L1', 'L2', 'L3', 'M1', 'M2']).optional(),
-    languagePref: z.enum(['Arabic', 'French']).optional(),
-    location: z.enum(['campus', 'online']).optional(),
+    subjectCodes: z.array(z.string().min(1)).min(1).max(2),
+    description: z.string().max(500).optional(),
     availabilityDate: z.coerce.date(),
     participantTargetCount: z.number().int().min(3)
   }).strict(),

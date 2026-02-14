@@ -478,24 +478,72 @@ export const createPost = async (req, res) => {
 
     let { title, description, ...rest } = req.body;
 
-    if (containsProfanity(title) || containsProfanity(description)) {
-      title = maskProfanity(title);
-      description = maskProfanity(description);
+    if (containsProfanity(title || '') || containsProfanity(description || '')) {
+      title = maskProfanity(title || '');
+      description = maskProfanity(description || '');
     }
 
-    description = maskContactInfo(description);
+    description = maskContactInfo(description || '');
 
     if (category === 'project_team') {
-      const availabilityCutoff = getAvailabilityCutoff(rest.availabilityDate);
-      const participantTargetCount = Number(rest.participantTargetCount);
+      const { subjectCodes, description: teamDescription, availabilityDate } = req.body;
+      const profile = await Profile.findOne({ userId: req.user._id });
+
+      if (!profile?.subjectCodes?.length) {
+        return res.status(400).json({ error: 'Profile subject codes are required for study team posts.' });
+      }
+
+      const normalizedCodes = subjectCodes.map((code) => code.trim()).filter(Boolean);
+      if (normalizedCodes.length < 1 || normalizedCodes.length > 2) {
+        return res.status(400).json({ error: 'Select between 1 and 2 subjects for study team posts.' });
+      }
+
+      const allowedCodes = new Set(profile.subjectCodes.map((code) => code.trim()));
+      const invalidCodes = normalizedCodes.filter((code) => !allowedCodes.has(code));
+      if (invalidCodes.length) {
+        return res.status(400).json({ error: 'Selected subjects must exist in your profile.' });
+      }
+
+      let sanitizedDescription = teamDescription?.trim() ?? '';
+      if (sanitizedDescription) {
+        if (containsProfanity(sanitizedDescription)) {
+          sanitizedDescription = maskProfanity(sanitizedDescription);
+        }
+        sanitizedDescription = maskContactInfo(sanitizedDescription);
+      }
+
+      const availabilityCutoff = getAvailabilityCutoff(availabilityDate);
+      const participantTargetCount = Number(req.body.participantTargetCount);
       if (!availabilityCutoff) {
         return res.status(400).json({ error: 'Availability date is required.' });
       }
       if (!Number.isInteger(participantTargetCount) || participantTargetCount < 3) {
         return res.status(400).json({ error: 'Participant target count must be at least 3.' });
       }
-      rest.availabilityDate = availabilityCutoff;
-      rest.participantTargetCount = participantTargetCount;
+
+      const post = await Post.create({
+        authorId: req.user._id,
+        title: buildStudyPartnerTitle(normalizedCodes),
+        description: sanitizedDescription,
+        category,
+        subjectCodes: normalizedCodes,
+        availabilityDate: availabilityCutoff,
+        participantTargetCount,
+        faculty: profile.faculty,
+        level: profile.level,
+        languagePref: profile.languages?.[0]
+      });
+
+      await recordEvent({
+        action: 'post_created',
+        actorId: req.user._id,
+        postId: post._id,
+        meta: { category }
+      });
+
+      await redis.del('posts:*');
+
+      return res.status(201).json({ message: 'Post created successfully', post });
     }
 
     const post = await Post.create({
