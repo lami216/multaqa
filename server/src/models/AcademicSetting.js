@@ -5,7 +5,7 @@ const majorSettingSchema = new mongoose.Schema(
     majorId: { type: String, required: true, trim: true },
     status: {
       type: String,
-      enum: ['active', 'collecting'],
+      enum: ['active', 'collecting', 'closed'],
       default: 'active'
     },
     threshold: {

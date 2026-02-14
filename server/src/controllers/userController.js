@@ -2,7 +2,7 @@ import User from '../models/User.js';
 import Profile from '../models/Profile.js';
 import Post from '../models/Post.js';
 import redis from '../config/redis.js';
-import { maybeActivateMajor } from '../services/academicSettingsService.js';
+import { maybeActivateMajor, getMajorAvailability } from '../services/academicSettingsService.js';
 
 export const getPublicProfile = async (req, res) => {
   try {
@@ -109,8 +109,9 @@ export const updateProfile = async (req, res) => {
     await redis.del(`profile:${req.user.username}`);
 
     await maybeActivateMajor(profile.facultyId, profile.level, profile.majorId);
+    const majorAvailability = await getMajorAvailability(profile.facultyId, profile.level, profile.majorId);
 
-    res.json({ message: 'Profile updated successfully', profile });
+    res.json({ message: 'Profile updated successfully', profile, majorAvailability });
   } catch (error) {
     if (error?.code === 11000) {
       return res.status(409).json({ error: 'Profile is locked' });

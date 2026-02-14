@@ -11,7 +11,7 @@ router.use(authenticate);
 
 router.get('/', postController.getPosts);
 router.get('/:id', postController.getPost);
-router.post('/', requireActiveMajor, postCreationRateLimit, validate(createPostSchema), postController.createPost);
+router.post('/', postCreationRateLimit, validate(createPostSchema), postController.createPost);
 router.patch('/:id', validate(updatePostSchema), postController.updatePost);
 router.delete('/:id', postController.deletePost);
 router.post('/:id/close', validate(closePostSchema), postController.closePost);

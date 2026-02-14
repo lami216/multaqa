@@ -1,5 +1,5 @@
 import Profile from '../models/Profile.js';
-import { getMajorAvailabilityMap, getAcademicSettingsRecord, computeAcademicCounts, buildAcademicMajorKey } from '../services/academicSettingsService.js';
+import { getMajorAvailability } from '../services/academicSettingsService.js';
 
 const blockedMessage = 'تخصصك موجود لكنه غير مُفعّل بعد.';
 
@@ -16,11 +16,7 @@ export const requireActiveMajor = async (req, res, next) => {
       });
     }
 
-    const settings = await getAcademicSettingsRecord();
-    const counts = await computeAcademicCounts();
-    const availabilityMap = getMajorAvailabilityMap(settings, counts);
-    const key = buildAcademicMajorKey(profile.facultyId, profile.level, profile.majorId);
-    const availability = availabilityMap[key] ?? { status: 'active', threshold: 0, registeredCount: counts[key] ?? 0 };
+    const availability = await getMajorAvailability(profile.facultyId, profile.level, profile.majorId);
 
     if (availability.status !== 'active') {
       return res.status(403).json({

@@ -8,6 +8,7 @@ import Event from '../models/Event.js';
 import redis from '../config/redis.js';
 import { maskContactInfo } from '../utils/contentMasking.js';
 import { containsProfanity, maskProfanity } from '../utils/profanityFilter.js';
+import { getMajorAvailability } from '../services/academicSettingsService.js';
 
 const getAvailabilityCutoff = (value) => {
   const date = new Date(value);
@@ -427,10 +428,19 @@ export const getPost = async (req, res) => {
 export const createPost = async (req, res) => {
   try {
     const { category } = req.body;
+    const profile = await Profile.findOne({ userId: req.user._id });
+
+    if (!profile?.facultyId || !profile?.level || !profile?.majorId) {
+      return res.status(403).json({ error: 'This major is still collecting students.' });
+    }
+
+    const majorAvailability = await getMajorAvailability(profile.facultyId, profile.level, profile.majorId);
+    if (majorAvailability.status !== 'active') {
+      return res.status(403).json({ error: 'This major is still collecting students.' });
+    }
 
     if (category === 'study_partner') {
       const { subjectCodes, postRole, description, availabilityDate } = req.body;
-      const profile = await Profile.findOne({ userId: req.user._id });
 
       if (!profile?.subjectCodes?.length) {
         return res.status(400).json({ error: 'Profile subject codes are required for study partner posts.' });
@@ -497,8 +507,6 @@ export const createPost = async (req, res) => {
 
     if (category === 'project_team') {
       const { subjectCodes, description: teamDescription, availabilityDate, teamRoles } = req.body;
-      const profile = await Profile.findOne({ userId: req.user._id });
-
       if (!profile?.subjectCodes?.length) {
         return res.status(400).json({ error: 'Profile subject codes are required for study team posts.' });
       }

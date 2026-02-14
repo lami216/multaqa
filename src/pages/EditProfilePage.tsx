@@ -439,17 +439,6 @@ const EditProfilePage: React.FC = () => {
       setSaving(false);
       return;
     }
-
-    if (majorStatus !== 'active') {
-      if (majorStatus === 'collecting') {
-        setError(`تخصصك موجود لكنه غير مُفعّل بعد. حاليا: ${majorPreregCount} من ${majorThreshold} مسجلين.`);
-      } else {
-        setError('تخصصك موجود لكنه غير مُفعّل بعد.');
-      }
-      setSaving(false);
-      return;
-    }
-
     if (!form.facultyId || !form.level || !form.majorId || !(form.subjectCodes?.length ?? 0)) {
       setError('Merci de sélectionner une faculté, un niveau, une filière et les matières associées.');
       setSaving(false);

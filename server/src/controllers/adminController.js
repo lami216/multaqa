@@ -432,9 +432,9 @@ const normalizeIncomingAcademicSettings = (body = {}) => {
                     .filter((major) => major?.majorId)
                     .map((major) => ({
                       majorId: String(major.majorId),
-                      status: major.status === 'collecting' || major.status === 'closed' ? 'collecting' : 'active',
+                      status: major.status === 'closed' ? 'closed' : (major.status === 'collecting' ? 'collecting' : 'active'),
                       threshold:
-                        (major.status === 'collecting' || major.status === 'closed')
+                        major.status === 'collecting'
                           ? Math.max(1, Number.parseInt(String(major.threshold ?? 1), 10) || 1)
                           : null
                     }))
