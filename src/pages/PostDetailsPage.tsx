@@ -19,6 +19,7 @@ import {
 } from '../lib/http';
 import { useAuth } from '../context/AuthContext';
 import { resolveAuthorId } from '../lib/postUtils';
+import { getSubjectShortNameByCode } from '../lib/catalog';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 
 const roleLabels: Record<string, string> = {
@@ -211,6 +212,9 @@ const PostDetailsPage: React.FC = () => {
         prev.map((item) => (item._id === requestId ? data.joinRequest : item))
       );
       setPost((prev) => (prev ? { ...prev, ...data.post } : prev));
+      if (data.conversation?._id) {
+        navigate(`/messages/${data.conversation._id}`);
+      }
     } catch (error) {
       reportRequestError('Failed to accept join request', error, 'Impossible de valider la demande.');
       setActionError('Impossible de valider la demande.');
@@ -245,6 +249,9 @@ const PostDetailsPage: React.FC = () => {
     try {
       const { data } = await closePost(id, { closeReason });
       setPost((prev) => (prev ? { ...prev, ...data.post } : prev));
+      if (data.conversation?._id) {
+        navigate(`/messages/${data.conversation._id}`);
+      }
     } catch (error) {
       reportRequestError('Failed to close post', error, "Impossible de clôturer l'annonce.");
       setActionError("Impossible de clôturer l'annonce.");
@@ -325,7 +332,7 @@ const PostDetailsPage: React.FC = () => {
               <div className="flex flex-wrap gap-2">
                 {(post.subjectCodes ?? []).map((subject) => (
                   <span key={subject} className="badge-soft bg-emerald-50 text-emerald-700">
-                    {subject}
+                    {getSubjectShortNameByCode(subject) || 'M'}
                   </span>
                 ))}
               </div>

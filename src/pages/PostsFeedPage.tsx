@@ -5,6 +5,7 @@ import { fetchPosts, type PostPayload, type PostResponse } from '../lib/http';
 import { useAuth } from '../context/AuthContext';
 import PostCard from '../components/PostCard';
 import { PRIORITY_ROLE_OPTIONS } from '../lib/priorities';
+import { getSubjectShortNameByCode } from '../lib/catalog';
 
 const toRole = (post: PostResponse): PostPayload['postRole'] | undefined => {
   if (post.postRole) return post.postRole;
@@ -220,7 +221,9 @@ const PostsFeedPage: React.FC = () => {
                     Ajoutez des matières dans votre profil pour affiner les résultats.
                   </span>
                 ) : (
-                  subjectOptions.map((subject) => (
+                  subjectOptions.map((subject) => {
+                    const subjectLabel = getSubjectShortNameByCode(subject);
+                    return (
                     <button
                       key={subject}
                       type="button"
@@ -231,9 +234,10 @@ const PostsFeedPage: React.FC = () => {
                           : 'border-slate-200 bg-white text-slate-600'
                       }`}
                     >
-                      {subject}
+                      {subjectLabel || 'M'}
                     </button>
-                  ))
+                  );
+                  })
                 )}
               </div>
             </div>

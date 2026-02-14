@@ -3,6 +3,7 @@ import { Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { PostResponse } from '../lib/http';
 import { resolveAuthorId } from '../lib/postUtils';
+import { getSubjectShortNameByCode } from '../lib/catalog';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 
 const roleLabels: Record<string, string> = {
@@ -53,7 +54,7 @@ const PostCard: React.FC<PostCardProps> = ({
             <div className="space-y-2">
               <div className="flex flex-wrap gap-2">
                 {(post.subjectCodes ?? []).map((subject) => (
-                  <span key={subject} className="badge-soft bg-emerald-50 text-emerald-700">{subject}</span>
+                  <span key={subject} className="badge-soft bg-emerald-50 text-emerald-700">{getSubjectShortNameByCode(subject) || 'M'}</span>
                 ))}
                 <span className="badge-soft bg-slate-100 text-slate-700">Rôle {roleLabel}</span>
               </div>

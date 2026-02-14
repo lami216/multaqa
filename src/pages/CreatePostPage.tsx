@@ -4,6 +4,7 @@ import { CheckCircle2, PenSquare } from 'lucide-react';
 import { createPost, type PostPayload, type StudyTeamRoleKey } from '../lib/http';
 import { useAuth } from '../context/AuthContext';
 import { PRIORITY_ROLE_OPTIONS } from '../lib/priorities';
+import { getSubjectShortNameByCode } from '../lib/catalog';
 
 const requestTypes: { value: PostPayload['category']; label: string }[] = [
   { value: 'study_partner', label: 'Study partner' },
@@ -230,6 +231,7 @@ const CreatePostPage: React.FC = () => {
                 >
                   {subjectOptions.map((subject) => {
                     const selected = selectedSubjects.includes(subject);
+                    const subjectLabel = getSubjectShortNameByCode(subject);
                     return (
                       <button
                         type="button"
@@ -239,7 +241,7 @@ const CreatePostPage: React.FC = () => {
                           selected ? 'border-emerald-400 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-white text-slate-600'
                         }`}
                       >
-                        {subject}
+                        {subjectLabel || 'M'}
                       </button>
                     );
                   })}

@@ -304,7 +304,7 @@ export const createConversation = (payload: { type: 'post' | 'direct'; postId?: 
 export const requestJoinPost = (postId: string) => http.post<{ joinRequest: JoinRequestItem }>(`/posts/${postId}/join`);
 export const fetchJoinRequests = (postId: string) => http.get<{ joinRequests: JoinRequestItem[] }>(`/posts/${postId}/join-requests`);
 export const acceptJoinRequest = (postId: string, requestId: string) =>
-  http.post<{ joinRequest: JoinRequestItem; post: PostResponse }>(`/posts/${postId}/join-requests/${requestId}/accept`);
+  http.post<{ joinRequest: JoinRequestItem; post: PostResponse; conversation?: { _id: string } }>(`/posts/${postId}/join-requests/${requestId}/accept`);
 export const rejectJoinRequest = (postId: string, requestId: string) =>
   http.post<{ joinRequest: JoinRequestItem }>(`/posts/${postId}/join-requests/${requestId}/reject`);
 export const closePost = (postId: string, payload: { closeReason?: string }) =>

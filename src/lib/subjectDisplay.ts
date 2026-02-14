@@ -30,3 +30,14 @@ export const buildSubjectInitials = (subjectName?: string | null, fallbackCode?:
   return initials || fallbackCode?.trim() || source;
 };
 
+export const buildSubjectShortName = (subjectName?: string | null): string => {
+  const source = subjectName?.trim();
+  if (!source) return '';
+
+  const initials = tokenize(source)
+    .filter((token) => !CONNECTOR_WORDS.has(normalizeToken(token)))
+    .map(getTokenInitial)
+    .join('');
+
+  return initials || source.slice(0, 1).toLocaleUpperCase('fr-FR');
+};
