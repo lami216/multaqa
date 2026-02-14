@@ -47,6 +47,25 @@ export const getPublicProfile = async (req, res) => {
 export const updateProfile = async (req, res) => {
   try {
     const { profileLocked: _ignored, ...updates } = req.body;
+    const updateKeys = Object.keys(updates);
+    const isRemainingSubjectsOnlyUpdate =
+      updateKeys.length === 1 &&
+      updateKeys[0] === 'remainingSubjects' &&
+      Array.isArray(updates.remainingSubjects);
+
+    if (isRemainingSubjectsOnlyUpdate) {
+      const profile = await Profile.findOneAndUpdate(
+        { userId: req.user._id },
+        {
+          $set: { remainingSubjects: updates.remainingSubjects },
+          $setOnInsert: { userId: req.user._id }
+        },
+        { new: true, runValidators: true, upsert: true, setDefaultsOnInsert: true }
+      );
+
+      await redis.del(`profile:${req.user.username}`);
+      return res.json({ message: 'Profile updated successfully', profile });
+    }
 
     const hasRequiredFields = Boolean(
       updates.facultyId &&

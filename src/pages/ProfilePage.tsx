@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Edit3, GraduationCap, MapPin, Notebook, User } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { http, type Profile } from '../lib/http';
+import { http, type Profile, type RemainingSubjectItem } from '../lib/http';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import {
   getFaculties,
@@ -21,6 +21,12 @@ import { PRIORITY_ROLE_LABELS } from '../lib/priorities';
 const ProfilePage: React.FC = () => {
   const { user, profile: authProfile } = useAuth();
   const [profile, setProfile] = useState<Profile | null>(authProfile ?? null);
+  const [remainingSelection, setRemainingSelection] = useState<RemainingSubjectItem[]>([]);
+  const [hasRemainingFromPrevious, setHasRemainingFromPrevious] = useState<boolean | null>(null);
+  const [previousMajorId, setPreviousMajorId] = useState<string>('');
+  const [savingRemaining, setSavingRemaining] = useState(false);
+  const [remainingMessage, setRemainingMessage] = useState('');
+  const [remainingError, setRemainingError] = useState('');
   const faculties = getFaculties();
 
   const cacheBustedAvatar = (url?: string, version?: string | number) => {
@@ -94,6 +100,71 @@ const ProfilePage: React.FC = () => {
   const courseLabels = profile?.courses?.length ? profile.courses : resolvedSubjectNames;
   const prioritiesOrder = profile?.prioritiesOrder ?? ['need_help', 'can_help', 'td', 'archive'];
 
+  const currentLevelId = resolvedLevel?.id ?? profile?.level;
+  const previousLevelMap: Record<string, string> = { L2: 'L1', L3: 'L2' };
+  const previousLevel = currentLevelId ? previousLevelMap[currentLevelId] : undefined;
+  const shouldAskRemaining = Boolean(profile?.profileLocked && resolvedFaculty && previousLevel);
+
+  const previousMajors = useMemo(
+    () => (resolvedFaculty && previousLevel ? getMajorsByFacultyAndLevel(resolvedFaculty.id, previousLevel) : []),
+    [resolvedFaculty, previousLevel]
+  );
+
+  const remainingSubjectsCatalog = useMemo(() => {
+    if (!resolvedFaculty || !previousLevel || !previousMajorId) return [];
+    const prevSemesters = getSemestersByMajorAndLevel(resolvedFaculty.id, previousLevel, previousMajorId);
+    const generated = prevSemesters.flatMap((semester) =>
+      getSubjectsByMajorAndSemester(resolvedFaculty.id, previousLevel, previousMajorId, semester.id)
+    );
+    return Array.from(new Map(generated.map((subject) => [subject.code, subject])).values());
+  }, [resolvedFaculty, previousLevel, previousMajorId]);
+
+  useEffect(() => {
+    const existing = (profile?.remainingSubjects ?? []).filter((item) => item.level === previousLevel);
+    setRemainingSelection(existing);
+    setHasRemainingFromPrevious(existing.length ? true : null);
+    setPreviousMajorId(existing[0]?.majorId ?? '');
+    setRemainingMessage('');
+    setRemainingError('');
+  }, [profile?.remainingSubjects, previousLevel]);
+
+  const selectedRemainingCodes = new Set(remainingSelection.map((item) => item.subjectCode));
+
+  const toggleRemainingSubject = (subjectCode: string) => {
+    if (!previousLevel || !previousMajorId) return;
+    setRemainingSelection((prev) => {
+      const exists = prev.some(
+        (item) => item.subjectCode === subjectCode && item.level === previousLevel && item.majorId === previousMajorId
+      );
+      if (exists) {
+        return prev.filter(
+          (item) => !(item.subjectCode === subjectCode && item.level === previousLevel && item.majorId === previousMajorId)
+        );
+      }
+      return [...prev, { subjectCode, level: previousLevel, majorId: previousMajorId }];
+    });
+  };
+
+  const saveRemainingSubjects = async () => {
+    if (!profile) return;
+    setSavingRemaining(true);
+    setRemainingMessage('');
+    setRemainingError('');
+    try {
+      const { data } = await http.patch<{ profile: Profile }>('/users/me', {
+        remainingSubjects: hasRemainingFromPrevious === true ? remainingSelection : []
+      });
+      setProfile(data.profile);
+      setRemainingMessage('تم حفظ المواد المتبقية بنجاح.');
+    } catch {
+      setRemainingError('تعذر حفظ المواد المتبقية، حاول مرة أخرى.');
+    } finally {
+      setSavingRemaining(false);
+    }
+  };
+
+  const allRemaining = profile?.remainingSubjects ?? [];
+
   return (
     <div className="space-y-4">
       <div className="card-surface p-5 flex flex-col gap-4">
@@ -142,6 +213,92 @@ const ProfilePage: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {!!allRemaining.length && (
+          <div className="card-surface p-4">
+            <h3 className="font-semibold text-slate-900 mb-2">مواد متبقية من مستوى سابق</h3>
+            <div className="flex flex-wrap gap-2">
+              {allRemaining.map((item) => (
+                <span key={`${item.subjectCode}-${item.level}-${item.majorId}`} className="badge-soft bg-emerald-50 text-emerald-800">
+                  {item.subjectCode} <span className="ms-1 text-[10px]">{item.level}</span>
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {shouldAskRemaining && (
+          <div className="card-surface p-4 space-y-3">
+            <p className="text-sm font-semibold text-slate-800">هل لديك مواد متبقية من المستوى السابق</p>
+            <div className="flex gap-2">
+              <button type="button" className={`secondary-btn ${hasRemainingFromPrevious === true ? 'ring-2 ring-emerald-300' : ''}`} onClick={() => setHasRemainingFromPrevious(true)}>
+                نعم
+              </button>
+              <button
+                type="button"
+                className={`secondary-btn ${hasRemainingFromPrevious === false ? 'ring-2 ring-emerald-300' : ''}`}
+                onClick={() => {
+                  setHasRemainingFromPrevious(false);
+                  setRemainingSelection([]);
+                  setPreviousMajorId('');
+                }}
+              >
+                لا
+              </button>
+            </div>
+
+            {hasRemainingFromPrevious === true && (
+              <>
+                <div>
+                  <label className="text-sm font-semibold text-slate-700">تخصص المستوى السابق</label>
+                  <select
+                    value={previousMajorId}
+                    onChange={(event) => {
+                      setPreviousMajorId(event.target.value);
+                      setRemainingSelection([]);
+                    }}
+                    className="w-full mt-1"
+                    disabled={savingRemaining}
+                  >
+                    <option value="">Choisir</option>
+                    {previousMajors.map((major) => (
+                      <option key={major.id} value={major.id}>{major.nameFr}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {!!remainingSubjectsCatalog.length && (
+                  <div className="grid sm:grid-cols-2 gap-2">
+                    {remainingSubjectsCatalog.map((subject) => {
+                      const active = selectedRemainingCodes.has(subject.code);
+                      return (
+                        <button
+                          key={subject.code}
+                          type="button"
+                          onClick={() => toggleRemainingSubject(subject.code)}
+                          className={`rounded-xl border px-3 py-2 text-left transition ${active ? 'border-emerald-300 bg-emerald-50 text-emerald-900 shadow-sm' : 'border-slate-200 bg-white text-slate-700'}`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="font-semibold">{subject.code}</span>
+                            <span className="badge-soft text-[10px] px-2 py-0.5">{previousLevel}</span>
+                          </div>
+                          <p className="text-xs mt-1">{subject.nameAr}</p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </>
+            )}
+
+            {remainingError && <p className="text-xs text-red-600">{remainingError}</p>}
+            {remainingMessage && <p className="text-xs text-emerald-700">{remainingMessage}</p>}
+            <button type="button" className="primary-btn w-full sm:w-auto" onClick={saveRemainingSubjects} disabled={savingRemaining}>
+              {savingRemaining ? 'Enregistrement...' : 'حفظ المواد المتبقية'}
+            </button>
+          </div>
+        )}
+
         <div className="card-surface p-4">
           <h3 className="font-semibold text-slate-900 mb-2">ترتيب الأولوية</h3>
           <div className="flex flex-wrap gap-2">
