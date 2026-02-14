@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowDown, ArrowUp, Camera, Loader2, Star } from 'lucide-react';
+import { Camera, Loader2, Star } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
@@ -484,15 +484,15 @@ const EditProfilePage: React.FC = () => {
     }));
   };
 
-  const movePriorityRole = (index: number, direction: -1 | 1) => {
+  const togglePriorityRoleSelection = (role: PriorityRoleKey) => {
     isDirtyRef.current = true;
-    const current = normalizePrioritiesOrder(form.prioritiesOrder);
-    const nextIndex = index + direction;
-    if (nextIndex < 0 || nextIndex >= current.length) return;
-    const reordered = [...current];
-    const [item] = reordered.splice(index, 1);
-    reordered.splice(nextIndex, 0, item);
-    setForm((prev) => ({ ...prev, prioritiesOrder: reordered }));
+    setForm((prev) => {
+      const current = Array.isArray(prev.prioritiesOrder)
+        ? prev.prioritiesOrder.filter((item): item is PriorityRoleKey => DEFAULT_PRIORITIES_ORDER.includes(item as PriorityRoleKey))
+        : [];
+      const next = current.includes(role) ? current.filter((item) => item !== role) : [...current, role];
+      return { ...prev, prioritiesOrder: next };
+    });
   };
 
   useEffect(() => revokePreview, []);
@@ -771,23 +771,29 @@ const EditProfilePage: React.FC = () => {
 
         <div className="space-y-2">
           <label className="text-sm font-semibold text-slate-700">ترتيب الأولوية</label>
-          <div className="grid gap-2">
-            {normalizePrioritiesOrder(form.prioritiesOrder).map((item, index) => {
-              const option = PRIORITY_ROLE_OPTIONS.find((entry) => entry.key === item);
+          <div className="grid sm:grid-cols-2 gap-2">
+            {PRIORITY_ROLE_OPTIONS.map((option) => {
+              const activeOrder = (form.prioritiesOrder ?? []).filter((item): item is PriorityRoleKey => DEFAULT_PRIORITIES_ORDER.includes(item as PriorityRoleKey));
+              const badgeNumber = activeOrder.indexOf(option.key) + 1;
+              const selected = badgeNumber > 0;
+
               return (
-                <div
-                  key={item}
-                  className="flex items-center justify-between rounded-xl border border-emerald-100 bg-emerald-50/50 px-3 py-2"
+                <button
+                  key={option.key}
+                  type="button"
+                  onClick={() => togglePriorityRoleSelection(option.key)}
+                  className={`relative rounded-xl border px-3 py-3 text-left transition ${selected ? 'border-emerald-300 bg-emerald-50 text-emerald-900 shadow-sm' : 'border-slate-200 bg-white text-slate-700'}`}
                 >
+                  {selected && (
+                    <span className="absolute right-2 top-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-600 text-xs font-semibold text-white">
+                      {badgeNumber}
+                    </span>
+                  )}
                   <div>
-                    <p className="text-sm font-semibold text-slate-800">#{index + 1} {option?.label ?? item}</p>
-                    <p className="text-xs text-slate-500">{option?.helper}</p>
+                    <p className="text-sm font-semibold">{option.label}</p>
+                    <p className="text-xs text-slate-500">{option.helper}</p>
                   </div>
-                  <div className="flex gap-1">
-                    <button type="button" onClick={() => movePriorityRole(index, -1)} disabled={index === 0} className="secondary-btn px-2 py-1 disabled:opacity-40"><ArrowUp className="h-4 w-4" /></button>
-                    <button type="button" onClick={() => movePriorityRole(index, 1)} disabled={index === 3} className="secondary-btn px-2 py-1 disabled:opacity-40"><ArrowDown className="h-4 w-4" /></button>
-                  </div>
-                </div>
+                </button>
               );
             })}
           </div>
