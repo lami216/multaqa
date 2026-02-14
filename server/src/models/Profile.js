@@ -67,6 +67,24 @@ const profileSchema = new mongoose.Schema({
       default: false
     }
   }],
+  remainingSubjects: [{
+    subjectCode: {
+      type: String,
+      trim: true,
+      required: true
+    },
+    level: {
+      type: String,
+      enum: ['L1', 'L2', 'L3', 'M1', 'M2'],
+      trim: true,
+      required: true
+    },
+    majorId: {
+      type: String,
+      trim: true,
+      required: true
+    }
+  }],
   prioritiesOrder: {
     type: [{
       type: String,

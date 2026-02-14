@@ -14,7 +14,7 @@ import {
   type CatalogSemester,
   type CatalogSubject
 } from '../lib/catalog';
-import { http, type Profile } from '../lib/http';
+import { http, type Profile, type RemainingSubjectItem } from '../lib/http';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { useAuth } from '../context/AuthContext';
 import { processImageFile } from '../lib/imageProcessing';
@@ -22,7 +22,7 @@ import { uploadToImageKit } from '../lib/imagekitClient';
 import { DEFAULT_PRIORITIES_ORDER, PRIORITY_ROLE_OPTIONS, type PriorityRoleKey } from '../lib/priorities';
 
 const EditProfilePage: React.FC = () => {
-  const [form, setForm] = useState<Profile>({ subjects: [], subjectCodes: [], subjectsSettings: [], prioritiesOrder: DEFAULT_PRIORITIES_ORDER });
+  const [form, setForm] = useState<Profile>({ subjects: [], subjectCodes: [], subjectsSettings: [], remainingSubjects: [], prioritiesOrder: DEFAULT_PRIORITIES_ORDER });
   const [serverProfile, setServerProfile] = useState<Profile | null>(null);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
@@ -35,6 +35,10 @@ const EditProfilePage: React.FC = () => {
   const [majors, setMajors] = useState<CatalogMajor[]>([]);
   const [semesters, setSemesters] = useState<CatalogSemester[]>([]);
   const [subjects, setSubjects] = useState<CatalogSubject[]>([]);
+  const [previousLevelMajors, setPreviousLevelMajors] = useState<CatalogMajor[]>([]);
+  const [remainingSubjectsCatalog, setRemainingSubjectsCatalog] = useState<CatalogSubject[]>([]);
+  const [hasRemainingFromPrevious, setHasRemainingFromPrevious] = useState<boolean | null>(null);
+  const [previousMajorId, setPreviousMajorId] = useState<string | undefined>(undefined);
   const [avatarPreview, setAvatarPreview] = useState<string | undefined>(undefined);
   const [avatarError, setAvatarError] = useState('');
   const [avatarUploading, setAvatarUploading] = useState(false);
@@ -132,6 +136,7 @@ const EditProfilePage: React.FC = () => {
         resolvedSubjectCodes.length ? resolvedSubjectCodes : catalogSubjects.map((s) => s.code),
         rawProfile?.subjectsSettings
       ),
+      remainingSubjects: rawProfile?.remainingSubjects ?? [],
       prioritiesOrder: normalizePrioritiesOrder(rawProfile?.prioritiesOrder),
       courses: catalogSubjects.map((subject) => subject.nameFr)
     } as Profile;
@@ -173,6 +178,7 @@ const EditProfilePage: React.FC = () => {
           subjectCodes: meData.profile?.subjectCodes ?? meData.profile?.subjects ?? [],
           semesterId: meData.profile?.semesterId ?? meData.profile?.semester,
           subjectsSettings: meData.profile?.subjectsSettings ?? [],
+          remainingSubjects: meData.profile?.remainingSubjects ?? [],
           prioritiesOrder: normalizePrioritiesOrder(meData.profile?.prioritiesOrder)
         } as Profile;
 
@@ -237,7 +243,8 @@ const EditProfilePage: React.FC = () => {
         subjectCodes: [],
         subjects: [],
         subjectsSettings: [],
-        courses: []
+        courses: [],
+        remainingSubjects: []
       }));
       setSubjects([]);
       setMajors([]);
@@ -257,7 +264,8 @@ const EditProfilePage: React.FC = () => {
         subjectCodes: [],
         subjects: [],
         subjectsSettings: [],
-        courses: []
+        courses: [],
+        remainingSubjects: []
       }));
       setSubjects([]);
       setMajors([]);
@@ -331,6 +339,74 @@ const EditProfilePage: React.FC = () => {
     }));
   }, [form.majorId, form.facultyId, form.level, form.semesterId]);
 
+
+
+  const previousLevelByCurrentLevel: Record<string, string> = {
+    L2: 'L1',
+    L3: 'L2'
+  };
+
+  const previousLevel = form.level ? previousLevelByCurrentLevel[form.level] : undefined;
+  const shouldShowRemainingSection = Boolean(previousLevel && form.facultyId);
+
+  useEffect(() => {
+    if (!shouldShowRemainingSection || !form.facultyId || !previousLevel) {
+      setPreviousLevelMajors([]);
+      setRemainingSubjectsCatalog([]);
+      setHasRemainingFromPrevious(null);
+      setPreviousMajorId(undefined);
+      setForm((prev) => ({ ...prev, remainingSubjects: [] }));
+      return;
+    }
+
+    const availablePreviousMajors = getMajorsByFacultyAndLevel(form.facultyId, previousLevel);
+    setPreviousLevelMajors(availablePreviousMajors);
+
+    if (hasRemainingFromPrevious !== true) {
+      setPreviousMajorId(undefined);
+      setRemainingSubjectsCatalog([]);
+      setForm((prev) => ({ ...prev, remainingSubjects: [] }));
+      return;
+    }
+
+    const majorStillValid = previousMajorId && availablePreviousMajors.some((major) => major.id === previousMajorId);
+    if (!majorStillValid) {
+      setPreviousMajorId(undefined);
+      setRemainingSubjectsCatalog([]);
+      setForm((prev) => ({ ...prev, remainingSubjects: [] }));
+    }
+  }, [form.facultyId, shouldShowRemainingSection, previousLevel, hasRemainingFromPrevious, previousMajorId]);
+
+  useEffect(() => {
+    if (!form.facultyId || !previousLevel || !previousMajorId || hasRemainingFromPrevious !== true) {
+      setRemainingSubjectsCatalog([]);
+      return;
+    }
+
+    const previousSemesters = getSemestersByMajorAndLevel(form.facultyId, previousLevel, previousMajorId);
+    const generated = previousSemesters.flatMap((semester) =>
+      getSubjectsByMajorAndSemester(form.facultyId as string, previousLevel, previousMajorId, semester.id)
+    );
+    const unique = Array.from(new Map(generated.map((subject) => [subject.code, subject])).values());
+    setRemainingSubjectsCatalog(unique);
+  }, [form.facultyId, previousLevel, previousMajorId, hasRemainingFromPrevious]);
+  const toggleRemainingSubject = (subjectCode: string) => {
+    if (!previousLevel || !previousMajorId) return;
+    isDirtyRef.current = true;
+    setForm((prev) => {
+      const current = prev.remainingSubjects ?? [];
+      const exists = current.some(
+        (item) => item.subjectCode === subjectCode && item.level === previousLevel && item.majorId === previousMajorId
+      );
+      const next = exists
+        ? current.filter(
+            (item) => !(item.subjectCode === subjectCode && item.level === previousLevel && item.majorId === previousMajorId)
+          )
+        : [...current, { subjectCode, level: previousLevel, majorId: previousMajorId } as RemainingSubjectItem];
+      return { ...prev, remainingSubjects: next };
+    });
+  };
+
   const handleChange = (field: keyof Profile, value: unknown) => {
     isDirtyRef.current = true;
     setError('');
@@ -381,6 +457,7 @@ const EditProfilePage: React.FC = () => {
         availability: form.availability,
         languages: form.languages ?? [],
         bio: form.bio,
+        remainingSubjects: form.remainingSubjects ?? [],
       });
       if (data.profile) {
         syncServerProfile(data.profile, { resetDirty: true });
@@ -472,6 +549,7 @@ const EditProfilePage: React.FC = () => {
   const uiLanguage = useMemo(() => (document.documentElement.lang?.toLowerCase().startsWith('ar') ? 'ar' : 'fr'), []);
 
   const selectedSubjectItems = subjects;
+  const selectedRemainingSubjectCodes = new Set((form.remainingSubjects ?? []).map((item) => item.subjectCode));
   const prioritySettingsMap = new Map((form.subjectsSettings ?? []).map((item) => [item.subjectCode, Boolean(item.isPriority)]));
 
   const toggleSubjectPriority = (subjectCode: string) => {
@@ -606,7 +684,8 @@ const EditProfilePage: React.FC = () => {
                   subjectCodes: [],
                   subjects: [],
                   subjectsSettings: [],
-                  courses: []
+                  courses: [],
+                  remainingSubjects: []
                 }));
               }}
               className="w-full mt-1"
@@ -640,7 +719,8 @@ const EditProfilePage: React.FC = () => {
                   subjectCodes: [],
                   subjects: [],
                   subjectsSettings: [],
-                  courses: []
+                  courses: [],
+                  remainingSubjects: []
                 }));
               }}
               className="w-full mt-1"
@@ -672,7 +752,8 @@ const EditProfilePage: React.FC = () => {
                   subjectCodes: [],
                   subjects: [],
                   subjectsSettings: [],
-                  courses: []
+                  courses: [],
+                  remainingSubjects: []
                 }));
               }}
               className="w-full mt-1"
@@ -706,7 +787,8 @@ const EditProfilePage: React.FC = () => {
                   subjectCodes: [],
                   subjects: [],
                   subjectsSettings: [],
-                  courses: []
+                  courses: [],
+                  remainingSubjects: []
                 }));
               }}
               className="w-full mt-1"
@@ -770,6 +852,86 @@ const EditProfilePage: React.FC = () => {
               </>
             )}
           </div>
+          {shouldShowRemainingSection && (
+            <div className="md:col-span-2 rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-3">
+              <p className="text-sm font-semibold text-slate-700">هل لديك مواد متبقية من المستوى السابق</p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    isDirtyRef.current = true;
+                    setHasRemainingFromPrevious(true);
+                  }}
+                  className={`secondary-btn ${hasRemainingFromPrevious === true ? 'ring-2 ring-emerald-300' : ''}`}
+                >
+                  نعم
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    isDirtyRef.current = true;
+                    setHasRemainingFromPrevious(false);
+                    setPreviousMajorId(undefined);
+                    setRemainingSubjectsCatalog([]);
+                    setForm((prev) => ({ ...prev, remainingSubjects: [] }));
+                  }}
+                  className={`secondary-btn ${hasRemainingFromPrevious === false ? 'ring-2 ring-emerald-300' : ''}`}
+                >
+                  لا
+                </button>
+              </div>
+
+              {hasRemainingFromPrevious === true && (
+                <>
+                  <div>
+                    <label className="text-sm font-semibold text-slate-700">تخصص المستوى السابق</label>
+                    <select
+                      value={previousMajorId ?? ''}
+                      onChange={(e) => {
+                        isDirtyRef.current = true;
+                        setPreviousMajorId(e.target.value || undefined);
+                        setForm((prev) => ({ ...prev, remainingSubjects: [] }));
+                      }}
+                      className="w-full mt-1"
+                      disabled={saving}
+                    >
+                      <option value="">Choisir</option>
+                      {previousLevelMajors.map((major) => (
+                        <option key={major.id} value={major.id}>
+                          {major.nameFr}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {!!remainingSubjectsCatalog.length && (
+                    <div className="space-y-2">
+                      <p className="text-xs text-slate-500">مواد متبقية من مستوى سابق</p>
+                      <div className="grid sm:grid-cols-2 gap-2">
+                        {remainingSubjectsCatalog.map((subject) => {
+                          const active = selectedRemainingSubjectCodes.has(subject.code);
+                          return (
+                            <button
+                              key={subject.code}
+                              type="button"
+                              onClick={() => toggleRemainingSubject(subject.code)}
+                              className={`rounded-xl border px-3 py-2 text-left transition ${active ? 'border-emerald-300 bg-emerald-50 text-emerald-900 shadow-sm' : 'border-slate-200 bg-white text-slate-700'}`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <span className="font-semibold">{subject.code}</span>
+                                <span className="badge-soft text-[10px] px-2 py-0.5">{previousLevel}</span>
+                              </div>
+                              <p className="text-xs mt-1">{uiLanguage === 'ar' ? subject.nameAr : subject.nameFr}</p>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="space-y-2">
