@@ -52,8 +52,8 @@ export const getMajorAvailabilityMap = (settings, counts = {}) => {
       for (const major of level?.majors ?? []) {
         const key = buildAcademicMajorKey(faculty.facultyId, level.levelId, major.majorId);
         availability[key] = {
-          status: major.status ?? 'active',
-          threshold: major.threshold ?? 0,
+          status: major.status === 'closed' ? 'collecting' : (major.status ?? 'active'),
+          threshold: (major.status === 'collecting' || major.status === 'closed') ? (major.threshold ?? 1) : null,
           registeredCount: counts[key] ?? 0
         };
       }
@@ -69,13 +69,22 @@ export const maybeActivateMajor = async (facultyId, levelId, majorId) => {
   const level = faculty?.levels?.find((item) => item.levelId === levelId);
   const major = level?.majors?.find((item) => item.majorId === majorId);
 
-  if (!major || major.status !== 'collecting' || !major.threshold || major.threshold <= 0) {
+  if (!major) {
+    return false;
+  }
+
+  if (major.status === 'closed') {
+    major.status = 'collecting';
+  }
+
+  if (major.status !== 'collecting' || !major.threshold || major.threshold <= 0) {
     return false;
   }
 
   const count = await Profile.countDocuments({ facultyId, level: levelId, majorId });
   if (count >= major.threshold) {
     major.status = 'active';
+    major.threshold = null;
     await settings.save();
     return true;
   }
@@ -92,7 +101,7 @@ export const getAcademicSettingsPayload = async () => {
     const [, , majorId] = key.split('|');
     if (!majorId) return acc;
     if (!acc[majorId] || value.registeredCount >= (acc[majorId].registeredCount ?? -1)) {
-      acc[majorId] = { enabled: value.status !== 'closed', threshold: value.threshold, registeredCount: value.registeredCount };
+      acc[majorId] = { enabled: true, threshold: value.threshold ?? 0, registeredCount: value.registeredCount };
     }
     return acc;
   }, {});

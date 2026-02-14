@@ -9,8 +9,8 @@ import {
   getLevelsByFaculty,
   getMajorsByFacultyAndLevel,
   getSubjectsByMajorAndSemester,
+  getSubjectsByMajorAndSemesters,
   getTermSemesterForLevel,
-  buildAcademicMajorKey,
   isFacultyEnabled,
   type CatalogFaculty,
   type CatalogLevel,
@@ -21,7 +21,7 @@ import { PRIORITY_ROLE_LABELS } from '../lib/priorities';
 import { buildSubjectInitials } from '../lib/subjectDisplay';
 
 const ProfilePage: React.FC = () => {
-  const { user, profile: authProfile } = useAuth();
+  const { user, profile: authProfile, refresh } = useAuth();
   const [profile, setProfile] = useState<Profile | null>(authProfile ?? null);
   const [remainingSelection, setRemainingSelection] = useState<RemainingSubjectItem[]>([]);
   const [hasRemainingFromPrevious, setHasRemainingFromPrevious] = useState<boolean | null>(null);
@@ -97,10 +97,7 @@ const ProfilePage: React.FC = () => {
   const resolvedLevel = matchByIdOrName<CatalogLevel>(levels, profile?.level);
   const majors =
     resolvedFaculty && resolvedLevel
-      ? getMajorsByFacultyAndLevel(resolvedFaculty.id, resolvedLevel.id, academicSettings.catalogVisibility).filter((major) => {
-          const key = buildAcademicMajorKey(resolvedFaculty.id, resolvedLevel.id, major.id);
-          return (academicSettings.majorAvailability?.[key]?.status ?? 'active') !== 'closed';
-        })
+      ? getMajorsByFacultyAndLevel(resolvedFaculty.id, resolvedLevel.id, academicSettings.catalogVisibility)
       : [];
   const resolvedMajor = matchByIdOrName<CatalogMajor>(majors, profile?.majorId ?? profile?.major);
   const mappedSemesterId = resolvedLevel ? getTermSemesterForLevel(resolvedLevel.id, academicSettings.academicTermType) : undefined;
@@ -141,7 +138,7 @@ const ProfilePage: React.FC = () => {
   const currentLevelId = resolvedLevel?.id ?? profile?.level;
   const previousLevelMap: Record<string, string> = { L2: 'L1', L3: 'L2' };
   const previousLevel = currentLevelId ? previousLevelMap[currentLevelId] : undefined;
-  const shouldAskRemaining = Boolean(profile?.profileLocked && resolvedFaculty && previousLevel);
+  const shouldAskRemaining = Boolean(profile?.profileLocked && resolvedFaculty && previousLevel && !user?.remainingSubjectsConfirmed);
 
   const previousMajors = useMemo(
     () => (resolvedFaculty && previousLevel ? getMajorsByFacultyAndLevel(resolvedFaculty.id, previousLevel, academicSettings.catalogVisibility) : []),
@@ -149,13 +146,22 @@ const ProfilePage: React.FC = () => {
   );
 
   const remainingSubjectsCatalog = useMemo(() => {
-    if (!resolvedFaculty || !previousLevel || !previousMajorId) return [];
-    const mappedPreviousSemesterId = getTermSemesterForLevel(previousLevel, academicSettings.academicTermType);
-    const generated = mappedPreviousSemesterId
-      ? getSubjectsByMajorAndSemester(resolvedFaculty.id, previousLevel, previousMajorId, mappedPreviousSemesterId, academicSettings.academicTermType, academicSettings.catalogVisibility)
-      : [];
+    if (!resolvedFaculty || !previousLevel || !previousMajorId || !currentLevelId) return [];
+    const levelTermMap: Record<string, { odd: string[]; even: string[] }> = {
+      L2: { odd: ['S3', 'S1'], even: ['S4', 'S2'] },
+      L3: { odd: ['S5', 'S3'], even: ['S6', 'S4'] }
+    };
+    const semesters = levelTermMap[currentLevelId]?.[academicSettings.academicTermType] ?? [];
+    const generated = getSubjectsByMajorAndSemesters(
+      resolvedFaculty.id,
+      previousLevel,
+      previousMajorId,
+      semesters,
+      academicSettings.academicTermType,
+      academicSettings.catalogVisibility
+    );
     return Array.from(new Map(generated.map((subject) => [subject.code, subject])).values());
-  }, [resolvedFaculty, previousLevel, previousMajorId]);
+  }, [resolvedFaculty, previousLevel, previousMajorId, currentLevelId, academicSettings.academicTermType, academicSettings.catalogVisibility]);
 
   useEffect(() => {
     const existing = (profile?.remainingSubjects ?? []).filter((item) => item.level === previousLevel);
@@ -193,6 +199,7 @@ const ProfilePage: React.FC = () => {
         remainingSubjects: hasRemainingFromPrevious === true ? remainingSelection : []
       });
       setProfile(data.profile);
+      await refresh();
       setRemainingMessage('تم حفظ المواد المتبقية بنجاح.');
     } catch {
       setRemainingError('تعذر حفظ المواد المتبقية، حاول مرة أخرى.');
@@ -317,6 +324,10 @@ const ProfilePage: React.FC = () => {
                     ))}
                   </select>
                 </div>
+
+                {!!remainingSubjectsCatalog.length && (
+                  <div className="text-xs text-slate-500">{academicSettings.academicTermType === 'odd' ? 'Odd semesters: S1/S3/S5' : 'Even semesters: S2/S4/S6'}</div>
+                )}
 
                 {!!remainingSubjectsCatalog.length && (
                   <div className="grid sm:grid-cols-2 gap-2">

@@ -5,13 +5,13 @@ const majorSettingSchema = new mongoose.Schema(
     majorId: { type: String, required: true, trim: true },
     status: {
       type: String,
-      enum: ['active', 'collecting', 'closed'],
+      enum: ['active', 'collecting'],
       default: 'active'
     },
     threshold: {
       type: Number,
-      default: 0,
-      min: 0
+      default: null,
+      min: 1
     }
   },
   { _id: false }

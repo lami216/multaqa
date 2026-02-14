@@ -307,10 +307,7 @@ const EditProfilePage: React.FC = () => {
     }
 
     setMajorsError('');
-    const availableMajors = getMajorsByFacultyAndLevel(form.facultyId, form.level, academicSettings.catalogVisibility).filter((major) => {
-      const key = buildAcademicMajorKey(form.facultyId, form.level, major.id);
-      return (academicSettings.majorAvailability?.[key]?.status ?? 'active') !== 'closed';
-    });
+    const availableMajors = getMajorsByFacultyAndLevel(form.facultyId, form.level, academicSettings.catalogVisibility);
     setMajors(availableMajors);
     const hasMajor = availableMajors.some((major) => major.id === form.majorId);
     if (!hasMajor) {
@@ -797,19 +794,14 @@ const EditProfilePage: React.FC = () => {
                 const majorKey = buildAcademicMajorKey(form.facultyId, form.level, major.id);
                 const status = academicSettings.majorAvailability?.[majorKey]?.status ?? 'active';
                 return (
-                  <option key={major.id} value={major.id} disabled={status === 'closed'}>
-                    {major.nameFr}{status === 'closed' ? ' (مغلق)' : ''}
+                  <option key={major.id} value={major.id}>
+                    {major.nameFr}{status === 'collecting' ? ' (collecting)' : ''}
                   </option>
                 );
               })}
             </select>
             {majorsError && <p className="text-xs text-red-600">{majorsError}</p>}
-            {form.facultyId && form.level && majors.some((major) => {
-              const majorKey = buildAcademicMajorKey(form.facultyId, form.level, major.id);
-              return (academicSettings.majorAvailability?.[majorKey]?.status ?? 'active') === 'closed';
-            }) && (
-              <p className="text-xs text-amber-700">بعض التخصصات مغلقة حاليا ولا يمكن اختيارها.</p>
-            )}
+
             {form.facultyId && form.level && !majors.length && (
               <p className="text-xs text-amber-600">Aucune filière active pour cette combinaison.</p>
             )}

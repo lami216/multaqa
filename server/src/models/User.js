@@ -41,7 +41,16 @@ const userSchema = new mongoose.Schema({
   telegramLinked: {
     type: Boolean,
     default: false
+  },
+  remainingSubjects: [{
+    type: String,
+    trim: true
+  }],
+  remainingSubjectsConfirmed: {
+    type: Boolean,
+    default: false
   }
+
 }, {
   timestamps: true
 });

@@ -238,7 +238,9 @@ export const getMe = async (req, res) => {
         email: user?.email,
         username: user?.username,
         role: user?.role,
-        emailVerified: user?.emailVerified
+        emailVerified: user?.emailVerified,
+        remainingSubjects: user?.remainingSubjects ?? [],
+        remainingSubjectsConfirmed: user?.remainingSubjectsConfirmed === true
       },
       profile
     });

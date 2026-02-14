@@ -11,6 +11,7 @@ router.get('/stats', adminController.getDashboardStats);
 router.patch('/reports/:id/resolve', adminController.resolveReport);
 router.delete('/posts/:id', adminController.deletePostAdmin);
 router.patch('/users/:id/ban', adminController.banUser);
+router.patch('/users/:id/reset-remaining-subjects', adminController.resetUserRemainingSubjects);
 router.get('/faculties', adminController.getFaculties);
 router.post('/faculties', adminController.createFaculty);
 router.delete('/faculties/:id', adminController.deleteFaculty);
@@ -26,5 +27,6 @@ router.get('/settings/academic', adminController.getAcademicSettings);
 router.patch('/settings/academic', adminController.updateAcademicSettings);
 router.get('/academic-settings', adminController.getAcademicSettings);
 router.post('/academic-settings', adminController.updateAcademicSettings);
+router.put('/academic-settings', adminController.updateAcademicSettings);
 
 export default router;

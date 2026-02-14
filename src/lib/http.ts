@@ -69,6 +69,8 @@ export interface ApiUser {
   role?: string;
   emailVerified?: boolean;
   avatarUrl?: string;
+  remainingSubjects?: string[];
+  remainingSubjectsConfirmed?: boolean;
 }
 
 export interface SubjectPriorityItem {
@@ -98,6 +100,7 @@ export interface Profile {
   subjectCodes?: string[];
   subjectsSettings?: SubjectPriorityItem[];
   remainingSubjects?: RemainingSubjectItem[];
+  remainingSubjectsConfirmed?: boolean;
   prioritiesOrder?: PriorityRoleKey[];
   skills?: string[];
   courses?: string[];
@@ -248,8 +251,8 @@ export interface MajorVisibilityConfig {
 }
 
 export interface AcademicMajorAvailability {
-  status: 'active' | 'collecting' | 'closed';
-  threshold: number;
+  status: 'active' | 'collecting';
+  threshold: number | null;
   registeredCount: number;
 }
 
@@ -260,8 +263,8 @@ export interface AcademicSettingsNode {
     levelId: string;
     majors: Array<{
       majorId: string;
-      status: 'active' | 'collecting' | 'closed';
-      threshold: number;
+      status: 'active' | 'collecting';
+      threshold: number | null;
     }>;
   }>;
 }
@@ -346,4 +349,4 @@ export const fetchAdminStats = (params?: { action?: string; limit?: number }) =>
 export const fetchAcademicSettings = () => http.get<AcademicSettingsResponse>('/academic-settings');
 export const fetchAdminAcademicSettings = () => http.get<AcademicSettingsResponse>('/admin/academic-settings');
 export const updateAdminAcademicSettings = (payload: { currentTermType: 'odd' | 'even'; faculties: AcademicSettingsNode[] }) =>
-  http.post<AcademicSettingsResponse>('/admin/academic-settings', payload);
+  http.put<AcademicSettingsResponse>('/admin/academic-settings', payload);
