@@ -6,13 +6,12 @@ import {
   fetchConversations,
   markConversationRead,
   sendConversationMessage,
+  extendConversation,
   type ConversationMessageItem,
   type ConversationSummary
 } from '../lib/http';
 import { useAuth } from '../context/AuthContext';
 import { useConversations } from '../context/ConversationsContext';
-
-const POLL_INTERVAL = 5000;
 
 const ConversationPage: React.FC = () => {
   const { conversationId } = useParams();
@@ -26,7 +25,8 @@ const ConversationPage: React.FC = () => {
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
-  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [now, setNow] = useState(Date.now());
   const { clearUnreadCount } = useConversations();
 
   const loadConversation = useCallback(async () => {
@@ -103,19 +103,22 @@ const ConversationPage: React.FC = () => {
   }, [fetchInitialMessages]);
 
   useEffect(() => {
-    if (pollingRef.current) {
-      clearInterval(pollingRef.current);
-    }
-    pollingRef.current = setInterval(() => {
-      void pollMessages();
-    }, POLL_INTERVAL);
-
+    if (countdownRef.current) clearInterval(countdownRef.current);
+    countdownRef.current = setInterval(() => setNow(Date.now()), 60000);
     return () => {
-      if (pollingRef.current) {
-        clearInterval(pollingRef.current);
-      }
+      if (countdownRef.current) clearInterval(countdownRef.current);
     };
-  }, [pollMessages]);
+  }, []);
+
+  const handleExtend = async () => {
+    if (!conversationId) return;
+    try {
+      const { data } = await extendConversation(conversationId);
+      setConversation(data.conversation);
+    } catch (error) {
+      setError('Extension indisponible pour le moment.');
+    }
+  };
 
   const handleManualRefresh = async () => {
     if (!conversationId) return;
@@ -166,6 +169,11 @@ const ConversationPage: React.FC = () => {
       setError('Nouvel échec d\'envoi.');
     }
   };
+
+  const expiresAtMs = conversation?.expiresAt ? new Date(conversation.expiresAt).getTime() : null;
+  const remainingMs = expiresAtMs ? expiresAtMs - now : null;
+  const remainingDays = remainingMs !== null ? Math.max(0, Math.ceil(remainingMs / (24 * 60 * 60 * 1000))) : null;
+  const canExtend = remainingDays !== null && remainingDays <= 2 && remainingDays > 0;
 
   const conversationTitle = useMemo(() => {
     if (!conversation) return 'Conversation';
@@ -219,6 +227,16 @@ const ConversationPage: React.FC = () => {
           Rafraîchir
         </button>
       </div>
+
+      {remainingDays !== null ? (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+          ⏳ Conversation expires in {remainingDays} days
+          {remainingDays <= 2 ? <div className="mt-1">⚠️ This conversation will be deleted soon.</div> : null}
+          {canExtend ? (
+            <button type="button" className="secondary-btn mt-2" onClick={handleExtend}>Extend 7 days</button>
+          ) : null}
+        </div>
+      ) : null}
 
       {loading ? (
         <p className="text-sm text-slate-500">Chargement des messages...</p>

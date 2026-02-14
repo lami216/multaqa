@@ -1,22 +1,15 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle2, Clock3, Languages, PenSquare } from 'lucide-react';
+import { CheckCircle2, Languages, PenSquare } from 'lucide-react';
 import { createPost, type PostPayload } from '../lib/http';
 import { useAuth } from '../context/AuthContext';
 import { PRIORITY_ROLE_OPTIONS } from '../lib/priorities';
 
 const requestTypes: { value: PostPayload['category']; label: string }[] = [
   { value: 'study_partner', label: 'Study partner' },
-  { value: 'project_team', label: 'Project team' },
+  { value: 'project_team', label: 'Study team' },
   { value: 'tutor_offer', label: 'Tutor offer' },
 ];
-
-const durationOptions = [
-  { value: '24', label: '24h' },
-  { value: '48', label: '48h' },
-  { value: '72', label: '72h' },
-  { value: 'custom', label: 'Personnalisé' },
-] as const;
 
 const CreatePostPage: React.FC = () => {
   const navigate = useNavigate();
@@ -34,9 +27,8 @@ const CreatePostPage: React.FC = () => {
   const [tagsInput, setTagsInput] = useState('');
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
   const [postRole, setPostRole] = useState<PostPayload['postRole']>();
-  const [durationChoice, setDurationChoice] = useState<(typeof durationOptions)[number]['value']>('24');
-  const [customDurationInput, setCustomDurationInput] = useState('');
-  const [customDurationHours, setCustomDurationHours] = useState<number | null>(null);
+  const [availabilityDate, setAvailabilityDate] = useState('');
+  const [participantTargetCount, setParticipantTargetCount] = useState('3');
   const [shortDescription, setShortDescription] = useState('');
   const [subjectsLimitWarning, setSubjectsLimitWarning] = useState('');
   const [subjectsLimitHighlight, setSubjectsLimitHighlight] = useState(false);
@@ -47,32 +39,17 @@ const CreatePostPage: React.FC = () => {
   const subjectOptions = useMemo(() => profile?.subjectCodes?.filter(Boolean) ?? [], [profile?.subjectCodes]);
   const isStudyPartner = form.category === 'study_partner';
 
-  const durationHours = durationChoice === 'custom' ? customDurationHours ?? Number.NaN : Number(durationChoice);
+  const isStudyTeam = form.category === 'project_team';
   const studyPartnerValid =
     selectedSubjects.length >= 1 &&
     selectedSubjects.length <= 2 &&
     Boolean(postRole) &&
-    Number.isFinite(durationHours) &&
-    Number.isInteger(durationHours) &&
-    durationHours > 0;
+    Boolean(availabilityDate);
 
-  const standardPostValid = Boolean(form.title?.trim() && form.description?.trim());
+  const standardPostValid = Boolean(form.title?.trim() && form.description?.trim()) && (!isStudyTeam || (Boolean(availabilityDate) && Number(participantTargetCount) >= 3));
 
   const handleChange = (field: keyof PostPayload, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const confirmCustomDuration = () => {
-    const parsed = Number(customDurationInput.trim());
-    if (!Number.isFinite(parsed) || !Number.isInteger(parsed) || parsed <= 0) {
-      setDurationChoice('24');
-      setCustomDurationInput('');
-      setCustomDurationHours(null);
-      setError('Sélectionnez une durée personnalisée valide.');
-      return;
-    }
-    setError('');
-    setCustomDurationHours(parsed);
   };
 
   const toggleSubject = (subject: string) => {
@@ -110,7 +87,7 @@ const CreatePostPage: React.FC = () => {
     setError('');
 
     if (isStudyPartner && !studyPartnerValid) {
-      setError('Sélectionnez vos matières, votre rôle et une durée valide.');
+      setError('Sélectionnez vos matières, votre rôle et une date de disponibilité.');
       setSaving(false);
       return;
     }
@@ -120,11 +97,13 @@ const CreatePostPage: React.FC = () => {
         category: 'study_partner',
         subjectCodes: selectedSubjects,
         postRole: postRole!,
-        durationHours,
+        availabilityDate,
         description: shortDescription.trim() ? shortDescription.trim() : undefined,
       }
       : {
         ...form,
+        availabilityDate: availabilityDate || undefined,
+        participantTargetCount: isStudyTeam ? Number(participantTargetCount) : undefined,
         tags: tagsInput
           .split(',')
           .map((tag) => tag.trim())
@@ -213,42 +192,10 @@ const CreatePostPage: React.FC = () => {
                   ))}
                 </div>
               </div>
-
               <div className="space-y-2">
-                <label className="text-sm font-semibold text-slate-700">Durée</label>
-                <div className="flex flex-wrap gap-2">
-                  {durationOptions.map((option) => (
-                    <button
-                      key={option.value}
-                      type="button"
-                      onClick={() => setDurationChoice(option.value)}
-                      className={`rounded-full border px-3 py-1 text-sm transition ${
-                        durationChoice === option.value ? 'border-blue-400 bg-blue-50 text-blue-700' : 'border-slate-200 bg-white text-slate-600'
-                      }`}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
+                <label className="text-sm font-semibold text-slate-700">Date de disponibilité</label>
+                <input type="date" value={availabilityDate} onChange={(e) => setAvailabilityDate(e.target.value)} className="w-full" />
               </div>
-
-              {durationChoice === 'custom' && (
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold text-slate-700">Durée personnalisée (heures)</label>
-                  <div className="flex gap-2">
-                    <input
-                      value={customDurationInput}
-                      onChange={(e) => setCustomDurationInput(e.target.value)}
-                      className="w-full"
-                      inputMode="numeric"
-                      placeholder="Ex: 96"
-                    />
-                    <button type="button" className="secondary-btn" onClick={confirmCustomDuration}>
-                      Confirmer
-                    </button>
-                  </div>
-                </div>
-              )}
 
               <div className="md:col-span-2 space-y-2">
                 <label className="text-sm font-semibold text-slate-700">Description courte (optionnelle)</label>
@@ -263,6 +210,12 @@ const CreatePostPage: React.FC = () => {
             </>
           ) : (
             <>
+              {isStudyTeam && (
+                <div>
+                  <label className="text-sm font-semibold text-slate-700">Nombre cible de participants (min 3)</label>
+                  <input className="w-full mt-1" type="number" min={3} value={participantTargetCount} onChange={(e) => setParticipantTargetCount(e.target.value)} />
+                </div>
+              )}
               <div>
                 <label className="text-sm font-semibold text-slate-700">Titre</label>
                 <input className="w-full mt-1" value={form.title ?? ''} onChange={(e) => handleChange('title', e.target.value)} />
@@ -296,6 +249,10 @@ const CreatePostPage: React.FC = () => {
                 </div>
               </div>
               <div>
+                <label className="text-sm font-semibold text-slate-700">Date de disponibilité</label>
+                <input type="date" value={availabilityDate} onChange={(e) => setAvailabilityDate(e.target.value)} className="w-full mt-1" />
+              </div>
+              <div>
                 <label className="text-sm font-semibold text-slate-700">Lieu</label>
                 <div className="flex gap-2 mt-1">
                   {['campus', 'online'].map((loc) => (
@@ -326,7 +283,6 @@ const CreatePostPage: React.FC = () => {
 
         <div className="flex flex-wrap gap-2 text-xs text-slate-500">
           <span className="inline-flex items-center gap-1"><CheckCircle2 size={14} /> Les annonces respectent vos matières sélectionnées.</span>
-          <span className="inline-flex items-center gap-1"><Clock3 size={14} /> Durée configurable par tranches de 24h.</span>
         </div>
       </form>
     </div>

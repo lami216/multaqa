@@ -19,6 +19,31 @@ const ensureParticipant = (conversation, userId) => {
   );
 };
 
+const CONVERSATION_INITIAL_DAYS = 7;
+const CONVERSATION_EXTENSION_DAYS = 7;
+const CONVERSATION_MAX_DAYS = 30;
+
+const addDays = (date, days) => new Date(date.getTime() + days * 24 * 60 * 60 * 1000);
+
+const ensureConversationLifetime = async (conversation) => {
+  if (conversation.firstOpenedAt && conversation.expiresAt && conversation.maxExpiresAt) {
+    return conversation;
+  }
+
+  const firstOpenedAt = conversation.firstOpenedAt ?? new Date();
+  const maxExpiresAt = conversation.maxExpiresAt ?? addDays(firstOpenedAt, CONVERSATION_MAX_DAYS);
+  let expiresAt = conversation.expiresAt ?? addDays(firstOpenedAt, CONVERSATION_INITIAL_DAYS);
+  if (expiresAt > maxExpiresAt) {
+    expiresAt = maxExpiresAt;
+  }
+
+  conversation.firstOpenedAt = firstOpenedAt;
+  conversation.expiresAt = expiresAt;
+  conversation.maxExpiresAt = maxExpiresAt;
+  await conversation.save();
+  return conversation;
+};
+
 export const createOrGetConversation = async (req, res) => {
   try {
     const { type, postId, otherUserId } = req.body;
@@ -101,6 +126,7 @@ export const getConversations = async (req, res) => {
 
     const conversationsWithDetails = await Promise.all(
       conversations.map(async (conversation) => {
+        await ensureConversationLifetime(conversation);
         const otherParticipantId = conversation.participants.find(
           (participant) => participant.toString() !== req.user._id.toString()
         );
@@ -290,6 +316,8 @@ export const sendMessage = async (req, res) => {
       return res.status(403).json({ error: 'Not authorized to send messages in this conversation' });
     }
 
+    await ensureConversationLifetime(conversation);
+
     if (containsProfanity(text)) {
       text = maskProfanity(text);
     }
@@ -324,6 +352,8 @@ export const getMessages = async (req, res) => {
     if (!ensureParticipant(conversation, req.user._id)) {
       return res.status(403).json({ error: 'Not authorized to view this conversation' });
     }
+
+    await ensureConversationLifetime(conversation);
 
     let query = { conversationId: id };
     let messages;
@@ -377,6 +407,8 @@ export const markRead = async (req, res) => {
       return res.status(403).json({ error: 'Not authorized to mark this conversation as read' });
     }
 
+    await ensureConversationLifetime(conversation);
+
     await Message.updateMany(
       { conversationId: id, senderId: { $ne: req.user._id }, readAt: null },
       { $set: { readAt: new Date() } }
@@ -386,5 +418,44 @@ export const markRead = async (req, res) => {
   } catch (error) {
     console.error('Mark read error:', error);
     res.status(500).json({ error: 'Failed to mark messages as read' });
+  }
+};
+
+export const extendConversation = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const conversation = await Conversation.findById(id);
+    if (!conversation) {
+      return res.status(404).json({ error: 'Conversation not found' });
+    }
+    if (!ensureParticipant(conversation, req.user._id)) {
+      return res.status(403).json({ error: 'Not authorized to extend this conversation' });
+    }
+
+    await ensureConversationLifetime(conversation);
+
+    const now = new Date();
+    const remainingMs = conversation.expiresAt.getTime() - now.getTime();
+    const lastTwoDaysMs = 2 * 24 * 60 * 60 * 1000;
+    if (remainingMs > lastTwoDaysMs) {
+      return res.status(400).json({ error: 'Extension is only available during the last 2 days.' });
+    }
+
+    let nextExpiresAt = addDays(conversation.expiresAt, CONVERSATION_EXTENSION_DAYS);
+    if (nextExpiresAt > conversation.maxExpiresAt) {
+      nextExpiresAt = conversation.maxExpiresAt;
+    }
+
+    if (nextExpiresAt.getTime() === conversation.expiresAt.getTime()) {
+      return res.status(400).json({ error: 'Maximum conversation lifetime reached.' });
+    }
+
+    conversation.expiresAt = nextExpiresAt;
+    await conversation.save();
+
+    return res.json({ conversation });
+  } catch (error) {
+    console.error('Extend conversation error:', error);
+    return res.status(500).json({ error: 'Failed to extend conversation' });
   }
 };

@@ -222,7 +222,7 @@ const PostsFeedPage: React.FC = () => {
               <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full mt-1">
                 <option value="">Toutes</option>
                 <option value="study_partner">Study partner</option>
-                <option value="project_team">Project team</option>
+                <option value="project_team">Study team</option>
                 <option value="tutor_offer">Tutor offer</option>
               </select>
             </div>

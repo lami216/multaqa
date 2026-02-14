@@ -32,12 +32,25 @@ const studyPartnerCreateSchema = z.object({
   category: z.literal('study_partner'),
   subjectCodes: z.array(z.string().min(1)).min(1).max(2),
   postRole: z.enum(['need_help', 'can_help', 'td', 'archive']),
-  durationHours: z.number().int().min(1).max(168),
+  availabilityDate: z.coerce.date(),
   description: z.string().max(500).optional()
 }).strict();
 
-const standardPostCreateSchema = z.object({
-  category: z.enum(['project_team', 'tutor_offer']),
+const standardPostCreateSchema = z.discriminatedUnion('category', [
+  z.object({
+    category: z.literal('project_team'),
+    title: z.string().min(1).max(200),
+    description: z.string().min(1).max(2000),
+    tags: z.array(z.string()).optional(),
+    faculty: z.string().optional(),
+    level: z.enum(['L1', 'L2', 'L3', 'M1', 'M2']).optional(),
+    languagePref: z.enum(['Arabic', 'French']).optional(),
+    location: z.enum(['campus', 'online']).optional(),
+    availabilityDate: z.coerce.date(),
+    participantTargetCount: z.number().int().min(3)
+  }).strict(),
+  z.object({
+    category: z.literal('tutor_offer'),
   title: z.string().min(1).max(200),
   description: z.string().min(1).max(2000),
   tags: z.array(z.string()).optional(),
@@ -45,7 +58,8 @@ const standardPostCreateSchema = z.object({
   level: z.enum(['L1', 'L2', 'L3', 'M1', 'M2']).optional(),
   languagePref: z.enum(['Arabic', 'French']).optional(),
   location: z.enum(['campus', 'online']).optional()
-}).strict();
+  }).strict()
+]);
 
 export const createPostSchema = z.union([studyPartnerCreateSchema, standardPostCreateSchema]);
 
@@ -59,8 +73,9 @@ export const updatePostSchema = z.object({
   location: z.enum(['campus', 'online']).optional(),
   subjectCodes: z.array(z.string().min(1)).min(1).max(2).optional(),
   postRole: z.enum(['need_help', 'can_help', 'td', 'archive']).optional(),
-  extendHours: z.number().int().min(1).max(168).optional(),
-  status: z.enum(['active', 'matched', 'expired']).optional()
+  availabilityDate: z.coerce.date().optional(),
+  participantTargetCount: z.number().int().min(3).optional(),
+  status: z.enum(['active', 'matched', 'expired', 'closed']).optional()
 }).strict();
 
 export const closePostSchema = z.object({

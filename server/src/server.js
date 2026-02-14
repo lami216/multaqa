@@ -20,6 +20,7 @@ import notificationRoutes from './routes/notificationRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import { authenticate } from './middleware/auth.js';
 import lookupRoutes from './routes/lookupRoutes.js';
+import { startLifecycleJob } from './jobs/lifecycleJob.js';
 
 // مهم: لا تستخدم static import هنا لأن ESM ينفّذ imports قبل dotenv.config
 const { default: imagekit } = await import('./config/imagekit.js');
@@ -36,6 +37,7 @@ if (isProduction) {
 }
 
 connectDB();
+startLifecycleJob();
 
 app.use(helmet());
 app.use(cors({
