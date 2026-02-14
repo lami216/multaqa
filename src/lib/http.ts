@@ -247,6 +247,25 @@ export interface MajorVisibilityConfig {
   threshold: number;
 }
 
+export interface AcademicMajorAvailability {
+  status: 'active' | 'collecting' | 'closed';
+  threshold: number;
+  registeredCount: number;
+}
+
+export interface AcademicSettingsNode {
+  facultyId: string;
+  enabled?: boolean;
+  levels: Array<{
+    levelId: string;
+    majors: Array<{
+      majorId: string;
+      status: 'active' | 'collecting' | 'closed';
+      threshold: number;
+    }>;
+  }>;
+}
+
 export interface AcademicSettingsResponse {
   academicTermType: 'odd' | 'even';
   catalogVisibility: {
@@ -254,6 +273,12 @@ export interface AcademicSettingsResponse {
     majors: Record<string, MajorVisibilityConfig>;
   };
   preregCounts: Record<string, number>;
+  settings?: {
+    currentTermType: 'odd' | 'even';
+    faculties: AcademicSettingsNode[];
+  };
+  counts?: Record<string, number>;
+  majorAvailability?: Record<string, AcademicMajorAvailability>;
 }
 
 export const fetchMe = () =>
@@ -319,6 +344,6 @@ export const deleteSubject = (id: string) => http.delete(`/admin/subjects/${id}`
 export const fetchAdminStats = (params?: { action?: string; limit?: number }) =>
   http.get<AdminStatsResponse>('/admin/stats', { params });
 export const fetchAcademicSettings = () => http.get<AcademicSettingsResponse>('/academic-settings');
-export const fetchAdminAcademicSettings = () => http.get<AcademicSettingsResponse>('/admin/settings/academic');
-export const updateAdminAcademicSettings = (payload: Partial<AcademicSettingsResponse>) =>
-  http.patch<AcademicSettingsResponse>('/admin/settings/academic', payload);
+export const fetchAdminAcademicSettings = () => http.get<AcademicSettingsResponse>('/admin/academic-settings');
+export const updateAdminAcademicSettings = (payload: { currentTermType: 'odd' | 'even'; faculties: AcademicSettingsNode[] }) =>
+  http.post<AcademicSettingsResponse>('/admin/academic-settings', payload);

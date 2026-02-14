@@ -1,16 +1,35 @@
 import mongoose from 'mongoose';
 
-const majorVisibilitySchema = new mongoose.Schema(
+const majorSettingSchema = new mongoose.Schema(
   {
-    enabled: {
-      type: Boolean,
-      default: true
+    majorId: { type: String, required: true, trim: true },
+    status: {
+      type: String,
+      enum: ['active', 'collecting', 'closed'],
+      default: 'active'
     },
     threshold: {
       type: Number,
-      default: 20,
-      min: 1
+      default: 0,
+      min: 0
     }
+  },
+  { _id: false }
+);
+
+const levelSettingSchema = new mongoose.Schema(
+  {
+    levelId: { type: String, required: true, trim: true },
+    majors: { type: [majorSettingSchema], default: [] }
+  },
+  { _id: false }
+);
+
+const facultySettingSchema = new mongoose.Schema(
+  {
+    facultyId: { type: String, required: true, trim: true },
+    enabled: { type: Boolean, default: true },
+    levels: { type: [levelSettingSchema], default: [] }
   },
   { _id: false }
 );
@@ -23,22 +42,14 @@ const academicSettingSchema = new mongoose.Schema(
       unique: true,
       index: true
     },
-    academicTermType: {
+    currentTermType: {
       type: String,
       enum: ['odd', 'even'],
       default: 'odd'
     },
-    catalogVisibility: {
-      faculties: {
-        type: Map,
-        of: Boolean,
-        default: {}
-      },
-      majors: {
-        type: Map,
-        of: majorVisibilitySchema,
-        default: {}
-      }
+    faculties: {
+      type: [facultySettingSchema],
+      default: []
     }
   },
   { timestamps: true }

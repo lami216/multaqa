@@ -1,10 +1,11 @@
 import express from 'express';
 import { authenticate } from '../middleware/auth.js';
 import * as conversationController from '../controllers/conversationController.js';
+import { requireActiveMajor } from '../middleware/majorAccess.js';
 
 const router = express.Router();
 
-router.post('/', authenticate, conversationController.createOrGetConversation);
+router.post('/', authenticate, requireActiveMajor, conversationController.createOrGetConversation);
 router.get('/', authenticate, conversationController.getConversations);
 router.patch('/:id/archive', authenticate, conversationController.archiveConversation);
 router.patch('/:id/unarchive', authenticate, conversationController.unarchiveConversation);

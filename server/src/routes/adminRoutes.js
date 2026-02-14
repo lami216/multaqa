@@ -24,5 +24,7 @@ router.patch('/subjects/:id', adminController.updateSubject);
 router.delete('/subjects/:id', adminController.deleteSubject);
 router.get('/settings/academic', adminController.getAcademicSettings);
 router.patch('/settings/academic', adminController.updateAcademicSettings);
+router.get('/academic-settings', adminController.getAcademicSettings);
+router.post('/academic-settings', adminController.updateAcademicSettings);
 
 export default router;
