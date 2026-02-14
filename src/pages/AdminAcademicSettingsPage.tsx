@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
+import StickyFooter from '../components/common/StickyFooter';
 import { getFaculties, buildAcademicMajorKey } from '../lib/catalog';
 import {
   fetchAdminAcademicSettings,
@@ -13,7 +14,7 @@ const AdminAcademicSettingsPage: React.FC = () => {
   const faculties = useMemo(() => getFaculties(), []);
   const [settings, setSettings] = useState<AcademicSettingsResponse | null>(null);
   const [draft, setDraft] = useState<{ currentTermType: 'odd' | 'even'; faculties: AcademicSettingsNode[] } | null>(null);
-  const [savedSnapshot, setSavedSnapshot] = useState<string>('');
+  const [originalSettings, setOriginalSettings] = useState<{ currentTermType: 'odd' | 'even'; faculties: AcademicSettingsNode[] } | null>(null);
   const [selectedFaculty, setSelectedFaculty] = useState<string>('');
   const [selectedLevel, setSelectedLevel] = useState<string>('');
   const [saving, setSaving] = useState(false);
@@ -27,7 +28,7 @@ const AdminAcademicSettingsPage: React.FC = () => {
       };
       setSettings(data);
       setDraft(nextDraft);
-      setSavedSnapshot(JSON.stringify(nextDraft));
+      setOriginalSettings(nextDraft);
       setSelectedFaculty(nextDraft.faculties[0]?.facultyId ?? faculties[0]?.id ?? '');
     };
     void load();
@@ -62,7 +63,10 @@ const AdminAcademicSettingsPage: React.FC = () => {
   }, [draft]);
 
   const majors = levels.find((level) => level.id === selectedLevel)?.majors ?? [];
-  const isDirty = Boolean(draft) && JSON.stringify(draft) !== savedSnapshot;
+  const isDirty = useMemo(() => {
+    if (!draft || !originalSettings) return false;
+    return JSON.stringify(draft) !== JSON.stringify(originalSettings);
+  }, [draft, originalSettings]);
 
   const updateMajor = (majorId: string, patch: Partial<{ status: 'active' | 'collecting'; threshold: number | null }>) => {
     if (!draft || !selectedFaculty || !selectedLevel) return;
@@ -102,7 +106,7 @@ const AdminAcademicSettingsPage: React.FC = () => {
       };
       setSettings(refreshed);
       setDraft(syncedDraft);
-      setSavedSnapshot(JSON.stringify(syncedDraft));
+      setOriginalSettings(syncedDraft);
       toast.success('Academic settings saved.');
     } catch {
       toast.error('Failed to save academic settings.');
@@ -116,7 +120,7 @@ const AdminAcademicSettingsPage: React.FC = () => {
   }
 
   return (
-    <div className="space-y-4 pb-24">
+    <div className="space-y-4 pb-40 md:pb-28">
       <div className="card-surface p-5 space-y-3">
         <div className="flex items-center justify-between">
           <h1 className="section-title">Academic Settings</h1>
@@ -179,11 +183,12 @@ const AdminAcademicSettingsPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 border-t border-slate-200 bg-white/95 p-3 backdrop-blur">
-        <div className="mx-auto max-w-5xl flex items-center justify-end gap-3">
-          <button type="button" className="primary-btn" onClick={() => void saveChanges()} disabled={saving || !isDirty}>{saving ? 'Saving...' : 'Save Changes'}</button>
-        </div>
-      </div>
+      <StickyFooter>
+        <button type="button" className="primary-btn inline-flex items-center gap-2" onClick={() => void saveChanges()} disabled={saving || !isDirty}>
+          {saving && <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" aria-hidden="true" />}
+          <span>{saving ? 'Saving...' : 'Save Changes'}</span>
+        </button>
+      </StickyFooter>
     </div>
   );
 };
