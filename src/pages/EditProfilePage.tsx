@@ -307,7 +307,11 @@ const EditProfilePage: React.FC = () => {
     }
 
     setMajorsError('');
-    const availableMajors = getMajorsIncludingClosed(form.facultyId, form.level);
+    const availableMajors = getMajorsByFacultyAndLevel(form.facultyId, form.level, academicSettings.catalogVisibility).filter((major) => {
+      const majorKey = buildAcademicMajorKey(form.facultyId, form.level, major.id);
+      const status = academicSettings.majorAvailability?.[majorKey]?.status ?? 'active';
+      return status !== 'closed';
+    });
     setMajors(availableMajors);
     const hasMajor = availableMajors.some((major) => major.id === form.majorId);
     if (!hasMajor) {
