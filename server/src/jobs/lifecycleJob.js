@@ -2,6 +2,7 @@ import Conversation from '../models/Conversation.js';
 import Message from '../models/Message.js';
 import Post from '../models/Post.js';
 import JoinRequest from '../models/JoinRequest.js';
+import Session from '../models/Session.js';
 
 const ONE_MINUTE = 60 * 1000;
 
@@ -12,6 +13,14 @@ const cleanupExpiredConversations = async () => {
   const ids = expired.map((item) => item._id);
   await Message.deleteMany({ conversationId: { $in: ids } });
   await Conversation.deleteMany({ _id: { $in: ids } });
+};
+
+const autoClosePendingSessions = async () => {
+  const now = new Date();
+  await Session.updateMany(
+    { status: 'pending_close', autoCloseAt: { $lte: now } },
+    { $set: { status: 'completed', endedAt: now } }
+  );
 };
 
 const processPostAvailability = async () => {
@@ -46,6 +55,7 @@ export const startLifecycleJob = () => {
     try {
       await processPostAvailability();
       await cleanupExpiredConversations();
+      await autoClosePendingSessions();
     } catch (error) {
       console.error('Lifecycle job error:', error);
     }

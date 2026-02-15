@@ -8,12 +8,17 @@ import {
   markConversationRead,
   sendConversationMessage,
   extendConversation,
+  fetchSessionByConversation,
+  requestSessionEnd,
+  confirmSessionEnd,
   type ConversationMessageItem,
-  type ConversationSummary
+  type ConversationSummary,
+  type SessionItem
 } from '../lib/http';
 import { useAuth } from '../context/AuthContext';
 import { useConversations } from '../context/ConversationsContext';
 import { useSmartPolling } from '../hooks/useSmartPolling';
+import RatingModal from '../components/RatingModal';
 
 const ConversationPage: React.FC = () => {
   const { conversationId } = useParams();
@@ -29,6 +34,8 @@ const ConversationPage: React.FC = () => {
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [lastKnownTimestamp, setLastKnownTimestamp] = useState<string | undefined>(undefined);
   const [lastStatusSync, setLastStatusSync] = useState<string | undefined>(undefined);
+  const [sessionData, setSessionData] = useState<SessionItem | null>(null);
+  const [openRating, setOpenRating] = useState(false);
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [now, setNow] = useState(Date.now());
   const { clearUnreadCount } = useConversations();
@@ -56,6 +63,8 @@ const ConversationPage: React.FC = () => {
       setLastKnownTimestamp(latestMessage?.createdAt ?? undefined);
       setLastStatusSync(new Date().toISOString());
       await markConversationRead(conversationId);
+      const { data: sessionResult } = await fetchSessionByConversation(conversationId);
+      setSessionData(sessionResult.session);
     } catch (fetchError) {
       setError('Impossible de charger la conversation.');
     } finally {
@@ -117,6 +126,8 @@ const ConversationPage: React.FC = () => {
         clearUnreadCount(activeConversation.unreadCount);
       }
       await markConversationRead(conversationId);
+      const { data: sessionResult } = await fetchSessionByConversation(conversationId);
+      setSessionData(sessionResult.session);
     } catch (pollError) {
       // ignore polling errors
     }
@@ -125,6 +136,15 @@ const ConversationPage: React.FC = () => {
   useEffect(() => {
     void loadConversation();
   }, [loadConversation]);
+
+  useEffect(() => {
+    const loadSession = async () => {
+      if (!conversationId) return;
+      const { data } = await fetchSessionByConversation(conversationId);
+      setSessionData(data.session);
+    };
+    void loadSession();
+  }, [conversationId]);
 
   useEffect(() => {
     if (conversation?.unreadCount) {
@@ -266,6 +286,8 @@ const ConversationPage: React.FC = () => {
             <h2 className="text-lg font-semibold text-slate-900">{conversationTitle}</h2>
           </div>
         </div>
+        <div className="flex gap-2">
+        {sessionData?.status === 'in_progress' ? (<button type="button" className="secondary-btn" onClick={async () => { if (!sessionData?._id) return; const { data } = await requestSessionEnd(sessionData._id); setSessionData(data.session); setOpenRating(true); }}>End Session</button>) : null}
         <button
           type="button"
           className="secondary-btn"
@@ -275,9 +297,19 @@ const ConversationPage: React.FC = () => {
           <RefreshCw size={16} className={refreshing ? 'animate-spin me-1' : 'me-1'} />
           Rafraîchir
         </button>
+        </div>
       </div>
 
-      {remainingTotalSeconds !== null ? (
+      {sessionData?.status === 'pending_close' && sessionData.autoCloseAt ? (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 flex items-center justify-between">
+          <div>Fin demandée. Clôture automatique dans 48h ({Math.max(0, Math.floor((new Date(sessionData.autoCloseAt).getTime() - now) / 3600000))}h).</div>
+          {sessionData.endRequestedBy !== currentUserId ? (
+            <div className="flex gap-2">
+              <button type="button" className="secondary-btn" onClick={async () => { if (!sessionData?._id) return; const { data } = await confirmSessionEnd(sessionData._id); setSessionData(data.session); setOpenRating(true); }}>Confirmer</button>
+            </div>
+          ) : null}
+        </div>
+      ) : remainingTotalSeconds !== null ? (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
           {isExpired ? (
             <div className="font-semibold">Conversation expired</div>
@@ -348,7 +380,16 @@ const ConversationPage: React.FC = () => {
         >
           <SendHorizonal size={16} className="me-1" /> Envoyer
         </button>
-      </div>
+        </div>
+
+      {sessionData?._id && conversation?.otherParticipant?.id ? (
+        <RatingModal
+          open={openRating}
+          onClose={() => setOpenRating(false)}
+          sessionId={sessionData._id}
+          targetUserId={conversation.otherParticipant.id}
+        />
+      ) : null}
     </div>
   );
 };

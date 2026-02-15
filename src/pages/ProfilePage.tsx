@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Edit3, GraduationCap, MapPin, MessageCircle, Notebook, Settings, Star, User } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { fetchAcademicSettings, generateTelegramLinkTokenRequest, http, type AcademicSettingsResponse, type Profile, type RemainingSubjectItem } from '../lib/http';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
@@ -23,6 +23,8 @@ import { buildSubjectInitials } from '../lib/subjectDisplay';
 
 const ProfilePage: React.FC = () => {
   const { user, profile: authProfile, refresh } = useAuth();
+  const { publisherId } = useParams();
+  const navigate = useNavigate();
   type ProfileView = Profile & { userId?: string; avgRating?: number; sessionsCount?: number; reviewsCount?: number };
   const [profile, setProfile] = useState<Profile | null>(authProfile ?? null);
   const [remainingSelection, setRemainingSelection] = useState<RemainingSubjectItem[]>([]);
@@ -66,17 +68,25 @@ const ProfilePage: React.FC = () => {
 
   useEffect(() => {
     const load = async () => {
-      if (!user?.username) return;
+      const profileEndpoint = publisherId ? `/users/id/${publisherId}` : (user?.username ? `/users/${user.username}` : '');
+      if (!profileEndpoint) return;
       const [{ data }, { data: settingsData }] = await Promise.all([
-        http.get<{ user: unknown; profile: Profile; posts: unknown }>(`/users/${user.username}`),
+        http.get<{ user: { id: string; averageRating?: number; totalReviews?: number; sessionsCount?: number }; profile: Profile; posts: unknown }>(profileEndpoint),
         fetchAcademicSettings()
       ]);
-      setProfile(data.profile);
+      const merged = {
+        ...(data.profile ?? {}),
+        userId: data.user?.id,
+        avgRating: data.user?.averageRating ?? 0,
+        reviewsCount: data.user?.totalReviews ?? 0,
+        sessionsCount: data.user?.sessionsCount ?? 0
+      } as Profile;
+      setProfile(merged);
       setAcademicSettings(settingsData);
     };
 
     void load();
-  }, [user?.username]);
+  }, [publisherId, user?.username]);
 
   useEffect(() => {
     setProfile(authProfile ?? null);
@@ -84,7 +94,7 @@ const ProfilePage: React.FC = () => {
 
   const avatarUrl = cacheBustedAvatar(profile?.avatarUrl, profile?.updatedAt);
   const profileView = profile as ProfileView | null;
-  const isOwner = user?._id === profileView?.userId;
+  const isOwner = Boolean(user?._id && profileView?.userId && user._id === profileView.userId);
   const matchByIdOrName = <T extends { id: string; nameFr: string; nameAr: string }>(
     items: T[],
     value?: string
@@ -249,11 +259,20 @@ const ProfilePage: React.FC = () => {
                   <Settings size={16} className="me-1" /> Settings
                 </button>
               </>
-            ) : (
-              <button type="button" className="secondary-btn">
+) : null}
+            {!isOwner && profileView?.userId ? (
+              <button
+                type="button"
+                className="secondary-btn"
+                onClick={async () => {
+                  if (profileView.userId === user?._id) return;
+                  const { data } = await http.post<{ conversationId: string }>('/conversations', { type: 'direct', otherUserId: profileView.userId });
+                  navigate(`/messages/${data.conversationId}`);
+                }}
+              >
                 <MessageCircle size={16} className="me-1" /> Message
               </button>
-            )}
+            ) : null}
             <button type="button" className="secondary-btn" onClick={() => void handleTelegramLink()} disabled={linkingTelegram}>
               ربط حسابي بتيليغرام
             </button>

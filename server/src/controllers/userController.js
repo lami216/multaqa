@@ -4,6 +4,27 @@ import Post from '../models/Post.js';
 import redis from '../config/redis.js';
 import { maybeActivateMajor, getMajorAvailability } from '../services/academicSettingsService.js';
 
+
+const buildPublicProfileResult = async (user) => {
+  const profile = await Profile.findOne({ userId: user._id });
+  const posts = await Post.find({ authorId: user._id, status: 'active' })
+    .sort({ createdAt: -1 })
+    .limit(10);
+
+  return {
+    user: {
+      id: user._id,
+      username: user.username,
+      emailVerified: user.emailVerified,
+      averageRating: user.averageRating ?? 0,
+      totalReviews: user.totalReviews ?? 0,
+      sessionsCount: user.sessionsCount ?? 0
+    },
+    profile,
+    posts
+  };
+};
+
 export const getPublicProfile = async (req, res) => {
   try {
     const { username } = req.params;
@@ -18,29 +39,33 @@ export const getPublicProfile = async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    const profile = await Profile.findOne({ userId: user._id });
-    const posts = await Post.find({
-      authorId: user._id,
-      status: 'active'
-    })
-      .sort({ createdAt: -1 })
-      .limit(10);
-
-    const result = {
-      user: {
-        id: user._id,
-        username: user.username,
-        emailVerified: user.emailVerified
-      },
-      profile,
-      posts
-    };
+    const result = await buildPublicProfileResult(user);
 
     await redis.set(cacheKey, JSON.stringify(result), 60);
 
     res.json(result);
   } catch (error) {
     console.error('Get public profile error:', error);
+    res.status(500).json({ error: 'Failed to fetch profile' });
+  }
+};
+
+
+export const getPublicProfileById = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const cacheKey = `profile:id:${userId}`;
+    const cached = await redis.get(cacheKey);
+    if (cached) return res.json(JSON.parse(cached));
+
+    const user = await User.findById(userId).select('-passwordHash -refreshToken');
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const result = await buildPublicProfileResult(user);
+    await redis.set(cacheKey, JSON.stringify(result), 60);
+    res.json(result);
+  } catch (error) {
+    console.error('Get public profile by id error:', error);
     res.status(500).json({ error: 'Failed to fetch profile' });
   }
 };
@@ -77,6 +102,7 @@ export const updateProfile = async (req, res) => {
       });
 
       await redis.del(`profile:${req.user.username}`);
+      await redis.del(`profile:id:${req.user._id}`);
       return res.json({ message: 'Profile updated successfully', profile });
     }
 
@@ -107,6 +133,7 @@ export const updateProfile = async (req, res) => {
     }
 
     await redis.del(`profile:${req.user.username}`);
+    await redis.del(`profile:id:${req.user._id}`);
 
     await maybeActivateMajor(profile.facultyId, profile.level, profile.majorId);
     const majorAvailability = await getMajorAvailability(profile.facultyId, profile.level, profile.majorId);
@@ -132,6 +159,7 @@ export const uploadAvatar = async (req, res) => {
     );
 
     await redis.del(`profile:${req.user.username}`);
+    await redis.del(`profile:id:${req.user._id}`);
 
     res.json({ message: 'Avatar uploaded successfully', profile });
   } catch (error) {

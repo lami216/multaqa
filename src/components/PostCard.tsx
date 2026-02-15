@@ -110,7 +110,7 @@ const PostCard: React.FC<PostCardProps> = ({
           )}
         </div>
         <div className="flex items-start gap-3 text-sm text-slate-500 sm:min-w-[200px] sm:justify-end">
-          <div className="flex items-center gap-2">
+          <Link to={`/profile/${resolveAuthorId(post)}`} className="flex items-center gap-2">
             <Avatar className="h-10 w-10 shrink-0">
               <AvatarImage src={post.author?.avatarUrl} alt={post.author?.username ?? 'Auteur'} />
               <AvatarFallback className="bg-emerald-50 text-emerald-700 text-sm font-semibold">
@@ -121,7 +121,7 @@ const PostCard: React.FC<PostCardProps> = ({
               <p className="font-semibold text-slate-800">{post.author?.username ?? 'Auteur'}</p>
               <p>{new Date(post.createdAt).toLocaleDateString()}</p>
             </div>
-          </div>
+          </Link>
           <div className="space-y-2">
             {typeof post.matchPercent === 'number' ? (
               <span className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-3 py-1 text-base font-semibold text-white shadow-sm">

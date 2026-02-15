@@ -97,6 +97,9 @@ export interface ApiUser {
   avatarUrl?: string;
   remainingSubjects?: string[];
   remainingSubjectsConfirmed?: boolean;
+  averageRating?: number;
+  totalReviews?: number;
+  sessionsCount?: number;
 }
 
 export interface SubjectPriorityItem {
@@ -233,6 +236,20 @@ export interface ConversationMessageItem {
   readAt?: string | null;
 }
 
+
+export interface SessionItem {
+  _id: string;
+  participants: string[];
+  conversationId: string;
+  status: 'in_progress' | 'pending_close' | 'completed';
+  startedAt: string;
+  endedAt?: string | null;
+  endRequestedBy?: string | null;
+  endRequestedAt?: string | null;
+  autoCloseAt?: string | null;
+  rating?: Record<string, { score: number; review?: string; createdAt?: string }>;
+}
+
 export interface NotificationItem {
   _id: string;
   type: string;
@@ -340,7 +357,7 @@ export const requestJoinPost = (postId: string) => http.post<{ joinRequest: Join
 export const fetchJoinRequests = (postId: string, params?: { after?: string }) =>
   http.get<{ joinRequests: JoinRequestItem[] }>(`/posts/${postId}/join-requests`, { params });
 export const acceptJoinRequest = (postId: string, requestId: string) =>
-  http.post<{ joinRequest: JoinRequestItem; post: PostResponse; conversation?: { _id: string } }>(`/posts/${postId}/join-requests/${requestId}/accept`);
+  http.post<{ joinRequest: JoinRequestItem; conversationId: string; sessionId: string }>(`/posts/${postId}/join-requests/${requestId}/accept`);
 export const rejectJoinRequest = (postId: string, requestId: string) =>
   http.post<{ joinRequest: JoinRequestItem }>(`/posts/${postId}/join-requests/${requestId}/reject`);
 export const closePost = (postId: string, payload: { closeReason?: string }) =>
@@ -374,6 +391,14 @@ export const deleteConversationForMe = (conversationId: string) =>
   http.patch(`/conversations/${conversationId}/delete-for-me`);
 export const extendConversation = (conversationId: string) =>
   http.post<{ conversation: ConversationSummary }>(`/conversations/${conversationId}/extend`);
+
+export const fetchSessionByConversation = (conversationId: string) =>
+  http.get<{ session: SessionItem | null }>(`/sessions/by-conversation/${conversationId}`);
+export const requestSessionEnd = (sessionId: string) => http.post<{ session: SessionItem }>(`/sessions/${sessionId}/end-request`);
+export const confirmSessionEnd = (sessionId: string) => http.post<{ session: SessionItem }>(`/sessions/${sessionId}/confirm-end`);
+export const submitSessionRating = (sessionId: string, payload: { targetUserId: string; score: number; review?: string }) =>
+  http.post<{ session: SessionItem }>(`/sessions/${sessionId}/rate`, payload);
+
 export const fetchNotifications = () => http.get<{ notifications: NotificationItem[]; unread: number }>('/notifications');
 export const fetchUnreadNotificationsCount = (params?: { after?: string }) =>
   http.get<{ unread: number }>('/notifications/unread-count', { params });

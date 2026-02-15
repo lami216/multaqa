@@ -118,6 +118,16 @@ const App: React.FC = () => {
                   )}
                 />
                 <Route
+                  path="/profile/:publisherId"
+                  element={(
+                    <ProtectedRoute>
+                      <Layout>
+                        <ProfilePage />
+                      </Layout>
+                    </ProtectedRoute>
+                  )}
+                />
+                <Route
                   path="/profile/edit"
                   element={(
                     <ProtectedRoute>

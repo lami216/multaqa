@@ -106,12 +106,7 @@ const PostDetailsPage: React.FC = () => {
     } catch (error) {
       if (axios.isAxiosError(error) && error.response?.status === 404) {
         setNotFound(true);
-        setLoadError('');
-        reportRequestError(
-          'Failed to load post (404)',
-          error,
-          "L'annonce demandée est introuvable."
-        );
+        setLoadError("Cette annonce n'est plus disponible.");
         return;
       }
       setLoadError("Impossible de charger l'annonce.");
@@ -249,10 +244,8 @@ const PostDetailsPage: React.FC = () => {
       setJoinRequests((prev) =>
         prev.map((item) => (item._id === requestId ? data.joinRequest : item))
       );
-      setPost((prev) => (prev ? { ...prev, ...data.post } : prev));
-      if (data.conversation?._id) {
-        navigate(`/messages/${data.conversation._id}`);
-      }
+      toast.success('Demande acceptée. Vous pouvez commencer à discuter.');
+      navigate(`/messages/${data.conversationId}`);
     } catch (error) {
       reportRequestError('Failed to accept join request', error, 'Impossible de valider la demande.');
       setActionError('Impossible de valider la demande.');
@@ -286,10 +279,8 @@ const PostDetailsPage: React.FC = () => {
     setActionNotice('');
     try {
       const { data } = await closePost(id, { closeReason });
-      setPost((prev) => (prev ? { ...prev, ...data.post } : prev));
-      if (data.conversation?._id) {
-        navigate(`/messages/${data.conversation._id}`);
-      }
+      toast.success('Demande acceptée. Vous pouvez commencer à discuter.');
+      navigate(`/messages/${data.conversationId}`);
     } catch (error) {
       reportRequestError('Failed to close post', error, "Impossible de clôturer l'annonce.");
       setActionError("Impossible de clôturer l'annonce.");
@@ -317,11 +308,12 @@ const PostDetailsPage: React.FC = () => {
   if (!id || notFound) {
     return (
       <div className="card-surface p-5 space-y-3">
-        <h1 className="section-title">Post introuvable</h1>
-        <p className="helper-text">L'annonce demandée n'existe pas ou a été retirée.</p>
-        <Link to="/posts" className="primary-btn w-fit">
-          Retour aux posts
-        </Link>
+        <h1 className="section-title">Information</h1>
+        <p className="helper-text">{loadError || "Cette annonce n'est plus disponible. Ouvrez vos messages pour continuer la session."}</p>
+        <div className="flex gap-2">
+          <Link to="/messages" className="primary-btn w-fit">Messages</Link>
+          <Link to="/posts" className="secondary-btn w-fit">Retour aux posts</Link>
+        </div>
       </div>
     );
   }
@@ -400,7 +392,7 @@ const PostDetailsPage: React.FC = () => {
           )}
         </div>
         <div className="text-sm text-slate-500 space-y-2 sm:min-w-[220px]">
-          <div className="flex items-center gap-2">
+          <Link to={`/profile/${authorId}`} className="flex items-center gap-2">
             <Avatar className="h-9 w-9 shrink-0">
               <AvatarImage src={post.author?.avatarUrl} alt={post.author?.username ?? 'Auteur'} />
               <AvatarFallback className="bg-emerald-50 text-emerald-700 text-sm font-semibold">
@@ -410,7 +402,7 @@ const PostDetailsPage: React.FC = () => {
             <div className="min-w-0">
               <p className="font-semibold text-slate-800">{post?.author?.username ?? 'Auteur'}</p>
             </div>
-          </div>
+          </Link>
           {post?.status && <p className="badge-soft inline-flex">{post.status}</p>}
         </div>
       </div>

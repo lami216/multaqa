@@ -49,6 +49,18 @@ const userSchema = new mongoose.Schema({
   remainingSubjectsConfirmed: {
     type: Boolean,
     default: false
+  },
+  averageRating: {
+    type: Number,
+    default: 0
+  },
+  totalReviews: {
+    type: Number,
+    default: 0
+  },
+  sessionsCount: {
+    type: Number,
+    default: 0
   }
 
 }, {
