@@ -2,9 +2,11 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import {
   ApiUser,
   fetchMe,
+  getStoredAccessToken,
   loginRequest,
   logoutRequest,
-  signupRequest
+  signupRequest,
+  storeAccessToken
 } from '../lib/http';
 import type { Profile } from '../lib/http';
 
@@ -32,12 +34,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser((prev) => (prev ? { ...prev, avatarUrl: nextProfile?.avatarUrl } : prev));
   };
 
-  const loadUser = async () => {
+  const loadUser = async (requireToken = false) => {
+    const token = getStoredAccessToken();
+    if (requireToken && !token) {
+      setUser(null);
+      setProfile(null);
+      setLoading(false);
+      return;
+    }
+
     try {
       const { data } = await fetchMe();
       setUser({ ...data.user, avatarUrl: data.profile?.avatarUrl });
       syncProfile(data.profile ?? null);
     } catch (error) {
+      storeAccessToken(null);
       setUser(null);
       setProfile(null);
     } finally {
@@ -46,21 +57,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
-    void loadUser();
+    void loadUser(true);
   }, []);
 
   const login = async (email: string, password: string) => {
-    await loginRequest({ email, password });
-    await loadUser();
+    const { data } = await loginRequest({ email, password });
+    storeAccessToken(data.accessToken ?? null);
+    await loadUser(true);
   };
 
   const signup = async (username: string, email: string, password: string) => {
-    await signupRequest({ username, email, password });
-    await loadUser();
+    const { data } = await signupRequest({ username, email, password });
+    storeAccessToken(data.accessToken ?? null);
+    await loadUser(true);
   };
 
   const logout = async () => {
     await logoutRequest();
+    storeAccessToken(null);
     setUser(null);
     setProfile(null);
   };

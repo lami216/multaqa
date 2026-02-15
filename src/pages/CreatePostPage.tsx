@@ -4,7 +4,7 @@ import { CheckCircle2, PenSquare } from 'lucide-react';
 import { createPost, type PostPayload, type StudyTeamRoleKey } from '../lib/http';
 import { useAuth } from '../context/AuthContext';
 import { PRIORITY_ROLE_OPTIONS } from '../lib/priorities';
-import { getSubjectShortNameByCode } from '../lib/catalog';
+import { getSubjectNameByCode, getSubjectShortNameByCode } from '../lib/catalog';
 
 const requestTypes: { value: PostPayload['category']; label: string }[] = [
   { value: 'study_partner', label: 'Study partner' },
@@ -63,6 +63,11 @@ const CreatePostPage: React.FC = () => {
     participantTargetCount >= 3;
 
   const standardPostValid = Boolean(form.title?.trim() && form.description?.trim());
+
+  const selectedSubjectFullNames = useMemo(
+    () => selectedSubjects.map((subjectCode) => ({ code: subjectCode, fullName: getSubjectNameByCode(subjectCode) || subjectCode })),
+    [selectedSubjects]
+  );
 
   const handleChange = (field: keyof PostPayload, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -247,6 +252,17 @@ const CreatePostPage: React.FC = () => {
                   })}
                 </div>
               </div>
+
+              {selectedSubjectFullNames.length > 0 ? (
+                <div className="md:col-span-2 space-y-1">
+                  <p className="text-sm font-semibold text-slate-700">Selected subjects:</p>
+                  <ul className="list-disc ps-5 text-sm text-slate-600 space-y-1">
+                    {selectedSubjectFullNames.map((subject) => (
+                      <li key={subject.code}>{subject.fullName}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
 
               {isStudyPartner && (
                 <div className="md:col-span-2 space-y-2">
