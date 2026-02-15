@@ -86,14 +86,21 @@ export const createOrGetConversation = async (req, res) => {
     });
 
     if (!conversation) {
+      const firstOpenedAt = new Date();
+      const maxExpiresAt = addDays(firstOpenedAt, CONVERSATION_MAX_DAYS);
       conversation = await Conversation.create({
         type,
         participants,
         participantsKey,
         postId: type === 'post' ? postId : null,
+        firstOpenedAt,
+        expiresAt: addDays(firstOpenedAt, CONVERSATION_INITIAL_DAYS),
+        maxExpiresAt,
         lastMessageAt: null
       });
     }
+
+    await ensureConversationLifetime(conversation);
 
     res.json({ conversationId: conversation._id });
   } catch (error) {

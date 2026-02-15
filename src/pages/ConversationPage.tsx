@@ -104,7 +104,7 @@ const ConversationPage: React.FC = () => {
 
   useEffect(() => {
     if (countdownRef.current) clearInterval(countdownRef.current);
-    countdownRef.current = setInterval(() => setNow(Date.now()), 60000);
+    countdownRef.current = setInterval(() => setNow(Date.now()), 1000);
     return () => {
       if (countdownRef.current) clearInterval(countdownRef.current);
     };
@@ -131,7 +131,7 @@ const ConversationPage: React.FC = () => {
   };
 
   const handleSend = async () => {
-    if (!conversationId || !body.trim() || sending) return;
+    if (!conversationId || !body.trim() || sending || isExpired) return;
     setSending(true);
     const tempId = `temp-${Date.now()}`;
     const tempMessage: ConversationMessageItem = {
@@ -172,8 +172,13 @@ const ConversationPage: React.FC = () => {
 
   const expiresAtMs = conversation?.expiresAt ? new Date(conversation.expiresAt).getTime() : null;
   const remainingMs = expiresAtMs ? expiresAtMs - now : null;
-  const remainingDays = remainingMs !== null ? Math.max(0, Math.ceil(remainingMs / (24 * 60 * 60 * 1000))) : null;
-  const canExtend = remainingDays !== null && remainingDays <= 2 && remainingDays > 0;
+  const remainingTotalSeconds = remainingMs !== null ? Math.max(0, Math.floor(remainingMs / 1000)) : null;
+  const isExpired = remainingTotalSeconds !== null && remainingTotalSeconds <= 0;
+  const remainingDays = remainingTotalSeconds !== null ? Math.floor(remainingTotalSeconds / (24 * 60 * 60)) : null;
+  const remainingHours = remainingTotalSeconds !== null ? Math.floor((remainingTotalSeconds % (24 * 60 * 60)) / (60 * 60)) : null;
+  const remainingMinutes = remainingTotalSeconds !== null ? Math.floor((remainingTotalSeconds % (60 * 60)) / 60) : null;
+  const remainingSeconds = remainingTotalSeconds !== null ? remainingTotalSeconds % 60 : null;
+  const canExtend = remainingDays !== null && remainingDays <= 2 && remainingDays >= 0 && !isExpired;
 
   const conversationTitle = useMemo(() => {
     if (!conversation) return 'Conversation';
@@ -228,10 +233,14 @@ const ConversationPage: React.FC = () => {
         </button>
       </div>
 
-      {remainingDays !== null ? (
+      {remainingTotalSeconds !== null ? (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-          ⏳ Conversation expires in {remainingDays} days
-          {remainingDays <= 2 ? <div className="mt-1">⚠️ This conversation will be deleted soon.</div> : null}
+          {isExpired ? (
+            <div className="font-semibold">Conversation expired</div>
+          ) : (
+            <div>⏳ Conversation expires in {remainingDays}d {remainingHours}h {remainingMinutes}m {remainingSeconds}s</div>
+          )}
+          {remainingDays !== null && remainingDays <= 2 && !isExpired ? <div className="mt-1">⚠️ This conversation will be deleted soon.</div> : null}
           {canExtend ? (
             <button type="button" className="secondary-btn mt-2" onClick={handleExtend}>Extend 7 days</button>
           ) : null}
@@ -285,12 +294,13 @@ const ConversationPage: React.FC = () => {
           placeholder="Envoyer un message..."
           value={body}
           onChange={(event) => setBody(event.target.value)}
+          disabled={isExpired}
         />
         <button
           type="button"
           className="primary-btn"
           onClick={handleSend}
-          disabled={sending}
+          disabled={sending || isExpired}
         >
           <SendHorizonal size={16} className="me-1" /> Envoyer
         </button>

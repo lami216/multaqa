@@ -5,7 +5,7 @@ import { fetchPosts, type PostPayload, type PostResponse } from '../lib/http';
 import { useAuth } from '../context/AuthContext';
 import PostCard from '../components/PostCard';
 import { PRIORITY_ROLE_OPTIONS } from '../lib/priorities';
-import { getSubjectShortNameByCode } from '../lib/catalog';
+import { getSubjectNameByCode, getSubjectShortNameByCode } from '../lib/catalog';
 
 const toRole = (post: PostResponse): PostPayload['postRole'] | undefined => {
   if (post.postRole) return post.postRole;
@@ -44,6 +44,11 @@ const PostsFeedPage: React.FC = () => {
   }, []);
 
   const subjectOptions = useMemo(() => profile?.subjectCodes?.filter(Boolean) ?? [], [profile?.subjectCodes]);
+
+  const selectedSubjectFullNames = useMemo(
+    () => selectedSubjects.map((subjectCode) => ({ code: subjectCode, fullName: getSubjectNameByCode(subjectCode) || subjectCode })),
+    [selectedSubjects]
+  );
 
   useEffect(() => {
     if (didSetDefaultsRef.current) return;
@@ -181,6 +186,17 @@ const PostsFeedPage: React.FC = () => {
           <Filter className="text-emerald-600" />
         </div>
         <div className="space-y-4">
+          {selectedSubjectFullNames.length > 0 ? (
+            <div className="space-y-1">
+              <p className="text-sm font-semibold text-slate-700">Selected subjects:</p>
+              <ul className="list-disc ps-5 text-sm text-slate-600 space-y-1">
+                {selectedSubjectFullNames.map((subject) => (
+                  <li key={subject.code}>{subject.fullName}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+
           <div className="space-y-2">
             <div>
               <p className="text-sm font-semibold text-slate-700">الدور</p>

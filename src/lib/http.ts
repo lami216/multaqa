@@ -8,6 +8,23 @@ const apiBase = rawBase
     : `${rawBase}/api`
   : '/api';
 
+
+const ACCESS_TOKEN_STORAGE_KEY = 'accessToken';
+
+export const getStoredAccessToken = (): string => {
+  if (typeof window === 'undefined') return '';
+  return window.localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY) ?? '';
+};
+
+export const storeAccessToken = (token?: string | null) => {
+  if (typeof window === 'undefined') return;
+  if (!token) {
+    window.localStorage.removeItem(ACCESS_TOKEN_STORAGE_KEY);
+    return;
+  }
+  window.localStorage.setItem(ACCESS_TOKEN_STORAGE_KEY, token);
+};
+
 export const http = axios.create({
   baseURL: apiBase,
   withCredentials: true
@@ -33,6 +50,11 @@ const logEndpoint = (config: AxiosRequestConfig, suffix = '') => {
 http.interceptors.request.use((config) => {
   const metadata: RequestMetadata = { start: Date.now(), id: Math.random().toString(36).slice(2, 8) };
   (config as RetriableConfig).metadata = metadata;
+  const token = getStoredAccessToken();
+  if (token) {
+    config.headers = config.headers ?? {};
+    config.headers.Authorization = `Bearer ${token}`;
+  }
   logEndpoint(config, ` (id=${metadata.id}, start=${new Date(metadata.start).toISOString()})`);
   return config;
 });
@@ -55,6 +77,10 @@ http.interceptors.response.use(
       config._retry = true;
       await new Promise((resolve) => setTimeout(resolve, 350));
       return http(config);
+    }
+
+    if (status === 401) {
+      storeAccessToken(null);
     }
 
     return Promise.reject(error);
@@ -292,8 +318,14 @@ export const fetchMe = () =>
       Pragma: 'no-cache'
     }
   });
-export const loginRequest = (payload: { email: string; password: string }) => http.post('/auth/login', payload);
-export const signupRequest = (payload: { email: string; password: string; username: string }) => http.post('/auth/register', payload);
+export interface AuthResponse {
+  message: string;
+  accessToken?: string;
+  user: ApiUser;
+}
+
+export const loginRequest = (payload: { email: string; password: string }) => http.post<AuthResponse>('/auth/login', payload);
+export const signupRequest = (payload: { email: string; password: string; username: string }) => http.post<AuthResponse>('/auth/register', payload);
 export const logoutRequest = () => http.post('/auth/logout');
 export const generateTelegramLinkTokenRequest = () => http.post<{ token: string; botUsername: string }>('/telegram/link-token');
 export const fetchPosts = (params?: Record<string, string>) => http.get<{ posts: PostResponse[] }>('/posts', { params });
