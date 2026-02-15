@@ -99,14 +99,14 @@ const PostDetailsPage: React.FC = () => {
         setNotFound(false);
         return;
       }
-      setPost({ ...(data.post as PostResponse), author: data.author });
+setPost({ ...(data.post as PostResponse), userId: (data.post as PostResponse).userId ?? data.author?.id, author: data.author });
       setLoadError('');
       setNotFound(false);
       lastKnownTimestampRef.current = new Date().toISOString();
     } catch (error) {
       if (axios.isAxiosError(error) && error.response?.status === 404) {
         setNotFound(true);
-        setLoadError("Cette annonce n'est plus disponible.");
+setLoadError('Cette annonce a été traitée. La conversation est disponible dans Messages.');
         return;
       }
       setLoadError("Impossible de charger l'annonce.");
@@ -244,7 +244,7 @@ const PostDetailsPage: React.FC = () => {
       setJoinRequests((prev) =>
         prev.map((item) => (item._id === requestId ? data.joinRequest : item))
       );
-      toast.success('Demande acceptée. Vous pouvez commencer à discuter.');
+      toast.success('تمت الموافقة وتم إنشاء المحادثة.');
       navigate(`/messages/${data.conversationId}`);
     } catch (error) {
       reportRequestError('Failed to accept join request', error, 'Impossible de valider la demande.');
@@ -278,9 +278,9 @@ const PostDetailsPage: React.FC = () => {
     setActionError('');
     setActionNotice('');
     try {
-      const { data } = await closePost(id, { closeReason });
-      toast.success('Demande acceptée. Vous pouvez commencer à discuter.');
-      navigate(`/messages/${data.conversationId}`);
+      await closePost(id, { closeReason });
+      toast.success("L'annonce a été clôturée.");
+      navigate('/posts');
     } catch (error) {
       reportRequestError('Failed to close post', error, "Impossible de clôturer l'annonce.");
       setActionError("Impossible de clôturer l'annonce.");
@@ -651,7 +651,7 @@ const PostDetailsPage: React.FC = () => {
               </button>
             )
           ) : null}
-          {isJoined ? (
+          {isJoined && !isAuthor ? (
             <button className="secondary-btn" type="button" onClick={handleContact}>
               <MessageCircle size={16} className="me-1" /> Message {authorUsername}
             </button>

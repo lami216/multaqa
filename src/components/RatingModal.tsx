@@ -6,11 +6,12 @@ import { submitSessionRating } from '../lib/http';
 interface RatingModalProps {
   open: boolean;
   onClose: () => void;
+  onSubmitted?: () => void;
   sessionId: string;
   targetUserId: string;
 }
 
-const RatingModal: React.FC<RatingModalProps> = ({ open, onClose, sessionId, targetUserId }) => {
+const RatingModal: React.FC<RatingModalProps> = ({ open, onClose, onSubmitted, sessionId, targetUserId }) => {
   const [score, setScore] = useState(0);
   const [review, setReview] = useState('');
   const [saving, setSaving] = useState(false);
@@ -20,6 +21,18 @@ const RatingModal: React.FC<RatingModalProps> = ({ open, onClose, sessionId, tar
     setSaving(true);
     try {
       await submitSessionRating(sessionId, { targetUserId, score, review });
+      onSubmitted?.();
+      onClose();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSkip = async () => {
+    setSaving(true);
+    try {
+      await submitSessionRating(sessionId, { targetUserId, score: 0 });
+      onSubmitted?.();
       onClose();
     } finally {
       setSaving(false);
@@ -46,7 +59,7 @@ const RatingModal: React.FC<RatingModalProps> = ({ open, onClose, sessionId, tar
           className="w-full"
         />
         <div className="flex justify-end gap-2">
-          <button type="button" className="secondary-btn" onClick={onClose}>Skip</button>
+          <button type="button" className="secondary-btn" disabled={saving} onClick={handleSkip}>Skip</button>
           <button type="button" className="primary-btn" disabled={!score || saving} onClick={handleSubmit}>Submit</button>
         </div>
       </DialogContent>

@@ -23,10 +23,10 @@ import { buildSubjectInitials } from '../lib/subjectDisplay';
 
 const ProfilePage: React.FC = () => {
   const { user, profile: authProfile, refresh } = useAuth();
-  const { publisherId } = useParams();
+  const { id } = useParams();
   const navigate = useNavigate();
   type ProfileView = Profile & { userId?: string; avgRating?: number; sessionsCount?: number; reviewsCount?: number };
-  const [profile, setProfile] = useState<Profile | null>(authProfile ?? null);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [remainingSelection, setRemainingSelection] = useState<RemainingSubjectItem[]>([]);
   const [hasRemainingFromPrevious, setHasRemainingFromPrevious] = useState<boolean | null>(null);
   const [previousMajorId, setPreviousMajorId] = useState<string>('');
@@ -68,7 +68,7 @@ const ProfilePage: React.FC = () => {
 
   useEffect(() => {
     const load = async () => {
-      const profileEndpoint = publisherId ? `/users/id/${publisherId}` : (user?.username ? `/users/${user.username}` : '');
+      const profileEndpoint = id ? `/users/id/${id}` : (user?.username ? `/users/${user.username}` : '');
       if (!profileEndpoint) return;
       const [{ data }, { data: settingsData }] = await Promise.all([
         http.get<{ user: { id: string; averageRating?: number; totalReviews?: number; sessionsCount?: number }; profile: Profile; posts: unknown }>(profileEndpoint),
@@ -86,11 +86,13 @@ const ProfilePage: React.FC = () => {
     };
 
     void load();
-  }, [publisherId, user?.username]);
+  }, [id, user?.username]);
 
   useEffect(() => {
-    setProfile(authProfile ?? null);
-  }, [authProfile]);
+    if (!id) {
+      setProfile(authProfile ?? null);
+    }
+  }, [authProfile, id]);
 
   const avatarUrl = cacheBustedAvatar(profile?.avatarUrl, profile?.updatedAt);
   const profileView = profile as ProfileView | null;
@@ -236,11 +238,11 @@ const ProfilePage: React.FC = () => {
             <Avatar className="h-20 w-20 rounded-full border-2 border-emerald-100">
               <AvatarImage src={avatarUrl} alt="Avatar" />
               <AvatarFallback className="bg-emerald-50 text-emerald-700 flex items-center justify-center text-3xl font-bold">
-                {user?.username?.[0]?.toUpperCase() ?? <User />}
+                {(profile?.displayName?.[0] ?? user?.username?.[0])?.toUpperCase() ?? <User />}
               </AvatarFallback>
             </Avatar>
             <div className="space-y-1.5">
-              <h1 className="text-2xl font-bold text-slate-900">{profile?.displayName ?? user?.username}</h1>
+              <h1 className="text-2xl font-bold text-slate-900">{profile?.displayName ?? (id ? undefined : user?.username)}</h1>
               <p className="text-slate-600 flex items-center gap-2 text-sm">
                 <GraduationCap size={16} /> {facultyLabel} · {levelLabel} · {majorLabel}
               </p>
@@ -273,9 +275,11 @@ const ProfilePage: React.FC = () => {
                 <MessageCircle size={16} className="me-1" /> Message
               </button>
             ) : null}
-            <button type="button" className="secondary-btn" onClick={() => void handleTelegramLink()} disabled={linkingTelegram}>
-              ربط حسابي بتيليغرام
-            </button>
+            {isOwner ? (
+              <button type="button" className="secondary-btn" onClick={() => void handleTelegramLink()} disabled={linkingTelegram}>
+                ربط حسابي بتيليغرام
+              </button>
+            ) : null}
           </div>
         </div>
 
@@ -319,11 +323,13 @@ const ProfilePage: React.FC = () => {
 
         {activeTab === 'posts' && (
           <div className="space-y-4">
-            <div className="flex flex-wrap gap-2">
-              <Link to="/posts" className="primary-btn">
-                <Notebook size={16} className="me-1" /> Ses posts
-              </Link>
-            </div>
+            {isOwner ? (
+              <div className="flex flex-wrap gap-2">
+                <Link to="/posts" className="primary-btn">
+                  <Notebook size={16} className="me-1" /> Ses posts
+                </Link>
+              </div>
+            ) : null}
 
             <div className="grid sm:grid-cols-2 gap-3">
               <div className="card-surface p-4">
@@ -381,7 +387,7 @@ const ProfilePage: React.FC = () => {
               </div>
             )}
 
-            {shouldAskRemaining && (
+            {isOwner && shouldAskRemaining && (
               <div className="card-surface p-4 space-y-3">
                 <p className="text-sm font-semibold text-slate-800">هل لديك مواد متبقية من المستوى السابق</p>
                 <div className="flex gap-2">

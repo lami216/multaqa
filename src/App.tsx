@@ -118,7 +118,7 @@ const App: React.FC = () => {
                   )}
                 />
                 <Route
-                  path="/profile/:publisherId"
+                  path="/profile/:id"
                   element={(
                     <ProtectedRoute>
                       <Layout>

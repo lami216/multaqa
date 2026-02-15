@@ -1,5 +1,6 @@
 import Session from '../models/Session.js';
 import User from '../models/User.js';
+import Post from '../models/Post.js';
 
 const FORTY_EIGHT_HOURS_MS = 48 * 60 * 60 * 1000;
 
@@ -30,6 +31,42 @@ const updateUserRatingStats = async (targetUserId) => {
   );
 };
 
+const finalizeSessionPost = async (session) => {
+  if (!session?.postId) return;
+  await Post.deleteOne({ _id: session.postId });
+};
+
+const markSessionCompletedByUser = async (session, userId) => {
+  const userIdText = userId.toString();
+  const completedBy = (session.completedBy ?? []).map((entry) => entry.toString());
+  if (!completedBy.includes(userIdText)) {
+    session.completedBy = [...(session.completedBy ?? []), userId];
+  }
+
+  if (session.status !== 'completed') {
+    session.status = 'completed';
+    session.endedAt = new Date();
+  }
+
+  const completedUnique = Array.from(new Set((session.completedBy ?? []).map((entry) => entry.toString())));
+  if (completedUnique.length >= 2) {
+    session.completionDeadlineAt = null;
+    session.autoCloseAt = null;
+  } else if (!session.completionDeadlineAt) {
+    const deadline = new Date(Date.now() + FORTY_EIGHT_HOURS_MS);
+    session.completionDeadlineAt = deadline;
+    session.autoCloseAt = deadline;
+  }
+
+  await session.save();
+
+  if (completedUnique.length >= 2) {
+    await finalizeSessionPost(session);
+  }
+
+  return session;
+};
+
 export const getSessionByConversation = async (req, res) => {
   try {
     const { conversationId } = req.params;
@@ -51,13 +88,20 @@ export const requestSessionEnd = async (req, res) => {
     const session = await Session.findById(id);
     if (!session) return res.status(404).json({ error: 'Session not found' });
     if (!ensureParticipant(session, req.user._id)) return res.status(403).json({ error: 'Not authorized' });
-    if (session.status !== 'in_progress') return res.status(400).json({ error: 'Session is not in progress' });
+    if (session.status !== 'in_progress' && session.status !== 'completed') return res.status(400).json({ error: 'Session is not available' });
 
     const now = new Date();
-    session.status = 'pending_close';
     session.endRequestedBy = req.user._id;
     session.endRequestedAt = now;
-    session.autoCloseAt = new Date(now.getTime() + FORTY_EIGHT_HOURS_MS);
+    if (session.status !== 'completed') {
+      session.status = 'completed';
+      session.endedAt = now;
+    }
+    if (!session.completionDeadlineAt) {
+      const deadline = new Date(now.getTime() + FORTY_EIGHT_HOURS_MS);
+      session.completionDeadlineAt = deadline;
+      session.autoCloseAt = deadline;
+    }
     await session.save();
 
     res.json({ session });
@@ -73,11 +117,8 @@ export const confirmSessionEnd = async (req, res) => {
     const session = await Session.findById(id);
     if (!session) return res.status(404).json({ error: 'Session not found' });
     if (!ensureParticipant(session, req.user._id)) return res.status(403).json({ error: 'Not authorized' });
-    if (session.status !== 'pending_close') return res.status(400).json({ error: 'Session is not pending close' });
 
-    session.status = 'completed';
-    session.endedAt = new Date();
-    await session.save();
+    await markSessionCompletedByUser(session, req.user._id);
     res.json({ session });
   } catch (error) {
     console.error('Confirm session end error:', error);
@@ -89,21 +130,29 @@ export const submitSessionRating = async (req, res) => {
   try {
     const { id } = req.params;
     const { targetUserId, score, review } = req.body;
-    if (!targetUserId || !score) return res.status(400).json({ error: 'targetUserId and score are required' });
 
     const session = await Session.findById(id);
     if (!session) return res.status(404).json({ error: 'Session not found' });
-    if (!ensureParticipant(session, req.user._id) || !ensureParticipant(session, targetUserId)) {
+    if (!ensureParticipant(session, req.user._id)) {
       return res.status(403).json({ error: 'Not authorized' });
     }
 
-    session.rating.set(targetUserId, {
-      score: Number(score),
-      review: typeof review === 'string' ? review.trim() : '',
-      createdAt: new Date()
-    });
-    await session.save();
-    await updateUserRatingStats(targetUserId);
+    const hasScore = Number.isFinite(Number(score)) && Number(score) >= 1;
+    if (hasScore) {
+      if (!targetUserId || !ensureParticipant(session, targetUserId)) {
+        return res.status(403).json({ error: 'Not authorized' });
+      }
+
+      session.rating.set(targetUserId, {
+        score: Number(score),
+        review: typeof review === 'string' ? review.trim() : '',
+        createdAt: new Date()
+      });
+      await session.save();
+      await updateUserRatingStats(targetUserId);
+    }
+
+    await markSessionCompletedByUser(session, req.user._id);
 
     res.json({ session });
   } catch (error) {

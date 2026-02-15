@@ -137,14 +137,16 @@ const ConversationPage: React.FC = () => {
     void loadConversation();
   }, [loadConversation]);
 
-  useEffect(() => {
-    const loadSession = async () => {
-      if (!conversationId) return;
-      const { data } = await fetchSessionByConversation(conversationId);
-      setSessionData(data.session);
-    };
-    void loadSession();
+
+  const reloadSession = useCallback(async () => {
+    if (!conversationId) return;
+    const { data } = await fetchSessionByConversation(conversationId);
+    setSessionData(data.session);
   }, [conversationId]);
+
+  useEffect(() => {
+    void reloadSession();
+  }, [reloadSession]);
 
   useEffect(() => {
     if (conversation?.unreadCount) {
@@ -300,12 +302,12 @@ const ConversationPage: React.FC = () => {
         </div>
       </div>
 
-      {sessionData?.status === 'pending_close' && sessionData.autoCloseAt ? (
+      {sessionData?.status === 'completed' && sessionData.completionDeadlineAt ? (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 flex items-center justify-between">
-          <div>Fin demandée. Clôture automatique dans 48h ({Math.max(0, Math.floor((new Date(sessionData.autoCloseAt).getTime() - now) / 3600000))}h).</div>
-          {sessionData.endRequestedBy !== currentUserId ? (
+          <div>تم إنهاء الجلسة. مهلة تأكيد الطرف الآخر خلال 48 ساعة ({Math.max(0, Math.floor((new Date(sessionData.completionDeadlineAt).getTime() - now) / 3600000))}h).</div>
+          {!(sessionData.completedBy ?? []).includes(currentUserId) ? (
             <div className="flex gap-2">
-              <button type="button" className="secondary-btn" onClick={async () => { if (!sessionData?._id) return; const { data } = await confirmSessionEnd(sessionData._id); setSessionData(data.session); setOpenRating(true); }}>Confirmer</button>
+              <button type="button" className="secondary-btn" onClick={async () => { if (!sessionData?._id) return; const { data } = await confirmSessionEnd(sessionData._id); setSessionData(data.session); }}>Confirmer</button>
             </div>
           ) : null}
         </div>
@@ -386,6 +388,7 @@ const ConversationPage: React.FC = () => {
         <RatingModal
           open={openRating}
           onClose={() => setOpenRating(false)}
+          onSubmitted={() => { void reloadSession(); }}
           sessionId={sessionData._id}
           targetUserId={conversation.otherParticipant.id}
         />
