@@ -7,6 +7,7 @@ import {
   type NotificationItem
 } from '../lib/http';
 import { useNotifications } from '../context/NotificationsContext';
+import { useSmartPolling } from '../hooks/useSmartPolling';
 
 const iconMap: Record<string, typeof MessageCircle> = {
   new_message: MessageCircle,
@@ -25,6 +26,7 @@ const notificationMessageMap: Record<string, string> = {
 };
 
 const getNotificationMessage = (notification: NotificationItem) => {
+  if (typeof notification.payload?.message === 'string') return notification.payload.message;
   return notificationMessageMap[notification.type] ?? 'You have a new notification.';
 };
 
@@ -35,15 +37,17 @@ const NotificationsPage: React.FC = () => {
   const [markingAll, setMarkingAll] = useState(false);
   const { refreshUnreadCount } = useNotifications();
 
-  useEffect(() => {
-    const load = async () => {
-      const { data } = await fetchNotifications();
-      setNotifications(data.notifications);
-      setUnread(data.unread);
-    };
+  const load = async () => {
+    const { data } = await fetchNotifications();
+    setNotifications(data.notifications);
+    setUnread(data.unread);
+  };
 
+  useEffect(() => {
     void load();
   }, []);
+
+  useSmartPolling({ interval: 5000, fetchFn: load, enabled: true });
 
   const unreadIds = useMemo(
     () => new Set(notifications.filter((item) => !item.read).map((item) => item._id)),

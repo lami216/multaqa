@@ -9,7 +9,7 @@ const notificationSchema = new mongoose.Schema({
   type: {
     type: String,
     required: true,
-    enum: ['new_message', 'chat_initiated', 'join_request_received', 'join_request_accepted', 'join_request_rejected']
+    enum: ['new_message', 'chat_initiated', 'join_request_received', 'join_request_accepted', 'join_request_rejected', 'session_end_requested']
   },
   payload: {
     type: mongoose.Schema.Types.Mixed

@@ -7,6 +7,7 @@ const router = express.Router();
 
 router.use(authenticate);
 
+router.get('/id/:userId', userController.getPublicProfileById);
 router.get('/:username', userController.getPublicProfile);
 router.patch('/me', validate(profileUpdateSchema), userController.updateProfile);
 router.post('/avatar', userController.uploadAvatar);
