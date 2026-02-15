@@ -19,7 +19,7 @@ import {
 } from '../lib/http';
 import { useAuth } from '../context/AuthContext';
 import { resolveAuthorId } from '../lib/postUtils';
-import { getCatalogSubjectByCode, getSubjectShortNameByCode } from '../lib/catalog';
+import { getCatalogSubjectByCode, getSubjectFullName, getSubjectShortNameByCode } from '../lib/catalog';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { useSmartPolling } from '../hooks/useSmartPolling';
@@ -354,13 +354,14 @@ const PostDetailsPage: React.FC = () => {
                       key={subjectCode}
                       type="button"
                       className="badge-soft bg-emerald-50 text-emerald-700"
-                      onClick={() => setSelectedSubjectName(subject?.name || subject?.nameFr || subjectCode)}
+                      onClick={() => setSelectedSubjectName(getSubjectFullName(subjectCode) || subjectCode)}
                     >
                       {subject?.shortName || getSubjectShortNameByCode(subjectCode) || 'M'}
                     </button>
                   );
                 })}
               </div>
+              <p className="text-sm text-slate-600">{(post.subjectCodes ?? []).map((subjectCode) => getSubjectFullName(subjectCode) || subjectCode).join(' & ')}</p>
               {post?.availabilityDate && (
                 <p className="text-sm text-slate-500">
                   Disponible jusqu'au {new Date(post?.availabilityDate).toLocaleString()}
@@ -379,17 +380,16 @@ const PostDetailsPage: React.FC = () => {
           )}
         </div>
         <div className="text-sm text-slate-500 space-y-2 sm:min-w-[220px]">
-          <div className="flex items-center justify-between gap-3 flex-nowrap">
-            <div className="min-w-0">
-              <p className="font-semibold text-slate-800">{post?.author?.username ?? 'Auteur'}</p>
-              <p className="text-xs text-slate-500">ID annonce: {id}</p>
-            </div>
+          <div className="flex items-center gap-2">
             <Avatar className="h-9 w-9 shrink-0">
               <AvatarImage src={post.author?.avatarUrl} alt={post.author?.username ?? 'Auteur'} />
               <AvatarFallback className="bg-emerald-50 text-emerald-700 text-sm font-semibold">
                 {(post.author?.username ?? 'A')[0]?.toUpperCase()}
               </AvatarFallback>
             </Avatar>
+            <div className="min-w-0">
+              <p className="font-semibold text-slate-800">{post?.author?.username ?? 'Auteur'}</p>
+            </div>
           </div>
           {post?.status && <p className="badge-soft inline-flex">{post.status}</p>}
         </div>

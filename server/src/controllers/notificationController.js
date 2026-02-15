@@ -12,9 +12,9 @@ export const getNotifications = async (req, res) => {
       .limit(parseInt(limit));
 
     const total = await Notification.countDocuments({ userId: req.user._id });
-    const unread = await Notification.countDocuments({ 
-      userId: req.user._id, 
-      read: false 
+    const unread = await Notification.countDocuments({
+      userId: req.user._id,
+      read: false
     });
 
     res.json({
@@ -39,13 +39,13 @@ export const markAsRead = async (req, res) => {
 
     if (notificationIds && Array.isArray(notificationIds)) {
       await Notification.updateMany(
-        { _id: { $in: notificationIds }, userId: req.user._id },
-        { $set: { read: true } }
+        { _id: { $in: notificationIds }, userId: req.user._id, read: false },
+        { $set: { read: true, readAt: new Date() } }
       );
     } else {
       await Notification.updateMany(
         { userId: req.user._id, read: false },
-        { $set: { read: true } }
+        { $set: { read: true, readAt: new Date() } }
       );
     }
 
@@ -55,6 +55,46 @@ export const markAsRead = async (req, res) => {
   } catch (error) {
     console.error('Mark as read error:', error);
     res.status(500).json({ error: 'Failed to mark notifications as read' });
+  }
+};
+
+export const markNotificationRead = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const notification = await Notification.findOneAndUpdate(
+      { _id: id, userId: req.user._id },
+      { $set: { read: true, readAt: new Date() } },
+      { new: true }
+    );
+
+    if (!notification) {
+      return res.status(404).json({ error: 'Notification not found' });
+    }
+
+    await redis.del(`notifications:unread:${req.user._id}`);
+
+    return res.json({ notification });
+  } catch (error) {
+    console.error('Mark notification read error:', error);
+    return res.status(500).json({ error: 'Failed to mark notification as read' });
+  }
+};
+
+export const markAllNotificationsRead = async (req, res) => {
+  try {
+    const now = new Date();
+    await Notification.updateMany(
+      { userId: req.user._id, read: false },
+      { $set: { read: true, readAt: now } }
+    );
+
+    await redis.del(`notifications:unread:${req.user._id}`);
+
+    return res.json({ ok: true });
+  } catch (error) {
+    console.error('Mark all notifications read error:', error);
+    return res.status(500).json({ error: 'Failed to mark all notifications as read' });
   }
 };
 

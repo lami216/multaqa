@@ -4,6 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   fetchConversationMessages,
   fetchConversations,
+  fetchMessageStatusChanges,
   markConversationRead,
   sendConversationMessage,
   extendConversation,
@@ -27,6 +28,7 @@ const ConversationPage: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [lastKnownTimestamp, setLastKnownTimestamp] = useState<string | undefined>(undefined);
+  const [lastStatusSync, setLastStatusSync] = useState<string | undefined>(undefined);
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [now, setNow] = useState(Date.now());
   const { clearUnreadCount } = useConversations();
@@ -52,6 +54,7 @@ const ConversationPage: React.FC = () => {
       setNextCursor(data.nextCursor);
       const latestMessage = data.messages[data.messages.length - 1];
       setLastKnownTimestamp(latestMessage?.createdAt ?? undefined);
+      setLastStatusSync(new Date().toISOString());
       await markConversationRead(conversationId);
     } catch (fetchError) {
       setError('Impossible de charger la conversation.');
@@ -59,6 +62,21 @@ const ConversationPage: React.FC = () => {
       setLoading(false);
     }
   }, [conversationId]);
+
+
+  const applyStatusChanges = useCallback((changes: Array<{ _id: string; deliveredAt?: string | null; readAt?: string | null }>) => {
+    if (!changes.length) return;
+    const changeMap = new Map(changes.map((item) => [item._id, item]));
+    setMessages((prev) => prev.map((item) => {
+      const change = changeMap.get(item._id);
+      if (!change) return item;
+      return {
+        ...item,
+        deliveredAt: change.deliveredAt ?? item.deliveredAt ?? null,
+        readAt: change.readAt ?? item.readAt ?? null
+      };
+    }));
+  }, []);
 
   const mergeMessages = useCallback((current: ConversationMessageItem[], incoming: ConversationMessageItem[]) => {
     const map = new Map(current.map((item) => [item._id, item]));
@@ -85,6 +103,14 @@ const ConversationPage: React.FC = () => {
       if (newData.nextCursor) {
         setNextCursor(newData.nextCursor);
       }
+
+      const statusSince = lastStatusSync ?? lastKnownTimestamp;
+      const { data: statusData } = await fetchMessageStatusChanges(conversationId, {
+        after: statusSince
+      });
+      applyStatusChanges(statusData.messageStatusChanges ?? []);
+      setLastStatusSync(new Date().toISOString());
+
       const { data: conversationData } = await fetchConversations({ status: 'active', conversationId });
       const activeConversation = conversationData.conversations.find((item) => item._id === conversationId);
       if (activeConversation?.unreadCount) {
@@ -94,7 +120,7 @@ const ConversationPage: React.FC = () => {
     } catch (pollError) {
       // ignore polling errors
     }
-  }, [clearUnreadCount, conversationId, lastKnownTimestamp, mergeMessages]);
+  }, [applyStatusChanges, clearUnreadCount, conversationId, lastKnownTimestamp, lastStatusSync, mergeMessages]);
 
   useEffect(() => {
     void loadConversation();
@@ -164,6 +190,7 @@ const ConversationPage: React.FC = () => {
       setMessages((prev) => prev.map((item) => (item._id === tempId ? data.message : item)));
       setNextCursor(data.message.createdAt);
       setLastKnownTimestamp(data.message.createdAt);
+      setLastStatusSync(new Date().toISOString());
     } catch (sendError) {
       setMessages((prev) => prev.map((item) => (item._id === tempId ? { ...item, text: `${item.text} (échec)` } : item)));
       setError('Envoi échoué. Veuillez réessayer.');
@@ -181,6 +208,7 @@ const ConversationPage: React.FC = () => {
       setMessages((prev) => prev.map((item) => (item._id === message._id ? data.message : item)));
       setNextCursor(data.message.createdAt);
       setLastKnownTimestamp(data.message.createdAt);
+      setLastStatusSync(new Date().toISOString());
     } catch (sendError) {
       setError('Nouvel échec d\'envoi.');
     }

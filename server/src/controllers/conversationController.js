@@ -25,6 +25,13 @@ const CONVERSATION_MAX_DAYS = 30;
 
 const addDays = (date, days) => new Date(date.getTime() + days * 24 * 60 * 60 * 1000);
 
+const serializeMessageStatus = (message) => ({
+  _id: message._id,
+  deliveredAt: message.deliveredAt ?? null,
+  readAt: message.readAt ?? null,
+  updatedAt: message.updatedAt
+});
+
 const ensureConversationLifetime = async (conversation) => {
   if (conversation.firstOpenedAt && conversation.expiresAt && conversation.maxExpiresAt) {
     return conversation;
@@ -332,7 +339,8 @@ export const sendMessage = async (req, res) => {
     const message = await Message.create({
       conversationId: id,
       senderId: req.user._id,
-      text
+      text,
+      deliveredAt: new Date()
     });
 
     conversation.lastMessageAt = new Date();
@@ -390,10 +398,29 @@ export const getMessages = async (req, res) => {
     );
 
     const nextCursor = messages.length ? messages[messages.length - 1].createdAt : null;
+    const { statusAfter } = req.query;
+    let messageStatusChanges = [];
+
+    if (statusAfter) {
+      const afterDate = new Date(statusAfter);
+      if (!Number.isNaN(afterDate.getTime())) {
+        messageStatusChanges = await Message.find({
+          conversationId: id,
+          $or: [
+            { deliveredAt: { $gt: afterDate } },
+            { readAt: { $gt: afterDate } },
+            { updatedAt: { $gt: afterDate } }
+          ]
+        })
+          .select('_id deliveredAt readAt updatedAt')
+          .sort({ updatedAt: 1 });
+      }
+    }
 
     res.json({
       messages,
-      nextCursor
+      nextCursor,
+      messageStatusChanges: messageStatusChanges.map(serializeMessageStatus)
     });
   } catch (error) {
     console.error('Get messages error:', error);
@@ -425,6 +452,48 @@ export const markRead = async (req, res) => {
   } catch (error) {
     console.error('Mark read error:', error);
     res.status(500).json({ error: 'Failed to mark messages as read' });
+  }
+};
+
+
+export const getMessageStatusChanges = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { after } = req.query;
+
+    const conversation = await Conversation.findById(id);
+    if (!conversation) {
+      return res.status(404).json({ error: 'Conversation not found' });
+    }
+
+    if (!ensureParticipant(conversation, req.user._id)) {
+      return res.status(403).json({ error: 'Not authorized to view this conversation' });
+    }
+
+    const query = { conversationId: id };
+    if (after) {
+      const afterDate = new Date(after);
+      if (Number.isNaN(afterDate.getTime())) {
+        return res.status(400).json({ error: 'Invalid cursor' });
+      }
+      query.$or = [
+        { deliveredAt: { $gt: afterDate } },
+        { readAt: { $gt: afterDate } },
+        { updatedAt: { $gt: afterDate } }
+      ];
+    }
+
+    const messageStatusChanges = await Message.find(query)
+      .select('_id deliveredAt readAt updatedAt')
+      .sort({ updatedAt: 1 })
+      .limit(200);
+
+    return res.json({
+      messageStatusChanges: messageStatusChanges.map(serializeMessageStatus)
+    });
+  } catch (error) {
+    console.error('Get message status changes error:', error);
+    return res.status(500).json({ error: 'Failed to fetch message status changes' });
   }
 };
 

@@ -238,6 +238,7 @@ export interface NotificationItem {
   type: string;
   payload?: Record<string, unknown>;
   read: boolean;
+  readAt?: string | null;
   createdAt: string;
 }
 
@@ -348,11 +349,17 @@ export const deletePost = (postId: string) => http.delete<{ message: string }>(`
 export const fetchConversations = (params?: { status?: 'active' | 'archived'; after?: string; conversationId?: string }) =>
   http.get<{ conversations: ConversationSummary[] }>('/conversations', { params });
 export const fetchConversationMessages = (conversationId: string, params?: { after?: string; limit?: number }) =>
-  http.get<{ messages: ConversationMessageItem[]; nextCursor: string | null }>(
+  http.get<{ messages: ConversationMessageItem[]; nextCursor: string | null; messageStatusChanges?: Array<{ _id: string; deliveredAt?: string | null; readAt?: string | null; updatedAt?: string }> }>(
     `/conversations/${conversationId}/messages`,
     { params }
   );
 export const markConversationRead = (conversationId: string) => http.post(`/conversations/${conversationId}/read`);
+
+export const fetchMessageStatusChanges = (conversationId: string, params?: { after?: string }) =>
+  http.get<{ messageStatusChanges: Array<{ _id: string; deliveredAt?: string | null; readAt?: string | null; updatedAt?: string }> }>(
+    `/conversations/${conversationId}/message-status-changes`,
+    { params }
+  );
 export const sendConversationMessage = (conversationId: string, text: string) =>
   http.post<{ message: ConversationMessageItem }>(`/conversations/${conversationId}/messages`, { text });
 export const archiveConversation = (conversationId: string) =>
@@ -370,6 +377,10 @@ export const extendConversation = (conversationId: string) =>
 export const fetchNotifications = () => http.get<{ notifications: NotificationItem[]; unread: number }>('/notifications');
 export const fetchUnreadNotificationsCount = (params?: { after?: string }) =>
   http.get<{ unread: number }>('/notifications/unread-count', { params });
+export const markNotificationRead = (id: string) =>
+  http.patch<{ notification: NotificationItem }>(`/notifications/${id}/read`);
+export const markAllNotificationsRead = () =>
+  http.patch<{ ok: boolean }>('/notifications/read-all');
 export const fetchFaculties = () => http.get<{ faculties: FacultyItem[] }>('/faculties');
 export const fetchMajors = (params?: Record<string, string>) => http.get<{ majors: MajorItem[] }>('/majors', { params });
 export const fetchSubjects = (params?: Record<string, string>) => http.get<{ subjects: SubjectItem[] }>('/subjects', { params });
