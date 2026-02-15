@@ -32,6 +32,29 @@ const roleLabels: Record<string, string> = {
   archive: 'حل الأرشيف',
 };
 
+const areJoinRequestsEqual = (prev: JoinRequestItem[], next: JoinRequestItem[]) => {
+  if (prev.length !== next.length) return false;
+  return prev.every((item, index) => {
+    const nextItem = next[index];
+    const prevRequesterId = typeof item.requesterId === 'string' ? item.requesterId : item.requesterId._id;
+    const nextRequesterId = typeof nextItem.requesterId === 'string' ? nextItem.requesterId : nextItem.requesterId._id;
+    return item._id === nextItem._id && item.status === nextItem.status && prevRequesterId === nextRequesterId;
+  });
+};
+
+const areConversationsEqual = (prev: ConversationSummary[], next: ConversationSummary[]) => {
+  if (prev.length !== next.length) return false;
+  return prev.every((item, index) => {
+    const nextItem = next[index];
+    return (
+      item._id === nextItem._id
+      && item.unreadCount === nextItem.unreadCount
+      && item.otherParticipant?.username === nextItem.otherParticipant?.username
+      && item.lastMessage?.text === nextItem.lastMessage?.text
+    );
+  });
+};
+
 const PostDetailsPage: React.FC = () => {
   const { id } = useParams();
   const { currentUserId } = useAuth();
@@ -44,8 +67,8 @@ const PostDetailsPage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [closeReason, setCloseReason] = useState('');
   const [joinRequests, setJoinRequests] = useState<JoinRequestItem[]>([]);
-  const [loadingRequests, setLoadingRequests] = useState(false);
   const [postConversations, setPostConversations] = useState<ConversationSummary[]>([]);
+  const [hasLoadedRequestsSection, setHasLoadedRequestsSection] = useState(false);
   const [joinRequestStatus, setJoinRequestStatus] = useState<'none' | 'pending' | 'accepted' | 'rejected'>('none');
   const [selectedSubjectName, setSelectedSubjectName] = useState('');
   const lastKnownTimestampRef = useRef<string | undefined>(undefined);
@@ -106,18 +129,19 @@ const PostDetailsPage: React.FC = () => {
 
   const loadRequestsAndMessages = useCallback(async () => {
     if (!id || !isAuthor) return;
-    setLoadingRequests(true);
     try {
       const [{ data: joinData }, { data: conversationsData }] = await Promise.all([
         fetchJoinRequests(id, { after: lastKnownTimestampRef.current }),
         fetchConversations({ status: 'active', conversationId: id, after: lastKnownTimestampRef.current })
       ]);
-      setJoinRequests(joinData.joinRequests);
-      setPostConversations(
-        conversationsData.conversations.filter(
-          (conversation) => conversation.type === 'post' && conversation.postId === id
-        )
+      const nextJoinRequests = joinData.joinRequests;
+      const nextConversations = conversationsData.conversations.filter(
+        (conversation) => conversation.type === 'post' && conversation.postId === id
       );
+
+      setJoinRequests((prev) => (areJoinRequestsEqual(prev, nextJoinRequests) ? prev : nextJoinRequests));
+      setPostConversations((prev) => (areConversationsEqual(prev, nextConversations) ? prev : nextConversations));
+      setHasLoadedRequestsSection(true);
       lastKnownTimestampRef.current = new Date().toISOString();
     } catch (error) {
       reportRequestError(
@@ -125,10 +149,7 @@ const PostDetailsPage: React.FC = () => {
         error,
         'Impossible de charger les demandes ou messages.'
       );
-      setJoinRequests([]);
-      setPostConversations([]);
-    } finally {
-      setLoadingRequests(false);
+      setHasLoadedRequestsSection(true);
     }
   }, [id, isAuthor]);
 
@@ -323,11 +344,11 @@ const PostDetailsPage: React.FC = () => {
   }
 
   if (!post) {
-    return <div className="card-surface p-5">Chargement des détails...</div>;
+    return <div className="card-surface p-5" />;
   }
 
   return (
-    <div className="card-surface p-5 space-y-4">
+    <div className="card-surface p-5 space-y-3">
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-2">
           <div className="flex flex-wrap items-center gap-2">
@@ -343,7 +364,6 @@ const PostDetailsPage: React.FC = () => {
               </span>
             ) : null}
           </div>
-          <h1 className="text-2xl font-bold text-slate-900">{post.title}</h1>
           {isStudyPartner ? (
             <div className="space-y-2">
               <div className="flex flex-wrap gap-2">
@@ -486,9 +506,7 @@ const PostDetailsPage: React.FC = () => {
                 <h3 className="font-semibold text-slate-900">Demandes de participation</h3>
                 <span className="badge-soft">{joinRequests.length}</span>
               </div>
-              {loadingRequests ? (
-                <p className="text-sm text-slate-500">Chargement...</p>
-              ) : joinRequests.length ? (
+              {joinRequests.length ? (
                 <div className="space-y-2">
                   {joinRequests.map((request) => (
                     <div key={request._id} className="card-surface p-3 space-y-2">
@@ -539,18 +557,16 @@ const PostDetailsPage: React.FC = () => {
                     </div>
                   ))}
                 </div>
-              ) : (
+              ) : hasLoadedRequestsSection ? (
                 <p className="text-sm text-slate-500">Aucune demande pour le moment.</p>
-              )}
+              ) : null}
             </div>
             <div className="card-surface p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold text-slate-900">Messages liés au post</h3>
                 <span className="badge-soft">{postConversations.length}</span>
               </div>
-              {loadingRequests ? (
-                <p className="text-sm text-slate-500">Chargement...</p>
-              ) : postConversations.length ? (
+              {postConversations.length ? (
                 <div className="space-y-2">
                   {postConversations.map((conversation) => (
                     <Link
@@ -574,9 +590,9 @@ const PostDetailsPage: React.FC = () => {
                     </Link>
                   ))}
                 </div>
-              ) : (
+              ) : hasLoadedRequestsSection ? (
                 <p className="text-sm text-slate-500">Aucune conversation liée pour le moment.</p>
-              )}
+              ) : null}
             </div>
           </div>
         ) : (
