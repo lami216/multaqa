@@ -4,7 +4,8 @@ import { CheckCircle2, PenSquare } from 'lucide-react';
 import { createPost, type PostPayload, type StudyTeamRoleKey } from '../lib/http';
 import { useAuth } from '../context/AuthContext';
 import { PRIORITY_ROLE_OPTIONS } from '../lib/priorities';
-import { getSubjectNameByCode, getSubjectShortNameByCode } from '../lib/catalog';
+import { getSubjectNameByCode } from '../lib/catalog';
+import SubjectChipsSelector from '../components/subjects/SubjectChipsSelector';
 
 const requestTypes: { value: PostPayload['category']; label: string }[] = [
   { value: 'study_partner', label: 'Study partner' },
@@ -228,41 +229,15 @@ const CreatePostPage: React.FC = () => {
               <div className="md:col-span-2 space-y-2">
                 <label className="text-sm font-semibold text-slate-700">Matières (1-2)</label>
                 <p className="helper-text">Sélectionnez les matières déjà présentes dans votre profil.</p>
-                {subjectsLimitWarning && (
-                  <p className="text-xs text-red-700 bg-red-50 border border-red-100 rounded-md px-2 py-1">{subjectsLimitWarning}</p>
-                )}
-                <div
-                  className={`flex flex-wrap gap-2 rounded-lg border p-2 transition ${subjectsLimitHighlight ? 'border-red-300 bg-red-50/70' : 'border-transparent'}`}
-                >
-                  {subjectOptions.map((subject) => {
-                    const selected = selectedSubjects.includes(subject);
-                    const subjectLabel = getSubjectShortNameByCode(subject);
-                    return (
-                      <button
-                        type="button"
-                        key={subject}
-                        onClick={() => toggleSubject(subject)}
-                        className={`rounded-full border px-3 py-1 text-sm transition ${
-                          selected ? 'border-emerald-400 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-white text-slate-600'
-                        }`}
-                      >
-                        {subjectLabel || 'M'}
-                      </button>
-                    );
-                  })}
-                </div>
+                <SubjectChipsSelector
+                  options={subjectOptions}
+                  selectedCodes={selectedSubjects}
+                  selectedSubjects={selectedSubjectFullNames}
+                  warning={subjectsLimitWarning}
+                  highlight={subjectsLimitHighlight}
+                  onToggle={toggleSubject}
+                />
               </div>
-
-              {selectedSubjectFullNames.length > 0 ? (
-                <div className="md:col-span-2 space-y-1">
-                  <p className="text-sm font-semibold text-slate-700">Selected subjects:</p>
-                  <ul className="list-disc ps-5 text-sm text-slate-600 space-y-1">
-                    {selectedSubjectFullNames.map((subject) => (
-                      <li key={subject.code}>{subject.fullName}</li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
 
               {isStudyPartner && (
                 <div className="md:col-span-2 space-y-2">

@@ -12,6 +12,7 @@ import {
 } from '../lib/http';
 import { useAuth } from '../context/AuthContext';
 import { useConversations } from '../context/ConversationsContext';
+import { useSmartPolling } from '../hooks/useSmartPolling';
 
 const ConversationPage: React.FC = () => {
   const { conversationId } = useParams();
@@ -25,6 +26,7 @@ const ConversationPage: React.FC = () => {
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [lastKnownTimestamp, setLastKnownTimestamp] = useState<string | undefined>(undefined);
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [now, setNow] = useState(Date.now());
   const { clearUnreadCount } = useConversations();
@@ -48,6 +50,8 @@ const ConversationPage: React.FC = () => {
       const { data } = await fetchConversationMessages(conversationId);
       setMessages(data.messages);
       setNextCursor(data.nextCursor);
+      const latestMessage = data.messages[data.messages.length - 1];
+      setLastKnownTimestamp(latestMessage?.createdAt ?? undefined);
       await markConversationRead(conversationId);
     } catch (fetchError) {
       setError('Impossible de charger la conversation.');
@@ -71,22 +75,26 @@ const ConversationPage: React.FC = () => {
     if (!conversationId) return;
     try {
       const { data: newData } = await fetchConversationMessages(conversationId, {
-        after: nextCursor ?? undefined
+        after: lastKnownTimestamp
       });
       if (newData.messages.length) {
         setMessages((prev) => mergeMessages(prev, newData.messages));
+        const latestMessage = newData.messages[newData.messages.length - 1];
+        setLastKnownTimestamp(latestMessage?.createdAt ?? lastKnownTimestamp);
+      }
+      if (newData.nextCursor) {
         setNextCursor(newData.nextCursor);
       }
-      const { data: latestData } = await fetchConversationMessages(conversationId, { limit: 30 });
-      if (latestData.messages.length) {
-        setMessages((prev) => mergeMessages(prev, latestData.messages));
-        setNextCursor(latestData.nextCursor);
+      const { data: conversationData } = await fetchConversations({ status: 'active', conversationId });
+      const activeConversation = conversationData.conversations.find((item) => item._id === conversationId);
+      if (activeConversation?.unreadCount) {
+        clearUnreadCount(activeConversation.unreadCount);
       }
       await markConversationRead(conversationId);
     } catch (pollError) {
       // ignore polling errors
     }
-  }, [conversationId, mergeMessages, nextCursor]);
+  }, [clearUnreadCount, conversationId, lastKnownTimestamp, mergeMessages]);
 
   useEffect(() => {
     void loadConversation();
@@ -101,6 +109,12 @@ const ConversationPage: React.FC = () => {
   useEffect(() => {
     void fetchInitialMessages();
   }, [fetchInitialMessages]);
+
+  useSmartPolling({
+    interval: 1500,
+    fetchFn: pollMessages,
+    enabled: Boolean(conversationId)
+  });
 
   useEffect(() => {
     if (countdownRef.current) clearInterval(countdownRef.current);
@@ -149,6 +163,7 @@ const ConversationPage: React.FC = () => {
       const { data } = await sendConversationMessage(conversationId, tempMessage.text);
       setMessages((prev) => prev.map((item) => (item._id === tempId ? data.message : item)));
       setNextCursor(data.message.createdAt);
+      setLastKnownTimestamp(data.message.createdAt);
     } catch (sendError) {
       setMessages((prev) => prev.map((item) => (item._id === tempId ? { ...item, text: `${item.text} (échec)` } : item)));
       setError('Envoi échoué. Veuillez réessayer.');
@@ -165,6 +180,7 @@ const ConversationPage: React.FC = () => {
       const { data } = await sendConversationMessage(conversationId, retryText);
       setMessages((prev) => prev.map((item) => (item._id === message._id ? data.message : item)));
       setNextCursor(data.message.createdAt);
+      setLastKnownTimestamp(data.message.createdAt);
     } catch (sendError) {
       setError('Nouvel échec d\'envoi.');
     }

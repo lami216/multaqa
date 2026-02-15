@@ -3,10 +3,12 @@ import { Bell, Home, MessageCircle, Shield, User } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useConversations } from '../../context/ConversationsContext';
+import { useNotifications } from '../../context/NotificationsContext';
 
 const BottomNav: React.FC = () => {
   const { user } = useAuth();
   const { unreadCount } = useConversations();
+  const { unreadCount: unreadNotifications } = useNotifications();
   const items = [
     { to: '/', label: 'Accueil', icon: Home },
     { to: '/notifications', label: 'Notifications', icon: Bell },
@@ -20,7 +22,7 @@ const BottomNav: React.FC = () => {
       <div className="flex justify-around items-center py-2">
         {items.map((item) => {
           const Icon = item.icon;
-          const unreadBadge = item.to === '/messages' ? unreadCount : 0;
+          const unreadBadge = item.to === '/messages' ? unreadCount : item.to === '/notifications' ? unreadNotifications : 0;
           return (
             <NavLink
               key={item.to}

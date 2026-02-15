@@ -3,12 +3,14 @@ import { Link, useLocation } from 'react-router-dom';
 import { Languages, Menu, X } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
+import { useNotifications } from '../../context/NotificationsContext';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 
 const Header: React.FC = () => {
   const location = useLocation();
   const { language, setLanguage } = useLanguage();
   const { user, profile, logout } = useAuth();
+  const { unreadCount: unreadNotifications } = useNotifications();
   const [open, setOpen] = React.useState(false);
 
   const navLinks = [
@@ -52,7 +54,12 @@ const Header: React.FC = () => {
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
               }`}
             >
-              {link.label}
+              <span className="relative inline-flex items-center">
+                {link.label}
+                {link.path === '/notifications' && unreadNotifications > 0 && (
+                  <span className="ms-1 rounded-full bg-rose-500 px-1.5 text-[10px] text-white">{unreadNotifications}</span>
+                )}
+              </span>
             </Link>
           ))}
         </div>
@@ -145,7 +152,12 @@ const Header: React.FC = () => {
                       : 'border-slate-100 bg-slate-50 text-slate-700'
                   }`}
                 >
-                  {link.label}
+                  <span className="relative inline-flex items-center">
+                    {link.label}
+                    {link.path === '/notifications' && unreadNotifications > 0 && (
+                      <span className="ms-1 rounded-full bg-rose-500 px-1.5 text-[10px] text-white">{unreadNotifications}</span>
+                    )}
+                  </span>
                 </Link>
               ))}
             </div>

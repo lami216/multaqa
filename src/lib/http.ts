@@ -331,11 +331,13 @@ export const generateTelegramLinkTokenRequest = () => http.post<{ token: string;
 export const fetchPosts = (params?: Record<string, string>) => http.get<{ posts: PostResponse[] }>('/posts', { params });
 export const createPost = (payload: PostPayload) => http.post('/posts', payload);
 export const updatePost = (id: string, payload: Partial<PostPayload>) => http.patch(`/posts/${id}`, payload);
-export const fetchPost = (id: string) => http.get<{ post: PostResponse; author: { username: string; profile?: Profile } }>(`/posts/${id}`);
+export const fetchPost = (id: string, params?: { after?: string }) =>
+  http.get<{ post: PostResponse; author: { username: string; profile?: Profile } }>(`/posts/${id}`, { params });
 export const createConversation = (payload: { type: 'post' | 'direct'; postId?: string; otherUserId: string }) =>
   http.post<{ conversationId: string }>('/conversations', payload);
 export const requestJoinPost = (postId: string) => http.post<{ joinRequest: JoinRequestItem }>(`/posts/${postId}/join`);
-export const fetchJoinRequests = (postId: string) => http.get<{ joinRequests: JoinRequestItem[] }>(`/posts/${postId}/join-requests`);
+export const fetchJoinRequests = (postId: string, params?: { after?: string }) =>
+  http.get<{ joinRequests: JoinRequestItem[] }>(`/posts/${postId}/join-requests`, { params });
 export const acceptJoinRequest = (postId: string, requestId: string) =>
   http.post<{ joinRequest: JoinRequestItem; post: PostResponse; conversation?: { _id: string } }>(`/posts/${postId}/join-requests/${requestId}/accept`);
 export const rejectJoinRequest = (postId: string, requestId: string) =>
@@ -343,7 +345,7 @@ export const rejectJoinRequest = (postId: string, requestId: string) =>
 export const closePost = (postId: string, payload: { closeReason?: string }) =>
   http.post<{ message: string; post: PostResponse }>(`/posts/${postId}/close`, payload);
 export const deletePost = (postId: string) => http.delete<{ message: string }>(`/posts/${postId}`);
-export const fetchConversations = (params?: { status?: 'active' | 'archived' }) =>
+export const fetchConversations = (params?: { status?: 'active' | 'archived'; after?: string; conversationId?: string }) =>
   http.get<{ conversations: ConversationSummary[] }>('/conversations', { params });
 export const fetchConversationMessages = (conversationId: string, params?: { after?: string; limit?: number }) =>
   http.get<{ messages: ConversationMessageItem[]; nextCursor: string | null }>(
@@ -366,6 +368,8 @@ export const deleteConversationForMe = (conversationId: string) =>
 export const extendConversation = (conversationId: string) =>
   http.post<{ conversation: ConversationSummary }>(`/conversations/${conversationId}/extend`);
 export const fetchNotifications = () => http.get<{ notifications: NotificationItem[]; unread: number }>('/notifications');
+export const fetchUnreadNotificationsCount = (params?: { after?: string }) =>
+  http.get<{ unread: number }>('/notifications/unread-count', { params });
 export const fetchFaculties = () => http.get<{ faculties: FacultyItem[] }>('/faculties');
 export const fetchMajors = (params?: Record<string, string>) => http.get<{ majors: MajorItem[] }>('/majors', { params });
 export const fetchSubjects = (params?: Record<string, string>) => http.get<{ subjects: SubjectItem[] }>('/subjects', { params });

@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { LanguageProvider } from './context/LanguageContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ConversationsProvider } from './context/ConversationsContext';
+import { NotificationsProvider } from './context/NotificationsContext';
 import Layout from './components/common/Layout';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import ProfileEditGuard from './components/common/ProfileEditGuard';
@@ -33,7 +34,8 @@ const App: React.FC = () => {
       <AuthProvider>
         <LanguageProvider>
           <ConversationsProvider>
-            <div className="flex flex-col min-h-screen bg-slate-50">
+            <NotificationsProvider>
+              <div className="flex flex-col min-h-screen bg-slate-50">
               <Routes>
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/signup" element={<SignupPage />} />
@@ -153,7 +155,8 @@ const App: React.FC = () => {
                 />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
-            </div>
+              </div>
+            </NotificationsProvider>
           </ConversationsProvider>
         </LanguageProvider>
       </AuthProvider>

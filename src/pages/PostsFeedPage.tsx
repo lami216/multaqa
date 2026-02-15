@@ -5,7 +5,8 @@ import { fetchPosts, type PostPayload, type PostResponse } from '../lib/http';
 import { useAuth } from '../context/AuthContext';
 import PostCard from '../components/PostCard';
 import { PRIORITY_ROLE_OPTIONS } from '../lib/priorities';
-import { getSubjectNameByCode, getSubjectShortNameByCode } from '../lib/catalog';
+import { getSubjectNameByCode } from '../lib/catalog';
+import SubjectChipsSelector from '../components/subjects/SubjectChipsSelector';
 
 const toRole = (post: PostResponse): PostPayload['postRole'] | undefined => {
   if (post.postRole) return post.postRole;
@@ -186,16 +187,19 @@ const PostsFeedPage: React.FC = () => {
           <Filter className="text-emerald-600" />
         </div>
         <div className="space-y-4">
-          {selectedSubjectFullNames.length > 0 ? (
-            <div className="space-y-1">
-              <p className="text-sm font-semibold text-slate-700">Selected subjects:</p>
-              <ul className="list-disc ps-5 text-sm text-slate-600 space-y-1">
-                {selectedSubjectFullNames.map((subject) => (
-                  <li key={subject.code}>{subject.fullName}</li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
+          <div className="space-y-2">
+            <label className="text-sm font-semibold text-slate-700">Vos matières (max 2)</label>
+            <p className="helper-text">Sélectionnez des matières présentes dans votre profil.</p>
+            <SubjectChipsSelector
+              options={subjectOptions}
+              selectedCodes={selectedSubjects}
+              selectedSubjects={selectedSubjectFullNames}
+              warning={subjectsLimitWarning}
+              highlight={subjectsLimitHighlight}
+              emptyMessage="Ajoutez des matières dans votre profil pour affiner les résultats."
+              onToggle={toggleSubject}
+            />
+          </div>
 
           <div className="space-y-2">
             <div>
@@ -223,40 +227,6 @@ const PostsFeedPage: React.FC = () => {
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
-            <div>
-              <label className="text-sm font-semibold text-slate-700">Vos matières (max 2)</label>
-              <p className="helper-text">Sélectionnez des matières présentes dans votre profil.</p>
-              {subjectsLimitWarning && (
-                <p className="text-xs text-red-700 bg-red-50 border border-red-100 rounded-md px-2 py-1 mt-2">{subjectsLimitWarning}</p>
-              )}
-              <div
-                className={`flex flex-wrap gap-2 mt-2 rounded-lg border p-2 transition ${subjectsLimitHighlight ? 'border-red-300 bg-red-50/70' : 'border-transparent'}`}
-              >
-                {subjectOptions.length === 0 ? (
-                  <span className="text-xs text-rose-600">
-                    Ajoutez des matières dans votre profil pour affiner les résultats.
-                  </span>
-                ) : (
-                  subjectOptions.map((subject) => {
-                    const subjectLabel = getSubjectShortNameByCode(subject);
-                    return (
-                    <button
-                      key={subject}
-                      type="button"
-                      onClick={() => toggleSubject(subject)}
-                      className={`rounded-full border px-3 py-1 text-sm transition ${
-                        selectedSubjects.includes(subject)
-                          ? 'border-emerald-400 bg-emerald-50 text-emerald-700'
-                          : 'border-slate-200 bg-white text-slate-600'
-                      }`}
-                    >
-                      {subjectLabel || 'M'}
-                    </button>
-                  );
-                  })
-                )}
-              </div>
-            </div>
             <div>
               <label className="text-sm font-semibold text-slate-700">Catégorie</label>
               <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full mt-1">
