@@ -9,7 +9,7 @@ const notificationSchema = new mongoose.Schema({
   type: {
     type: String,
     required: true,
-    enum: ['new_message', 'chat_initiated', 'join_request_received', 'join_request_rejected']
+    enum: ['new_message', 'chat_initiated', 'join_request_received', 'join_request_accepted', 'join_request_rejected']
   },
   payload: {
     type: mongoose.Schema.Types.Mixed
@@ -17,6 +17,10 @@ const notificationSchema = new mongoose.Schema({
   read: {
     type: Boolean,
     default: false
+  },
+  readAt: {
+    type: Date,
+    default: null
   }
 }, {
   timestamps: true

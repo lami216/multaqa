@@ -14,6 +14,7 @@ router.patch('/:id/unpin', authenticate, conversationController.unpinConversatio
 router.patch('/:id/delete-for-me', authenticate, conversationController.deleteConversationForMe);
 router.post('/:id/messages', authenticate, conversationController.sendMessage);
 router.get('/:id/messages', authenticate, conversationController.getMessages);
+router.get('/:id/message-status-changes', authenticate, conversationController.getMessageStatusChanges);
 router.post('/:id/read', authenticate, conversationController.markRead);
 router.post('/:id/extend', authenticate, conversationController.extendConversation);
 

@@ -3,7 +3,7 @@ import { Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { PostResponse } from '../lib/http';
 import { resolveAuthorId } from '../lib/postUtils';
-import { getCatalogSubjectByCode, getSubjectShortNameByCode } from '../lib/catalog';
+import { getCatalogSubjectByCode, getSubjectFullName, getSubjectShortNameByCode } from '../lib/catalog';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 
@@ -62,7 +62,7 @@ const PostCard: React.FC<PostCardProps> = ({
                       key={subjectCode}
                       type="button"
                       className="badge-soft bg-emerald-50 text-emerald-700"
-                      onClick={() => setSelectedSubjectName(subject?.name || subject?.nameFr || subjectCode)}
+                      onClick={() => setSelectedSubjectName(getSubjectFullName(subjectCode) || subjectCode)}
                     >
                       {subject?.shortName || getSubjectShortNameByCode(subjectCode) || 'M'}
                     </button>
@@ -70,6 +70,7 @@ const PostCard: React.FC<PostCardProps> = ({
                 })}
                 <span className="badge-soft bg-slate-100 text-slate-700">Rôle {roleLabel}</span>
               </div>
+              <p className="text-sm text-slate-600">{(post.subjectCodes ?? []).map((subjectCode) => getSubjectFullName(subjectCode) || subjectCode).join(' & ')}</p>
               {post.availabilityDate ? (
                 <p className="text-xs text-slate-500">Available until {new Date(post.availabilityDate).toLocaleDateString()}</p>
               ) : null}
@@ -107,17 +108,19 @@ const PostCard: React.FC<PostCardProps> = ({
           )}
         </div>
         <div className="flex items-start gap-3 text-sm text-slate-500 sm:min-w-[200px] sm:justify-end">
-          <Avatar className="h-10 w-10 shrink-0">
-            <AvatarImage src={post.author?.avatarUrl} alt={post.author?.username ?? 'Auteur'} />
-            <AvatarFallback className="bg-emerald-50 text-emerald-700 text-sm font-semibold">
-              {(post.author?.username ?? 'A')[0]?.toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
-          <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Avatar className="h-10 w-10 shrink-0">
+              <AvatarImage src={post.author?.avatarUrl} alt={post.author?.username ?? 'Auteur'} />
+              <AvatarFallback className="bg-emerald-50 text-emerald-700 text-sm font-semibold">
+                {(post.author?.username ?? 'A')[0]?.toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
             <div>
               <p className="font-semibold text-slate-800">{post.author?.username ?? 'Auteur'}</p>
               <p>{new Date(post.createdAt).toLocaleDateString()}</p>
             </div>
+          </div>
+          <div className="space-y-2">
             {typeof post.matchPercent === 'number' ? (
               <span className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-3 py-1 text-base font-semibold text-white shadow-sm">
                 Match <span className="text-lg font-bold">{post.matchPercent}%</span>

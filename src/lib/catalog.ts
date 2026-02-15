@@ -118,6 +118,8 @@ export const getSubjectNameByCode = (code?: string): string => {
   return subject.nameFr || subject.nameAr || subject.name;
 };
 
+export const getSubjectFullName = (code?: string): string => getSubjectNameByCode(code);
+
 
 const matchesTermParity = (semesterId: string, academicTermType: AcademicTermType): boolean => {
   const semesterNumber = Number.parseInt((semesterId || '').replace(/\D/g, ''), 10);
