@@ -22,6 +22,7 @@ import {
   unpinConversation
 } from '../lib/http';
 import { useConversations } from '../context/ConversationsContext';
+import { useSmartPolling } from '../hooks/useSmartPolling';
 import { useAuth } from '../context/AuthContext';
 import {
   AlertDialog,
@@ -34,7 +35,6 @@ import {
   AlertDialogTitle
 } from '../components/ui/alert-dialog';
 
-const POLL_INTERVAL = 20000;
 const LONG_PRESS_DURATION = 450;
 const LONG_PRESS_MOVE_THRESHOLD = 10;
 
@@ -278,6 +278,7 @@ const MessagesPage: React.FC = () => {
   const { currentUserId } = useAuth();
   const tab = searchParams.get('tab') === 'archived' ? 'archived' : 'active';
   const isArchivedTab = tab === 'archived';
+  const lastKnownTimestampRef = useRef<string | undefined>(undefined);
 
   const isConversationPinned = useCallback(
     (conversation: ConversationSummary) =>
@@ -310,12 +311,16 @@ const MessagesPage: React.FC = () => {
     async (showLoading = false) => {
       if (showLoading) setLoading(true);
       try {
-        const { data } = await fetchConversations({ status: isArchivedTab ? 'archived' : 'active' });
+        const { data } = await fetchConversations({
+          status: isArchivedTab ? 'archived' : 'active',
+          after: lastKnownTimestampRef.current
+        });
         const sortedConversations = sortConversations(data.conversations);
         setConversations(sortedConversations);
         if (!isArchivedTab) {
           syncUnreadCounts(data.conversations);
         }
+        lastKnownTimestampRef.current = new Date().toISOString();
       } finally {
         if (showLoading) setLoading(false);
       }
@@ -327,12 +332,11 @@ const MessagesPage: React.FC = () => {
     void handleLoad(true);
   }, [handleLoad]);
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      void handleLoad();
-    }, POLL_INTERVAL);
-    return () => clearInterval(interval);
-  }, [handleLoad]);
+  useSmartPolling({
+    interval: 1500,
+    fetchFn: handleLoad,
+    enabled: true
+  });
 
   useEffect(() => {
     clearSelection();

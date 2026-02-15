@@ -1,5 +1,5 @@
 import axios from 'axios';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Calendar, Globe, Lock, MessageCircle, Trash2, Users } from 'lucide-react';
 import { toast } from 'sonner';
@@ -22,6 +22,7 @@ import { resolveAuthorId } from '../lib/postUtils';
 import { getCatalogSubjectByCode, getSubjectShortNameByCode } from '../lib/catalog';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
+import { useSmartPolling } from '../hooks/useSmartPolling';
 
 const roleLabels: Record<string, string> = {
   need_help: 'محتاج مساعدة',
@@ -47,6 +48,7 @@ const PostDetailsPage: React.FC = () => {
   const [postConversations, setPostConversations] = useState<ConversationSummary[]>([]);
   const [joinRequestStatus, setJoinRequestStatus] = useState<'none' | 'pending' | 'accepted' | 'rejected'>('none');
   const [selectedSubjectName, setSelectedSubjectName] = useState('');
+  const lastKnownTimestampRef = useRef<string | undefined>(undefined);
   const authorId = useMemo(() => resolveAuthorId(post), [post]);
   const isAuthor = useMemo(() => (authorId ? authorId === currentUserId : false), [authorId, currentUserId]);
 
@@ -62,82 +64,95 @@ const PostDetailsPage: React.FC = () => {
     toast.error(toastMessage);
   };
 
-  useEffect(() => {
+  const loadPostDetails = useCallback(async () => {
     if (!id) return;
 
-    const load = async () => {
-      try {
-        const response = await fetchPost(id);
-        const { data, status } = response;
-        if (!data || typeof data !== 'object' || !('post' in data)) {
-          console.error('[PostDetailsPage] Unexpected post payload', { status, payload: data });
-          setLoadError("Impossible de charger l'annonce.");
-          setNotFound(false);
-          return;
-        }
-        setPost({ ...(data.post as PostResponse), author: data.author });
-        setLoadError('');
-        setNotFound(false);
-      } catch (error) {
-        if (axios.isAxiosError(error) && error.response?.status === 404) {
-          setNotFound(true);
-          setLoadError('');
-          reportRequestError(
-            'Failed to load post (404)',
-            error,
-            "L'annonce demandée est introuvable."
-          );
-          return;
-        }
+    try {
+      const response = await fetchPost(id, { after: lastKnownTimestampRef.current });
+      const { data, status } = response;
+      if (!data || typeof data !== 'object' || !('post' in data)) {
+        console.error('[PostDetailsPage] Unexpected post payload', { status, payload: data });
         setLoadError("Impossible de charger l'annonce.");
-        reportRequestError(
-          'Failed to load post',
-          error,
-          "Impossible de charger l'annonce. Réessayez."
-        );
+        setNotFound(false);
+        return;
       }
-    };
-
-    void load();
+      setPost({ ...(data.post as PostResponse), author: data.author });
+      setLoadError('');
+      setNotFound(false);
+      lastKnownTimestampRef.current = new Date().toISOString();
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
+        setNotFound(true);
+        setLoadError('');
+        reportRequestError(
+          'Failed to load post (404)',
+          error,
+          "L'annonce demandée est introuvable."
+        );
+        return;
+      }
+      setLoadError("Impossible de charger l'annonce.");
+      reportRequestError(
+        'Failed to load post',
+        error,
+        "Impossible de charger l'annonce. Réessayez."
+      );
+    }
   }, [id]);
 
   useEffect(() => {
+    void loadPostDetails();
+  }, [loadPostDetails]);
+
+  const loadRequestsAndMessages = useCallback(async () => {
     if (!id || !isAuthor) return;
-
-    const loadRequestsAndMessages = async () => {
-      setLoadingRequests(true);
-      try {
-        const [{ data: joinData }, { data: conversationsData }] = await Promise.all([
-          fetchJoinRequests(id),
-          fetchConversations({ status: 'active' })
-        ]);
-        setJoinRequests(joinData.joinRequests);
-        setPostConversations(
-          conversationsData.conversations.filter(
-            (conversation) => conversation.type === 'post' && conversation.postId === id
-          )
-        );
-      } catch (error) {
-        reportRequestError(
-          'Failed to load join requests or conversations',
-          error,
-          'Impossible de charger les demandes ou messages.'
-        );
-        setJoinRequests([]);
-        setPostConversations([]);
-      } finally {
-        setLoadingRequests(false);
-      }
-    };
-
-    void loadRequestsAndMessages();
+    setLoadingRequests(true);
+    try {
+      const [{ data: joinData }, { data: conversationsData }] = await Promise.all([
+        fetchJoinRequests(id, { after: lastKnownTimestampRef.current }),
+        fetchConversations({ status: 'active', conversationId: id, after: lastKnownTimestampRef.current })
+      ]);
+      setJoinRequests(joinData.joinRequests);
+      setPostConversations(
+        conversationsData.conversations.filter(
+          (conversation) => conversation.type === 'post' && conversation.postId === id
+        )
+      );
+      lastKnownTimestampRef.current = new Date().toISOString();
+    } catch (error) {
+      reportRequestError(
+        'Failed to load join requests or conversations',
+        error,
+        'Impossible de charger les demandes ou messages.'
+      );
+      setJoinRequests([]);
+      setPostConversations([]);
+    } finally {
+      setLoadingRequests(false);
+    }
   }, [id, isAuthor]);
+
+  useEffect(() => {
+    void loadRequestsAndMessages();
+  }, [loadRequestsAndMessages]);
 
   useEffect(() => {
     if (!isAuthor) return;
     const pendingCount = joinRequests.filter((request) => request.status === 'pending').length;
     setPost((prev) => (prev ? { ...prev, pendingJoinRequestsCount: pendingCount } : prev));
   }, [joinRequests, isAuthor]);
+
+
+  const runPostDetailPolling = useCallback(async () => {
+    await loadPostDetails();
+    await loadRequestsAndMessages();
+  }, [loadPostDetails, loadRequestsAndMessages]);
+
+  useSmartPolling({
+    interval: 2000,
+    fetchFn: runPostDetailPolling,
+    enabled: Boolean(id)
+  });
 
   const isStudyPartner = post?.category === 'study_partner';
   const isStudyTeam = post?.category === 'project_team';
