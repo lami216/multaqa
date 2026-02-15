@@ -301,6 +301,7 @@ export const getPosts = async (req, res) => {
           intentBoost,
           pendingJoinRequestsCount,
           unreadPostMessagesCount,
+          userId: post.authorId._id,
           author: {
             id: post.authorId._id,
             username: post.authorId.username,
@@ -352,7 +353,8 @@ export const getPost = async (req, res) => {
 
     const isAuthor = post.authorId._id.toString() === req.user._id.toString();
     const isAdmin = req.user.role === 'admin';
-    if (!isAuthor && !isAdmin && post.status !== 'active') {
+    const isAcceptedUser = Array.isArray(post.acceptedUserIds) && post.acceptedUserIds.some((entry) => entry.toString() === req.user._id.toString());
+    if (!isAuthor && !isAdmin && !isAcceptedUser && post.status !== 'active') {
       return res.status(404).json({ error: 'Post not found' });
     }
 
@@ -412,6 +414,7 @@ export const getPost = async (req, res) => {
     res.json({
       post: {
         ...post.toObject(),
+        userId: post.authorId._id,
         matchingPercent,
         pendingJoinRequestsCount,
         unreadPostMessagesCount,
@@ -930,6 +933,7 @@ export const acceptJoinRequest = async (req, res) => {
           role: resolvePostRole(post) ?? ''
         },
         conversationId: conversation._id,
+        postId: post._id,
         status: 'in_progress',
         startedAt: now
       }], { session: dbSession }).then((docs) => docs[0]);
@@ -939,6 +943,10 @@ export const acceptJoinRequest = async (req, res) => {
         { $set: { status: 'rejected' } },
         { session: dbSession }
       );
+
+      post.status = 'matched';
+      post.acceptedUserIds = [joinRequest.requesterId];
+      await post.save({ session: dbSession });
 
       await Notification.create([{
         userId: joinRequest.requesterId,
@@ -952,7 +960,6 @@ export const acceptJoinRequest = async (req, res) => {
         }
       }], { session: dbSession });
 
-      await Post.deleteOne({ _id: post._id }, { session: dbSession });
       await JoinRequest.deleteMany({ postId: post._id, status: 'accepted', _id: { $ne: joinRequest._id } }, { session: dbSession });
 
       responsePayload = {

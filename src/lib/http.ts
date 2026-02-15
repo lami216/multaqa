@@ -162,6 +162,7 @@ export interface PostPayload {
 
 export interface PostResponse extends PostPayload {
   _id: string;
+  userId?: string | { _id: string };
   authorId: string | { _id: string; username?: string };
   status: 'active' | 'matched' | 'expired' | 'closed';
   availabilityDate?: string;
@@ -241,12 +242,14 @@ export interface SessionItem {
   _id: string;
   participants: string[];
   conversationId: string;
-  status: 'in_progress' | 'pending_close' | 'completed';
+  status: 'in_progress' | 'completed';
   startedAt: string;
   endedAt?: string | null;
   endRequestedBy?: string | null;
   endRequestedAt?: string | null;
   autoCloseAt?: string | null;
+  completionDeadlineAt?: string | null;
+  completedBy?: string[];
   rating?: Record<string, { score: number; review?: string; createdAt?: string }>;
 }
 
@@ -350,7 +353,7 @@ export const fetchPosts = (params?: Record<string, string>) => http.get<{ posts:
 export const createPost = (payload: PostPayload) => http.post('/posts', payload);
 export const updatePost = (id: string, payload: Partial<PostPayload>) => http.patch(`/posts/${id}`, payload);
 export const fetchPost = (id: string, params?: { after?: string }) =>
-  http.get<{ post: PostResponse; author: { username: string; profile?: Profile } }>(`/posts/${id}`, { params });
+  http.get<{ post: PostResponse; author: { id?: string; username: string; profile?: Profile } }>(`/posts/${id}`, { params });
 export const createConversation = (payload: { type: 'post' | 'direct'; postId?: string; otherUserId: string }) =>
   http.post<{ conversationId: string }>('/conversations', payload);
 export const requestJoinPost = (postId: string) => http.post<{ joinRequest: JoinRequestItem }>(`/posts/${postId}/join`);

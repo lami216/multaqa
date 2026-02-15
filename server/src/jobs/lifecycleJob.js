@@ -17,36 +17,34 @@ const cleanupExpiredConversations = async () => {
 
 const autoClosePendingSessions = async () => {
   const now = new Date();
-  await Session.updateMany(
-    { status: 'pending_close', autoCloseAt: { $lte: now } },
-    { $set: { status: 'completed', endedAt: now } }
-  );
+  const dueSessions = await Session.find({
+    status: 'completed',
+    completionDeadlineAt: { $lte: now }
+  });
+
+  for (const session of dueSessions) {
+    session.completionDeadlineAt = null;
+    session.autoCloseAt = null;
+    await session.save();
+    if (session.postId) {
+      await Post.deleteOne({ _id: session.postId });
+    }
+  }
 };
 
 const processPostAvailability = async () => {
   const now = new Date();
-  const duePosts = await Post.find({ status: { $in: ['active', 'matched'] }, availabilityDate: { $lte: now } });
+  const duePosts = await Post.find({ status: 'active', availabilityDate: { $lte: now } });
 
   for (const post of duePosts) {
-    const acceptedCount = post.acceptedUserIds?.length ?? 0;
-    const matched = post.status === 'matched' || acceptedCount > 0;
-
     if (post.category === 'project_team') {
       await JoinRequest.deleteMany({ postId: post._id });
       await Post.deleteOne({ _id: post._id });
       continue;
     }
 
-    if (!matched) {
-      await JoinRequest.deleteMany({ postId: post._id });
-      await Post.deleteOne({ _id: post._id });
-      continue;
-    }
-
-    post.status = 'closed';
-    post.closedAt = now;
-    post.closeReason = post.closeReason || 'availability_date_reached';
-    await post.save();
+    await JoinRequest.deleteMany({ postId: post._id });
+    await Post.deleteOne({ _id: post._id });
   }
 };
 

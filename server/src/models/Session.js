@@ -11,6 +11,7 @@ const sessionSchema = new mongoose.Schema({
   participants: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }],
   postSnapshot: { type: postSnapshotSchema, required: true },
   conversationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Conversation', required: true },
+  postId: { type: mongoose.Schema.Types.ObjectId, ref: 'Post', default: null },
   status: {
     type: String,
     enum: ['in_progress', 'pending_close', 'completed'],
@@ -21,6 +22,8 @@ const sessionSchema = new mongoose.Schema({
   endRequestedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   endRequestedAt: { type: Date, default: null },
   autoCloseAt: { type: Date, default: null },
+  completionDeadlineAt: { type: Date, default: null },
+  completedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   rating: {
     type: Map,
     of: new mongoose.Schema({
