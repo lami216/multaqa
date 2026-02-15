@@ -42,16 +42,18 @@ const PostCard: React.FC<PostCardProps> = ({
           {post.pendingJoinRequestsCount}
         </span>
       ) : null}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-1">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-2">
           <div className="flex flex-wrap gap-2 items-center text-xs font-semibold text-emerald-700">
             <span className="badge-soft">{categoryLabel(post.category)}</span>
             {post.level ? <span className="badge-soft bg-blue-50 text-blue-700">{post.level}</span> : null}
             {post.languagePref ? <span className="badge-soft bg-emerald-50 text-emerald-700">{post.languagePref}</span> : null}
           </div>
-          <Link to={`/posts/${post._id}`} className="text-xl font-semibold text-slate-900 hover:text-emerald-700">
-            {post.title}
-          </Link>
+          {post.category !== 'study_partner' ? (
+            <Link to={`/posts/${post._id}`} className="text-xl font-semibold text-slate-900 hover:text-emerald-700">
+              {post.title}
+            </Link>
+          ) : null}
           {post.category === 'study_partner' ? (
             <div className="space-y-2">
               <div className="flex flex-wrap gap-2">
