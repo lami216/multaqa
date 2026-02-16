@@ -8,6 +8,7 @@ import Event from '../models/Event.js';
 import Notification from '../models/Notification.js';
 import Subject from '../models/Subject.js';
 import Session from '../models/Session.js';
+import { deleteNotificationsByConversationId, deleteNotificationsByJoinRequestId, deleteNotificationsByPostId, initializeSessionLifecycle } from '../services/lifecycleService.js';
 import mongoose from 'mongoose';
 import redis from '../config/redis.js';
 import { maskContactInfo } from '../utils/contentMasking.js';
@@ -737,8 +738,12 @@ export const deletePost = async (req, res) => {
     if (conversationIds.length) {
       await Message.deleteMany({ conversationId: { $in: conversationIds } });
       await Conversation.deleteMany({ _id: { $in: conversationIds } });
+      await Promise.all(conversationIds.map((conversationId) => deleteNotificationsByConversationId(conversationId)));
     }
 
+    await JoinRequest.deleteMany({ postId: id });
+    await Session.deleteMany({ postId: id });
+    await deleteNotificationsByPostId(id);
     await Post.findByIdAndDelete(id);
 
     await recordEvent({
@@ -897,8 +902,8 @@ export const acceptJoinRequest = async (req, res) => {
         throw new Error('REQUEST_ALREADY_PROCESSED');
       }
 
-      joinRequest.status = 'accepted';
-      await joinRequest.save({ session: dbSession });
+      const acceptedJoinRequest = { ...joinRequest.toObject(), status: 'accepted' };
+      await JoinRequest.deleteOne({ _id: joinRequest._id }, { session: dbSession });
 
       const participants = [post.authorId, joinRequest.requesterId]
         .sort((a, b) => a.toString().localeCompare(b.toString()));
@@ -937,10 +942,11 @@ export const acceptJoinRequest = async (req, res) => {
         status: 'in_progress',
         startedAt: now
       }], { session: dbSession }).then((docs) => docs[0]);
+      initializeSessionLifecycle(lifecycleSession, now);
+      await lifecycleSession.save({ session: dbSession });
 
-      await JoinRequest.updateMany(
-        { postId: post._id, _id: { $ne: joinRequest._id }, status: 'pending' },
-        { $set: { status: 'rejected' } },
+      await JoinRequest.deleteMany(
+        { postId: post._id, _id: { $ne: joinRequest._id } },
         { session: dbSession }
       );
 
@@ -960,10 +966,10 @@ export const acceptJoinRequest = async (req, res) => {
         }
       }], { session: dbSession });
 
-      await JoinRequest.deleteMany({ postId: post._id, status: 'accepted', _id: { $ne: joinRequest._id } }, { session: dbSession });
+      await deleteNotificationsByJoinRequestId(requestId, dbSession);
 
       responsePayload = {
-        joinRequest,
+        joinRequest: acceptedJoinRequest,
         conversationId: conversation._id,
         sessionId: lifecycleSession._id
       };
@@ -1018,9 +1024,8 @@ export const rejectJoinRequest = async (req, res) => {
       return res.status(400).json({ error: 'Join request already rejected.' });
     }
 
-    joinRequest.status = 'rejected';
-    await joinRequest.save();
-    await joinRequest.populate('requesterId', 'username');
+    await JoinRequest.deleteOne({ _id: joinRequest._id });
+    await deleteNotificationsByJoinRequestId(joinRequest._id);
 
     await Notification.create({
       userId: joinRequest.requesterId,
