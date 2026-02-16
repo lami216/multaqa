@@ -926,7 +926,7 @@ export const acceptJoinRequest = async (req, res) => {
         }], { session: dbSession }).then((docs) => docs[0]);
       }
 
-      const subjects = await Subject.find({ _id: { $in: post.subjectCodes ?? [] } }).session(dbSession);
+      const subjects = await Subject.find({ code: { $in: post.subjectCodes ?? [] } }).session(dbSession);
       const subjectNames = subjects.map((item) => item.nameFr || item.nameAr || item._id.toString());
 
       const now = new Date();
