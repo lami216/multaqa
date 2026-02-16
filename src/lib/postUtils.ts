@@ -1,6 +1,9 @@
 import type { PostResponse } from './http';
 
-type AuthorCandidate = Pick<PostResponse, 'authorId'> & { userId?: string | { _id?: string } };
+type AuthorCandidate = Pick<PostResponse, 'authorId'> & {
+  userId?: string | { _id?: string };
+  author?: { id?: string; _id?: string };
+};
 
 export const resolveAuthorId = (post?: AuthorCandidate | null) => {
   if (post?.userId) {
@@ -9,6 +12,10 @@ export const resolveAuthorId = (post?: AuthorCandidate | null) => {
       return String(post.userId._id ?? '');
     }
   }
+
+  if (post?.author?.id) return post.author.id;
+  if (post?.author?._id) return post.author._id;
+
   if (!post?.authorId) return '';
   if (typeof post.authorId === 'string') return post.authorId;
   if (post.authorId && typeof post.authorId === 'object' && '_id' in post.authorId) {

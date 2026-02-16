@@ -22,11 +22,11 @@ import { PRIORITY_ROLE_LABELS } from '../lib/priorities';
 import { buildSubjectInitials } from '../lib/subjectDisplay';
 
 const ProfilePage: React.FC = () => {
-  const { user, profile: authProfile, refresh } = useAuth();
+  const { user, profile: authProfile, refresh, currentUserId } = useAuth();
   const { id } = useParams();
   const navigate = useNavigate();
   type ProfileView = Profile & { userId?: string; avgRating?: number; sessionsCount?: number; reviewsCount?: number };
-  const [profile, setProfile] = useState<Profile | null>(null);
+  const [profile, setProfile] = useState<ProfileView | null>(null);
   const [remainingSelection, setRemainingSelection] = useState<RemainingSubjectItem[]>([]);
   const [hasRemainingFromPrevious, setHasRemainingFromPrevious] = useState<boolean | null>(null);
   const [previousMajorId, setPreviousMajorId] = useState<string>('');
@@ -68,10 +68,15 @@ const ProfilePage: React.FC = () => {
 
   useEffect(() => {
     const load = async () => {
-      const profileEndpoint = id ? `/users/id/${id}` : (user?.username ? `/users/${user.username}` : '');
+      const profileEndpoint = id ? `/users/id/${id}` : (currentUserId ? `/users/id/${currentUserId}` : '');
       if (!profileEndpoint) return;
       const [{ data }, { data: settingsData }] = await Promise.all([
-        http.get<{ user: { id: string; averageRating?: number; totalReviews?: number; sessionsCount?: number }; profile: Profile; posts: unknown }>(profileEndpoint),
+        http.get<{ user: { id: string; averageRating?: number; totalReviews?: number; sessionsCount?: number }; profile: Profile; posts: unknown }>(profileEndpoint, {
+          headers: {
+            'Cache-Control': 'no-cache',
+            Pragma: 'no-cache'
+          }
+        }),
         fetchAcademicSettings()
       ]);
       const merged = {
@@ -80,23 +85,29 @@ const ProfilePage: React.FC = () => {
         avgRating: data.user?.averageRating ?? 0,
         reviewsCount: data.user?.totalReviews ?? 0,
         sessionsCount: data.user?.sessionsCount ?? 0
-      } as Profile;
+      } as ProfileView;
       setProfile(merged);
       setAcademicSettings(settingsData);
     };
 
     void load();
-  }, [id, user?.username]);
+  }, [id, currentUserId]);
 
   useEffect(() => {
-    if (!id) {
-      setProfile(authProfile ?? null);
+    if (!id && authProfile) {
+      setProfile((prev) => ({
+        ...authProfile,
+        userId: currentUserId,
+        avgRating: prev?.avgRating ?? user?.averageRating ?? 0,
+        reviewsCount: prev?.reviewsCount ?? user?.totalReviews ?? 0,
+        sessionsCount: prev?.sessionsCount ?? user?.sessionsCount ?? 0
+      }));
     }
-  }, [authProfile, id]);
+  }, [authProfile, id, currentUserId, user?.averageRating, user?.totalReviews, user?.sessionsCount]);
 
   const avatarUrl = cacheBustedAvatar(profile?.avatarUrl, profile?.updatedAt);
   const profileView = profile as ProfileView | null;
-  const isOwner = Boolean(user?._id && profileView?.userId && user._id === profileView.userId);
+  const isOwner = Boolean(currentUserId && profileView?.userId && currentUserId === profileView.userId);
   const matchByIdOrName = <T extends { id: string; nameFr: string; nameAr: string }>(
     items: T[],
     value?: string
@@ -267,7 +278,7 @@ const ProfilePage: React.FC = () => {
                 type="button"
                 className="secondary-btn"
                 onClick={async () => {
-                  if (profileView.userId === user?._id) return;
+                  if (profileView.userId === currentUserId) return;
                   const { data } = await http.post<{ conversationId: string }>('/conversations', { type: 'direct', otherUserId: profileView.userId });
                   navigate(`/messages/${data.conversationId}`);
                 }}
