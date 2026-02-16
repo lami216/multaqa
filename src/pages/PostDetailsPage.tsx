@@ -6,11 +6,11 @@ import { toast } from 'sonner';
 import {
   acceptJoinRequest,
   closePost,
-  createConversation,
   deletePost,
   fetchConversations,
   fetchJoinRequests,
   fetchPost,
+  fetchSessionByConversation,
   rejectJoinRequest,
   requestJoinPost,
   type ConversationSummary,
@@ -68,6 +68,8 @@ const PostDetailsPage: React.FC = () => {
   const [closeReason, setCloseReason] = useState('');
   const [joinRequests, setJoinRequests] = useState<JoinRequestItem[]>([]);
   const [postConversations, setPostConversations] = useState<ConversationSummary[]>([]);
+  const [relatedConversation, setRelatedConversation] = useState<ConversationSummary | null>(null);
+  const [sessionParticipants, setSessionParticipants] = useState<string[]>([]);
   const [hasLoadedRequestsSection, setHasLoadedRequestsSection] = useState(false);
   const [joinRequestStatus, setJoinRequestStatus] = useState<'none' | 'pending' | 'accepted' | 'rejected'>('none');
   const [selectedSubjectName, setSelectedSubjectName] = useState('');
@@ -106,7 +108,7 @@ setPost({ ...(data.post as PostResponse), userId: (data.post as PostResponse).us
     } catch (error) {
       if (axios.isAxiosError(error) && error.response?.status === 404) {
         setNotFound(true);
-setLoadError('Cette annonce a été traitée. La conversation est disponible dans Messages.');
+        setLoadError("Cette annonce n'est plus disponible.");
         return;
       }
       setLoadError("Impossible de charger l'annonce.");
@@ -123,16 +125,41 @@ setLoadError('Cette annonce a été traitée. La conversation est disponible dan
   }, [loadPostDetails]);
 
   const loadRequestsAndMessages = useCallback(async () => {
-    if (!id || !isAuthor) return;
+    if (!id) return;
     try {
-      const [{ data: joinData }, { data: conversationsData }] = await Promise.all([
-        fetchJoinRequests(id, { after: lastKnownTimestampRef.current }),
-        fetchConversations({ status: 'active', conversationId: id, after: lastKnownTimestampRef.current })
+      const [activeConversationsResponse, archivedConversationsResponse, joinRequestsResponse] = await Promise.all([
+        fetchConversations({ status: 'active', after: lastKnownTimestampRef.current }),
+        fetchConversations({ status: 'archived', after: lastKnownTimestampRef.current }),
+        isAuthor ? fetchJoinRequests(id, { after: lastKnownTimestampRef.current }) : Promise.resolve(null)
       ]);
-      const nextJoinRequests = joinData.joinRequests;
-      const nextConversations = conversationsData.conversations.filter(
+      const mergedConversations = [
+        ...activeConversationsResponse.data.conversations,
+        ...archivedConversationsResponse.data.conversations
+      ];
+      const nextConversations = mergedConversations.filter(
         (conversation) => conversation.type === 'post' && conversation.postId === id
       );
+
+      const nextJoinRequests = joinRequestsResponse?.data.joinRequests ?? [];
+
+      const acceptedUserId = post?.acceptedUserIds?.[0] ? String(post.acceptedUserIds[0]) : null;
+      const preferredConversation = acceptedUserId
+        ? nextConversations.find((conversation) => conversation.participants.some((participant) => String(participant) === acceptedUserId))
+        : nextConversations[0];
+
+      setRelatedConversation(preferredConversation ?? null);
+
+      if (preferredConversation?._id) {
+        try {
+          const { data: sessionResponse } = await fetchSessionByConversation(preferredConversation._id);
+          const participants = (sessionResponse.session?.participants ?? []).map((participant) => String(participant));
+          setSessionParticipants(participants);
+        } catch (sessionError) {
+          setSessionParticipants([]);
+        }
+      } else {
+        setSessionParticipants([]);
+      }
 
       setJoinRequests((prev) => (areJoinRequestsEqual(prev, nextJoinRequests) ? prev : nextJoinRequests));
       setPostConversations((prev) => (areConversationsEqual(prev, nextConversations) ? prev : nextConversations));
@@ -146,7 +173,7 @@ setLoadError('Cette annonce a été traitée. La conversation est disponible dan
       );
       setHasLoadedRequestsSection(true);
     }
-  }, [id, isAuthor]);
+  }, [id, isAuthor, post?.acceptedUserIds]);
 
   useEffect(() => {
     void loadRequestsAndMessages();
@@ -173,6 +200,9 @@ setLoadError('Cette annonce a été traitée. La conversation est disponible dan
   const isStudyPartner = post?.category === 'study_partner';
   const isStudyTeam = post?.category === 'project_team';
   const authorUsername = post?.author?.username ?? 'Utilisateur';
+  const isSessionParticipant = Boolean(
+    currentUserId && sessionParticipants.some((participantId) => participantId === currentUserId)
+  );
   const isJoined = Boolean(
     joinRequestStatus === 'accepted' ||
       (currentUserId && post?.acceptedUserIds?.some((acceptedId) => String(acceptedId) === currentUserId))
@@ -185,26 +215,6 @@ setLoadError('Cette annonce a été traitée. La conversation est disponible dan
     }
     setJoinRequestStatus(post?.myJoinRequestStatus ?? 'none');
   }, [currentUserId, post]);
-
-  const handleContact = async () => {
-    if (!post || !authorId) return;
-    try {
-      const { data } = await createConversation({ type: 'post', postId: post._id, otherUserId: authorId });
-      navigate(`/messages/${data.conversationId}`);
-    } catch (error) {
-      reportRequestError('Failed to create post conversation', error, 'Impossible de contacter cet utilisateur.');
-    }
-  };
-
-  const handleMessageRequester = async (requesterId: string) => {
-    if (!post) return;
-    try {
-      const { data } = await createConversation({ type: 'post', postId: post._id, otherUserId: requesterId });
-      navigate(`/messages/${data.conversationId}`);
-    } catch (error) {
-      reportRequestError('Failed to create post conversation', error, 'Impossible de contacter cet utilisateur.');
-    }
-  };
 
   const handleJoinRequest = async () => {
     if (!id) return;
@@ -309,11 +319,7 @@ setLoadError('Cette annonce a été traitée. La conversation est disponible dan
     return (
       <div className="card-surface p-5 space-y-3">
         <h1 className="section-title">Information</h1>
-        <p className="helper-text">{loadError || "Cette annonce n'est plus disponible. Ouvrez vos messages pour continuer la session."}</p>
-        <div className="flex gap-2">
-          <Link to="/messages" className="primary-btn w-fit">Messages</Link>
-          <Link to="/posts" className="secondary-btn w-fit">Retour aux posts</Link>
-        </div>
+        <p className="helper-text">{loadError || "Cette annonce n'est plus disponible."}</p>
       </div>
     );
   }
@@ -530,21 +536,7 @@ setLoadError('Cette annonce a été traitée. La conversation est disponible dan
                           </button>
                         </div>
                       ) : request.status === 'accepted' ? (
-                        <button
-                          className="secondary-btn"
-                          type="button"
-                          disabled={saving}
-                          onClick={() =>
-                            handleMessageRequester(
-                              typeof request.requesterId === 'string'
-                                ? request.requesterId
-                                : request.requesterId._id
-                            )
-                          }
-                        >
-                          <MessageCircle size={16} className="me-1" />
-                          Message {typeof request.requesterId === 'string' ? request.requesterId : request.requesterId.username}
-                        </button>
+                        <p className="text-sm text-slate-600">Session active: ouvrez la conversation depuis la section Messages liés.</p>
                       ) : null}
                     </div>
                   ))}
@@ -651,10 +643,13 @@ setLoadError('Cette annonce a été traitée. La conversation est disponible dan
               </button>
             )
           ) : null}
-          {isJoined && !isAuthor ? (
-            <button className="secondary-btn" type="button" onClick={handleContact}>
+          {isJoined && !isAuthor && relatedConversation?._id && isSessionParticipant ? (
+            <Link className="secondary-btn" to={`/messages/${relatedConversation._id}`}>
               <MessageCircle size={16} className="me-1" /> Message {authorUsername}
-            </button>
+            </Link>
+          ) : null}
+          {!isAuthor && post.status === 'matched' && !isSessionParticipant ? (
+            <p className="text-sm text-slate-600 w-full">Ce post est fermé.</p>
           ) : null}
           <Link to="/posts" className="secondary-btn">Retour au fil</Link>
           {actionError && <p className="text-sm text-rose-600 w-full">{actionError}</p>}

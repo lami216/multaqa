@@ -242,7 +242,7 @@ export interface SessionItem {
   _id: string;
   participants: string[];
   conversationId: string;
-  status: 'in_progress' | 'completed';
+  status: 'in_progress' | 'pending_close' | 'completed';
   startedAt: string;
   endedAt?: string | null;
   endRequestedBy?: string | null;

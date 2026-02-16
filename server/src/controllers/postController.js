@@ -898,12 +898,13 @@ export const acceptJoinRequest = async (req, res) => {
         throw new Error('REQUEST_NOT_FOUND');
       }
 
+      if (post.status !== 'active') {
+        throw new Error('POST_NOT_ACTIVE');
+      }
+
       if (joinRequest.status !== 'pending') {
         throw new Error('REQUEST_ALREADY_PROCESSED');
       }
-
-      const acceptedJoinRequest = { ...joinRequest.toObject(), status: 'accepted' };
-      await JoinRequest.deleteOne({ _id: joinRequest._id }, { session: dbSession });
 
       const participants = [post.authorId, joinRequest.requesterId]
         .sort((a, b) => a.toString().localeCompare(b.toString()));
@@ -945,14 +946,17 @@ export const acceptJoinRequest = async (req, res) => {
       initializeSessionLifecycle(lifecycleSession, now);
       await lifecycleSession.save({ session: dbSession });
 
-      await JoinRequest.deleteMany(
-        { postId: post._id, _id: { $ne: joinRequest._id } },
-        { session: dbSession }
-      );
+      joinRequest.status = 'accepted';
+      await joinRequest.save({ session: dbSession });
 
       post.status = 'matched';
       post.acceptedUserIds = [joinRequest.requesterId];
       await post.save({ session: dbSession });
+
+      await JoinRequest.deleteMany(
+        { postId: post._id, _id: { $ne: joinRequest._id } },
+        { session: dbSession }
+      );
 
       await Notification.create([{
         userId: joinRequest.requesterId,
@@ -969,7 +973,7 @@ export const acceptJoinRequest = async (req, res) => {
       await deleteNotificationsByJoinRequestId(requestId, dbSession);
 
       responsePayload = {
-        joinRequest: acceptedJoinRequest,
+        joinRequest: joinRequest.toObject(),
         conversationId: conversation._id,
         sessionId: lifecycleSession._id
       };
@@ -987,6 +991,7 @@ export const acceptJoinRequest = async (req, res) => {
     res.json(responsePayload);
   } catch (error) {
     if (error.message === 'POST_NOT_FOUND') return res.status(404).json({ error: 'Post not found' });
+    if (error.message === 'POST_NOT_ACTIVE') return res.status(400).json({ error: 'Post is no longer active.' });
     if (error.message === 'FORBIDDEN') return res.status(403).json({ error: 'Not authorized to accept join requests' });
     if (error.message === 'REQUEST_NOT_FOUND') return res.status(404).json({ error: 'Join request not found' });
     if (error.message === 'REQUEST_ALREADY_PROCESSED') return res.status(400).json({ error: 'Join request already processed.' });
