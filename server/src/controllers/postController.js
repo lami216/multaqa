@@ -946,6 +946,14 @@ export const acceptJoinRequest = async (req, res) => {
       initializeSessionLifecycle(lifecycleSession, now);
       await lifecycleSession.save({ session: dbSession });
 
+      await Message.create([{
+        conversationId: conversation._id,
+        senderId: req.user._id,
+        text: '📢 [System] تم بدء الجلسة بعد قبول طلب الانضمام.'
+      }], { session: dbSession });
+      conversation.lastMessageAt = now;
+      await conversation.save({ session: dbSession });
+
       joinRequest.status = 'accepted';
       await joinRequest.save({ session: dbSession });
 

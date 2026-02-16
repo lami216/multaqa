@@ -1,19 +1,20 @@
 import Session from '../models/Session.js';
-import { cleanupSessionLifecycle, transitionSessionToRating } from '../services/lifecycleService.js';
+import { cleanupSessionLifecycle, transitionSessionToEnded, transitionSessionToEndingRequested } from '../services/lifecycleService.js';
 
 const ensureParticipant = (session, userId) => session.participants.some((p) => p.toString() === userId.toString());
 
-const markSessionCompletedByUser = async (session, userId) => {
+const markSessionRatedByUser = async (session, userId) => {
   const now = new Date();
   const userIdText = userId.toString();
   const completedBy = new Set((session.completedBy ?? []).map((entry) => entry.toString()));
   completedBy.add(userIdText);
   session.completedBy = Array.from(completedBy);
 
-  transitionSessionToRating(session, session.endRequestedBy ?? null, now);
   await session.save();
 
-  if (session.status === 'completed' && session.completionDeadlineAt && session.completionDeadlineAt <= now) {
+  const participants = (session.participants ?? []).map((entry) => entry.toString());
+  const everyoneCompleted = participants.length > 0 && participants.every((participantId) => completedBy.has(participantId));
+  if (everyoneCompleted && session.status === 'ended') {
     await cleanupSessionLifecycle(session._id);
   }
 
@@ -41,14 +42,10 @@ export const requestSessionEnd = async (req, res) => {
     const session = await Session.findById(id);
     if (!session) return res.status(404).json({ error: 'Session not found' });
     if (!ensureParticipant(session, req.user._id)) return res.status(403).json({ error: 'Not authorized' });
-    if (session.status !== 'in_progress' && session.status !== 'pending_close') return res.status(400).json({ error: 'Session is not available' });
+    if (session.status !== 'in_progress') return res.status(400).json({ error: 'Session is not available' });
 
-    transitionSessionToRating(session, req.user._id, new Date());
+    transitionSessionToEndingRequested(session, req.user._id, new Date());
     await session.save();
-
-    if (session.status === 'completed') {
-      await cleanupSessionLifecycle(session._id);
-    }
 
     res.json({ session });
   } catch (error) {
@@ -63,8 +60,14 @@ export const confirmSessionEnd = async (req, res) => {
     const session = await Session.findById(id);
     if (!session) return res.status(404).json({ error: 'Session not found' });
     if (!ensureParticipant(session, req.user._id)) return res.status(403).json({ error: 'Not authorized' });
+    if (session.status !== 'ending_requested') return res.status(400).json({ error: 'Session is not awaiting confirmation' });
+    if (session.endingRequestedBy && session.endingRequestedBy.toString() === req.user._id.toString()) {
+      return res.status(400).json({ error: 'The requester cannot confirm session end' });
+    }
 
-    await markSessionCompletedByUser(session, req.user._id);
+    transitionSessionToEnded(session, new Date());
+    await session.save();
+
     res.json({ session });
   } catch (error) {
     console.error('Confirm session end error:', error);
@@ -82,22 +85,33 @@ export const submitSessionRating = async (req, res) => {
     if (!ensureParticipant(session, req.user._id)) {
       return res.status(403).json({ error: 'Not authorized' });
     }
-
-    const hasScore = Number.isFinite(Number(score)) && Number(score) >= 1;
-    if (hasScore) {
-      if (!targetUserId || !ensureParticipant(session, targetUserId)) {
-        return res.status(403).json({ error: 'Not authorized' });
-      }
-
-      session.rating.set(targetUserId, {
-        score: Number(score),
-        review: typeof review === 'string' ? review.trim() : '',
-        createdAt: new Date()
-      });
-      await session.save();
+    if (session.status !== 'ended') {
+      return res.status(400).json({ error: 'Session is not ready for rating' });
     }
 
-    await markSessionCompletedByUser(session, req.user._id);
+    const raterId = req.user._id.toString();
+    const completedBy = new Set((session.completedBy ?? []).map((entry) => entry.toString()));
+    if (completedBy.has(raterId)) {
+      return res.status(400).json({ error: 'Rating already submitted' });
+    }
+
+    if (!targetUserId || !ensureParticipant(session, targetUserId) || targetUserId.toString() === raterId) {
+      return res.status(403).json({ error: 'Not authorized' });
+    }
+
+    const normalizedScore = Number(score);
+    if (!Number.isFinite(normalizedScore) || normalizedScore < 1 || normalizedScore > 5) {
+      return res.status(400).json({ error: 'Invalid score' });
+    }
+
+    session.rating.set(targetUserId, {
+      score: normalizedScore,
+      review: typeof review === 'string' ? review.trim() : '',
+      createdAt: new Date()
+    });
+    await session.save();
+
+    await markSessionRatedByUser(session, req.user._id);
 
     res.json({ session });
   } catch (error) {

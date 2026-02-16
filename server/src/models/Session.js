@@ -14,13 +14,13 @@ const sessionSchema = new mongoose.Schema({
   postId: { type: mongoose.Schema.Types.ObjectId, ref: 'Post', default: null },
   status: {
     type: String,
-    enum: ['in_progress', 'pending_close', 'completed'],
+    enum: ['in_progress', 'ending_requested', 'ended'],
     default: 'in_progress'
   },
   startedAt: { type: Date, required: true },
   endedAt: { type: Date, default: null },
-  endRequestedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
-  endRequestedAt: { type: Date, default: null },
+  endingRequestedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  endingRequestedAt: { type: Date, default: null },
   autoCloseAt: { type: Date, default: null },
   completionDeadlineAt: { type: Date, default: null },
   completedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],

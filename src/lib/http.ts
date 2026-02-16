@@ -242,11 +242,11 @@ export interface SessionItem {
   _id: string;
   participants: string[];
   conversationId: string;
-  status: 'in_progress' | 'pending_close' | 'completed';
+  status: 'in_progress' | 'ending_requested' | 'ended';
   startedAt: string;
   endedAt?: string | null;
-  endRequestedBy?: string | null;
-  endRequestedAt?: string | null;
+  endingRequestedBy?: string | null;
+  endingRequestedAt?: string | null;
   autoCloseAt?: string | null;
   completionDeadlineAt?: string | null;
   completedBy?: string[];
