@@ -8,6 +8,7 @@ import Session from '../models/Session.js';
 import User from '../models/User.js';
 
 export const SESSION_ACTIVE_MS = 7 * 24 * 60 * 60 * 1000;
+export const SESSION_END_CONFIRM_MS = 48 * 60 * 60 * 1000;
 export const SESSION_RATING_MS = 48 * 60 * 60 * 1000;
 
 const toObjectId = (value) => {
@@ -49,34 +50,23 @@ export const initializeSessionLifecycle = (session, now = new Date()) => {
   return session;
 };
 
-export const transitionSessionToRating = (session, userId = null, now = new Date()) => {
-  const completed = new Set((session.completedBy ?? []).map((entry) => entry.toString()));
-  if (userId) {
-    completed.add(userId.toString());
-  }
+export const transitionSessionToEndingRequested = (session, userId, now = new Date()) => {
+  session.status = 'ending_requested';
+  session.endingRequestedBy = userId ? toObjectId(userId) : session.endingRequestedBy ?? null;
+  session.endingRequestedAt = session.endingRequestedAt ?? now;
+  session.endedAt = null;
 
-  const participants = (session.participants ?? []).map((entry) => entry.toString());
-  const everyoneCompleted = participants.length > 0 && participants.every((participantId) => completed.has(participantId));
+  const deadline = new Date(now.getTime() + SESSION_END_CONFIRM_MS);
+  session.completionDeadlineAt = deadline;
+  session.autoCloseAt = deadline;
+  return session;
+};
 
-  if (everyoneCompleted) {
-    session.status = 'completed';
-    session.endedAt = session.endedAt ?? now;
-    session.completionDeadlineAt = now;
-    session.autoCloseAt = now;
-  } else {
-    session.status = 'pending_close';
-    session.endedAt = session.endedAt ?? now;
-    if (userId) {
-      session.endRequestedBy = userId;
-    }
-    session.endRequestedAt = session.endRequestedAt ?? now;
-
-    const deadline = new Date(now.getTime() + SESSION_RATING_MS);
-    session.completionDeadlineAt = deadline;
-    session.autoCloseAt = deadline;
-  }
-
-  session.completedBy = Array.from(completed).map((entry) => toObjectId(entry));
+export const transitionSessionToEnded = (session, now = new Date()) => {
+  session.status = 'ended';
+  session.endedAt = now;
+  session.completionDeadlineAt = new Date(now.getTime() + SESSION_RATING_MS);
+  session.autoCloseAt = session.completionDeadlineAt;
   return session;
 };
 
@@ -151,7 +141,7 @@ export const cleanupSessionLifecycle = async (sessionId) => {
         await Post.deleteOne({ _id: sessionDoc.postId }, { session: dbSession });
       }
 
-      await Session.deleteOne({ _id: sessionDoc._id, status: 'completed' }, { session: dbSession });
+      await Session.deleteOne({ _id: sessionDoc._id, status: 'ended' }, { session: dbSession });
       cleaned = true;
     });
 

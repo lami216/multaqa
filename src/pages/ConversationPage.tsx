@@ -149,6 +149,13 @@ const ConversationPage: React.FC = () => {
   }, [reloadSession]);
 
   useEffect(() => {
+    const hasRated = Boolean(currentUserId && sessionData?.completedBy?.some((participantId) => String(participantId) === currentUserId));
+    if (sessionData?.status === 'ended' && !hasRated) {
+      setOpenRating(true);
+    }
+  }, [currentUserId, sessionData]);
+
+  useEffect(() => {
     if (conversation?.unreadCount) {
       clearUnreadCount(conversation.unreadCount);
     }
@@ -251,7 +258,8 @@ const ConversationPage: React.FC = () => {
   const showEndSessionButton = Boolean(
     isSessionParticipant && sessionData?.status === 'in_progress'
   );
-  const isPendingClose = sessionData?.status === 'pending_close';
+  const isEndingRequested = sessionData?.status === 'ending_requested';
+  const canConfirmEnd = Boolean(isEndingRequested && currentUserId && sessionData?.endingRequestedBy && String(sessionData.endingRequestedBy) !== currentUserId);
 
   const conversationTitle = useMemo(() => {
     if (!conversation) return 'Conversation';
@@ -308,11 +316,11 @@ const ConversationPage: React.FC = () => {
         </div>
       </div>
 
-      {isPendingClose && sessionData?.completionDeadlineAt ? (
+      {isEndingRequested && sessionData?.completionDeadlineAt ? (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 flex items-center justify-between">
           <div>تم إنهاء الجلسة. مهلة تأكيد الطرف الآخر خلال 48 ساعة ({Math.max(0, Math.floor((new Date(sessionData.completionDeadlineAt).getTime() - now) / 3600000))}h).</div>
           <div className="flex gap-2">
-            <button type="button" className="secondary-btn" onClick={async () => { if (!sessionData?._id) return; const { data } = await confirmSessionEnd(sessionData._id); setSessionData(data.session); setOpenRating(true); }}>Confirmer</button>
+            {canConfirmEnd ? <button type="button" className="secondary-btn" onClick={async () => { if (!sessionData?._id) return; const { data } = await confirmSessionEnd(sessionData._id); setSessionData(data.session); }}>Confirmer</button> : null}
           </div>
         </div>
       ) : remainingTotalSeconds !== null ? (
@@ -334,7 +342,6 @@ const ConversationPage: React.FC = () => {
                 if (!sessionData?._id) return;
                 const { data } = await requestSessionEnd(sessionData._id);
                 setSessionData(data.session);
-                setOpenRating(true);
               }}
             >
               End Session
