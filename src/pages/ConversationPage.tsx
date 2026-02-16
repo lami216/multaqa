@@ -245,6 +245,13 @@ const ConversationPage: React.FC = () => {
   const remainingMinutes = remainingTotalSeconds !== null ? Math.floor((remainingTotalSeconds % (60 * 60)) / 60) : null;
   const remainingSeconds = remainingTotalSeconds !== null ? remainingTotalSeconds % 60 : null;
   const canExtend = remainingDays !== null && remainingDays <= 2 && remainingDays >= 0 && !isExpired;
+  const isSessionParticipant = Boolean(
+    currentUserId && sessionData?.participants?.some((participantId) => String(participantId) === currentUserId)
+  );
+  const showEndSessionButton = Boolean(
+    isSessionParticipant && sessionData?.status === 'in_progress'
+  );
+  const isPendingClose = sessionData?.status === 'pending_close';
 
   const conversationTitle = useMemo(() => {
     if (!conversation) return 'Conversation';
@@ -289,7 +296,6 @@ const ConversationPage: React.FC = () => {
           </div>
         </div>
         <div className="flex gap-2">
-        {sessionData?.status === 'in_progress' ? (<button type="button" className="secondary-btn" onClick={async () => { if (!sessionData?._id) return; const { data } = await requestSessionEnd(sessionData._id); setSessionData(data.session); setOpenRating(true); }}>End Session</button>) : null}
         <button
           type="button"
           className="secondary-btn"
@@ -302,14 +308,12 @@ const ConversationPage: React.FC = () => {
         </div>
       </div>
 
-      {sessionData?.status === 'completed' && sessionData.completionDeadlineAt ? (
+      {isPendingClose && sessionData?.completionDeadlineAt ? (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 flex items-center justify-between">
           <div>تم إنهاء الجلسة. مهلة تأكيد الطرف الآخر خلال 48 ساعة ({Math.max(0, Math.floor((new Date(sessionData.completionDeadlineAt).getTime() - now) / 3600000))}h).</div>
-          {!(sessionData.completedBy ?? []).includes(currentUserId) ? (
-            <div className="flex gap-2">
-              <button type="button" className="secondary-btn" onClick={async () => { if (!sessionData?._id) return; const { data } = await confirmSessionEnd(sessionData._id); setSessionData(data.session); }}>Confirmer</button>
-            </div>
-          ) : null}
+          <div className="flex gap-2">
+            <button type="button" className="secondary-btn" onClick={async () => { if (!sessionData?._id) return; const { data } = await confirmSessionEnd(sessionData._id); setSessionData(data.session); setOpenRating(true); }}>Confirmer</button>
+          </div>
         </div>
       ) : remainingTotalSeconds !== null ? (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
@@ -321,6 +325,20 @@ const ConversationPage: React.FC = () => {
           {remainingDays !== null && remainingDays <= 2 && !isExpired ? <div className="mt-1">⚠️ This conversation will be deleted soon.</div> : null}
           {canExtend ? (
             <button type="button" className="secondary-btn mt-2" onClick={handleExtend}>Extend 7 days</button>
+          ) : null}
+          {showEndSessionButton ? (
+            <button
+              type="button"
+              className="secondary-btn mt-2 ms-2"
+              onClick={async () => {
+                if (!sessionData?._id) return;
+                const { data } = await requestSessionEnd(sessionData._id);
+                setSessionData(data.session);
+                setOpenRating(true);
+              }}
+            >
+              End Session
+            </button>
           ) : null}
         </div>
       ) : null}

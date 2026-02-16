@@ -13,6 +13,10 @@ const markSessionCompletedByUser = async (session, userId) => {
   transitionSessionToRating(session, session.endRequestedBy ?? null, now);
   await session.save();
 
+  if (session.status === 'completed' && session.completionDeadlineAt && session.completionDeadlineAt <= now) {
+    await cleanupSessionLifecycle(session._id);
+  }
+
   return session;
 };
 
@@ -37,10 +41,14 @@ export const requestSessionEnd = async (req, res) => {
     const session = await Session.findById(id);
     if (!session) return res.status(404).json({ error: 'Session not found' });
     if (!ensureParticipant(session, req.user._id)) return res.status(403).json({ error: 'Not authorized' });
-    if (session.status !== 'in_progress' && session.status !== 'completed') return res.status(400).json({ error: 'Session is not available' });
+    if (session.status !== 'in_progress' && session.status !== 'pending_close') return res.status(400).json({ error: 'Session is not available' });
 
     transitionSessionToRating(session, req.user._id, new Date());
     await session.save();
+
+    if (session.status === 'completed') {
+      await cleanupSessionLifecycle(session._id);
+    }
 
     res.json({ session });
   } catch (error) {

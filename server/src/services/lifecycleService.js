@@ -50,22 +50,33 @@ export const initializeSessionLifecycle = (session, now = new Date()) => {
 };
 
 export const transitionSessionToRating = (session, userId = null, now = new Date()) => {
-  session.status = 'completed';
-  session.endedAt = session.endedAt ?? now;
-  if (userId) {
-    session.endRequestedBy = userId;
-  }
-  session.endRequestedAt = session.endRequestedAt ?? now;
-
   const completed = new Set((session.completedBy ?? []).map((entry) => entry.toString()));
   if (userId) {
     completed.add(userId.toString());
   }
-  session.completedBy = Array.from(completed).map((entry) => toObjectId(entry));
 
-  const deadline = new Date(now.getTime() + SESSION_RATING_MS);
-  session.completionDeadlineAt = deadline;
-  session.autoCloseAt = deadline;
+  const participants = (session.participants ?? []).map((entry) => entry.toString());
+  const everyoneCompleted = participants.length > 0 && participants.every((participantId) => completed.has(participantId));
+
+  if (everyoneCompleted) {
+    session.status = 'completed';
+    session.endedAt = session.endedAt ?? now;
+    session.completionDeadlineAt = now;
+    session.autoCloseAt = now;
+  } else {
+    session.status = 'pending_close';
+    session.endedAt = session.endedAt ?? now;
+    if (userId) {
+      session.endRequestedBy = userId;
+    }
+    session.endRequestedAt = session.endRequestedAt ?? now;
+
+    const deadline = new Date(now.getTime() + SESSION_RATING_MS);
+    session.completionDeadlineAt = deadline;
+    session.autoCloseAt = deadline;
+  }
+
+  session.completedBy = Array.from(completed).map((entry) => toObjectId(entry));
   return session;
 };
 
@@ -140,7 +151,7 @@ export const cleanupSessionLifecycle = async (sessionId) => {
         await Post.deleteOne({ _id: sessionDoc.postId }, { session: dbSession });
       }
 
-      await Session.deleteOne({ _id: sessionDoc._id }, { session: dbSession });
+      await Session.deleteOne({ _id: sessionDoc._id, status: 'completed' }, { session: dbSession });
       cleaned = true;
     });
 
@@ -149,4 +160,3 @@ export const cleanupSessionLifecycle = async (sessionId) => {
     await dbSession.endSession();
   }
 };
-
