@@ -38,15 +38,11 @@ export const markAsRead = async (req, res) => {
     const { notificationIds } = req.body;
 
     if (notificationIds && Array.isArray(notificationIds)) {
-      await Notification.updateMany(
-        { _id: { $in: notificationIds }, userId: req.user._id, read: false },
-        { $set: { read: true, readAt: new Date() } }
+      await Notification.deleteMany(
+        { _id: { $in: notificationIds }, userId: req.user._id }
       );
     } else {
-      await Notification.updateMany(
-        { userId: req.user._id, read: false },
-        { $set: { read: true, readAt: new Date() } }
-      );
+      await Notification.deleteMany({ userId: req.user._id, read: false });
     }
 
     await redis.del(`notifications:unread:${req.user._id}`);
@@ -62,11 +58,7 @@ export const markNotificationRead = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const notification = await Notification.findOneAndUpdate(
-      { _id: id, userId: req.user._id },
-      { $set: { read: true, readAt: new Date() } },
-      { new: true }
-    );
+    const notification = await Notification.findOneAndDelete({ _id: id, userId: req.user._id });
 
     if (!notification) {
       return res.status(404).json({ error: 'Notification not found' });
@@ -83,11 +75,7 @@ export const markNotificationRead = async (req, res) => {
 
 export const markAllNotificationsRead = async (req, res) => {
   try {
-    const now = new Date();
-    await Notification.updateMany(
-      { userId: req.user._id, read: false },
-      { $set: { read: true, readAt: now } }
-    );
+    await Notification.deleteMany({ userId: req.user._id, read: false });
 
     await redis.del(`notifications:unread:${req.user._id}`);
 
