@@ -1,6 +1,12 @@
 import mongoose from 'mongoose';
 
 const subjectSchema = new mongoose.Schema({
+  code: {
+    type: String,
+    required: true,
+    unique: true,
+    trim: true
+  },
   nameAr: {
     type: String,
     required: true,
@@ -32,6 +38,7 @@ const subjectSchema = new mongoose.Schema({
 subjectSchema.index({ facultyId: 1 });
 subjectSchema.index({ majorId: 1 });
 subjectSchema.index({ active: 1 });
+subjectSchema.index({ code: 1 }, { unique: true });
 
 const Subject = mongoose.model('Subject', subjectSchema);
 

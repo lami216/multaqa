@@ -346,8 +346,8 @@ export const getSubjects = async (req, res) => {
 
 export const createSubject = async (req, res) => {
   try {
-    const { nameAr, nameFr, facultyId, majorId } = req.body;
-    const subject = await Subject.create({ nameAr, nameFr, facultyId, majorId });
+    const { code, nameAr, nameFr, facultyId, majorId } = req.body;
+    const subject = await Subject.create({ code, nameAr, nameFr, facultyId, majorId });
 
     res.status(201).json({ message: 'Subject created successfully', subject });
   } catch (error) {
@@ -359,11 +359,11 @@ export const createSubject = async (req, res) => {
 export const updateSubject = async (req, res) => {
   try {
     const { id } = req.params;
-    const { nameAr, nameFr, facultyId, majorId, active } = req.body;
+    const { code, nameAr, nameFr, facultyId, majorId, active } = req.body;
 
     const subject = await Subject.findByIdAndUpdate(
       id,
-      { nameAr, nameFr, facultyId, majorId, active },
+      { code, nameAr, nameFr, facultyId, majorId, active },
       { new: true }
     );
 
