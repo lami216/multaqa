@@ -39,6 +39,7 @@ const ConversationPage: React.FC = () => {
   const [openRating, setOpenRating] = useState(false);
   const [dismissedRatingPromptKey, setDismissedRatingPromptKey] = useState<string | null>(null);
   const [openEndSessionModal, setOpenEndSessionModal] = useState(false);
+  const [openPendingEndModal, setOpenPendingEndModal] = useState(false);
   const [endingSession, setEndingSession] = useState(false);
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [now, setNow] = useState(Date.now());
@@ -300,6 +301,14 @@ const ConversationPage: React.FC = () => {
   const canConfirmEnd = Boolean(isPendingConfirmation && currentUserId && !sessionData?.confirmedBy?.some((participantId) => String(participantId) === currentUserId));
   const isSessionCompleted = sessionData?.status === 'completed';
 
+  useEffect(() => {
+    if (isPendingConfirmation) {
+      setOpenPendingEndModal(true);
+      return;
+    }
+    setOpenPendingEndModal(false);
+  }, [isPendingConfirmation]);
+
   const handleRequestSessionEnd = async () => {
     if (!sessionData?._id || endingSession) return;
     setEndingSession(true);
@@ -371,9 +380,12 @@ const ConversationPage: React.FC = () => {
         <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
           تم إغلاق الجلسة.
         </div>
-      ) : isPendingConfirmation && sessionData?.completionDeadlineAt ? (
+      ) : isPendingConfirmation ? (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 flex items-center justify-between">
-          <div>تم إنهاء الجلسة. مهلة تأكيد الطرف الآخر خلال 48 ساعة ({Math.max(0, Math.floor((new Date(sessionData.completionDeadlineAt).getTime() - now) / 3600000))}h).</div>
+          <div>
+            تم إنهاء الجلسة.
+            {sessionData?.completionDeadlineAt ? ` مهلة تأكيد الطرف الآخر خلال 48 ساعة (${Math.max(0, Math.floor((new Date(sessionData.completionDeadlineAt).getTime() - now) / 3600000))}h).` : ''}
+          </div>
           <div className="flex gap-2">
             {canConfirmEnd ? <button type="button" className="secondary-btn" onClick={async () => { if (!sessionData?._id) return; const { data } = await confirmSessionEnd(sessionData._id); setSessionData(data.session); }}>Confirmer</button> : null}
           </div>
@@ -491,6 +503,36 @@ const ConversationPage: React.FC = () => {
             <button type="button" className="primary-btn" disabled={endingSession} onClick={() => { void handleRequestSessionEnd(); }}>
               {endingSession ? 'جارٍ الإنهاء...' : 'تأكيد الإنهاء'}
             </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={openPendingEndModal} onOpenChange={setOpenPendingEndModal}>
+        <DialogContent className="sm:max-w-md space-y-4">
+          <DialogHeader>
+            <DialogTitle>تأكيد إنهاء الجلسة</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-slate-700">
+            تم طلب إنهاء هذه الجلسة من الطرف الآخر. يرجى تأكيد الإنهاء لإغلاق الجلسة نهائياً.
+          </p>
+          <DialogFooter className="gap-2 sm:justify-end">
+            <button type="button" className="secondary-btn" onClick={() => setOpenPendingEndModal(false)}>
+              إغلاق
+            </button>
+            {canConfirmEnd ? (
+              <button
+                type="button"
+                className="primary-btn"
+                onClick={async () => {
+                  if (!sessionData?._id) return;
+                  const { data } = await confirmSessionEnd(sessionData._id);
+                  setSessionData(data.session);
+                  setOpenPendingEndModal(false);
+                }}
+              >
+                تأكيد الإنهاء
+              </button>
+            ) : null}
           </DialogFooter>
         </DialogContent>
       </Dialog>
