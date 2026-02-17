@@ -51,10 +51,11 @@ export const initializeSessionLifecycle = (session, now = new Date()) => {
 };
 
 export const transitionSessionToEndingRequested = (session, userId, now = new Date()) => {
-  session.status = 'ending_requested';
+  session.status = 'pending_confirmation';
   session.endingRequestedBy = userId ? toObjectId(userId) : session.endingRequestedBy ?? null;
   session.endingRequestedAt = session.endingRequestedAt ?? now;
   session.endedAt = null;
+  session.confirmedBy = [];
 
   const deadline = new Date(now.getTime() + SESSION_END_CONFIRM_MS);
   session.completionDeadlineAt = deadline;
@@ -63,7 +64,7 @@ export const transitionSessionToEndingRequested = (session, userId, now = new Da
 };
 
 export const transitionSessionToEnded = (session, now = new Date()) => {
-  session.status = 'ended';
+  session.status = 'completed';
   session.endedAt = now;
   session.completionDeadlineAt = new Date(now.getTime() + SESSION_RATING_MS);
   session.autoCloseAt = session.completionDeadlineAt;
@@ -141,7 +142,7 @@ export const cleanupSessionLifecycle = async (sessionId) => {
         await Post.deleteOne({ _id: sessionDoc.postId }, { session: dbSession });
       }
 
-      await Session.deleteOne({ _id: sessionDoc._id, status: 'ended' }, { session: dbSession });
+      await Session.deleteOne({ _id: sessionDoc._id, status: 'completed' }, { session: dbSession });
       cleaned = true;
     });
 

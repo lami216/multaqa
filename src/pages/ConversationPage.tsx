@@ -150,7 +150,7 @@ const ConversationPage: React.FC = () => {
 
   useEffect(() => {
     const hasRated = Boolean(currentUserId && sessionData?.completedBy?.some((participantId) => String(participantId) === currentUserId));
-    if (sessionData?.status === 'ended' && !hasRated) {
+    if ((sessionData?.status === 'pending_confirmation' || sessionData?.status === 'completed') && !hasRated) {
       setOpenRating(true);
     }
   }, [currentUserId, sessionData]);
@@ -258,8 +258,8 @@ const ConversationPage: React.FC = () => {
   const showEndSessionButton = Boolean(
     isSessionParticipant && sessionData?.status === 'in_progress'
   );
-  const isEndingRequested = sessionData?.status === 'ending_requested';
-  const canConfirmEnd = Boolean(isEndingRequested && currentUserId && sessionData?.endingRequestedBy && String(sessionData.endingRequestedBy) !== currentUserId);
+  const isPendingConfirmation = sessionData?.status === 'pending_confirmation';
+  const canConfirmEnd = Boolean(isPendingConfirmation && currentUserId && !sessionData?.confirmedBy?.some((participantId) => String(participantId) === currentUserId));
 
   const conversationTitle = useMemo(() => {
     if (!conversation) return 'Conversation';
@@ -316,7 +316,7 @@ const ConversationPage: React.FC = () => {
         </div>
       </div>
 
-      {isEndingRequested && sessionData?.completionDeadlineAt ? (
+      {isPendingConfirmation && sessionData?.completionDeadlineAt ? (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 flex items-center justify-between">
           <div>تم إنهاء الجلسة. مهلة تأكيد الطرف الآخر خلال 48 ساعة ({Math.max(0, Math.floor((new Date(sessionData.completionDeadlineAt).getTime() - now) / 3600000))}h).</div>
           <div className="flex gap-2">
