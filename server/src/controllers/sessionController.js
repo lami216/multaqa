@@ -14,7 +14,7 @@ const markSessionRatedByUser = async (session, userId) => {
 
   const participants = (session.participants ?? []).map((entry) => entry.toString());
   const everyoneCompleted = participants.length > 0 && participants.every((participantId) => completedBy.has(participantId));
-  if (everyoneCompleted && session.status === 'ended') {
+  if (everyoneCompleted && session.status === 'completed') {
     await cleanupSessionLifecycle(session._id);
   }
 
@@ -60,12 +60,21 @@ export const confirmSessionEnd = async (req, res) => {
     const session = await Session.findById(id);
     if (!session) return res.status(404).json({ error: 'Session not found' });
     if (!ensureParticipant(session, req.user._id)) return res.status(403).json({ error: 'Not authorized' });
-    if (session.status !== 'ending_requested') return res.status(400).json({ error: 'Session is not awaiting confirmation' });
-    if (session.endingRequestedBy && session.endingRequestedBy.toString() === req.user._id.toString()) {
-      return res.status(400).json({ error: 'The requester cannot confirm session end' });
+    if (session.status !== 'pending_confirmation') return res.status(400).json({ error: 'Session is not awaiting confirmation' });
+
+    const currentUserId = req.user._id.toString();
+    const confirmedBy = new Set((session.confirmedBy ?? []).map((entry) => entry.toString()));
+    if (confirmedBy.has(currentUserId)) {
+      return res.status(400).json({ error: 'Session end already confirmed by user' });
     }
 
-    transitionSessionToEnded(session, new Date());
+    confirmedBy.add(currentUserId);
+    session.confirmedBy = Array.from(confirmedBy);
+
+    if (session.participants.length > 0 && confirmedBy.size >= session.participants.length) {
+      transitionSessionToEnded(session, new Date());
+    }
+
     await session.save();
 
     res.json({ session });
@@ -85,7 +94,7 @@ export const submitSessionRating = async (req, res) => {
     if (!ensureParticipant(session, req.user._id)) {
       return res.status(403).json({ error: 'Not authorized' });
     }
-    if (session.status !== 'ended') {
+    if (session.status !== 'completed') {
       return res.status(400).json({ error: 'Session is not ready for rating' });
     }
 

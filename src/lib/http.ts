@@ -242,13 +242,14 @@ export interface SessionItem {
   _id: string;
   participants: string[];
   conversationId: string;
-  status: 'in_progress' | 'ending_requested' | 'ended';
+  status: 'in_progress' | 'pending_confirmation' | 'completed';
   startedAt: string;
   endedAt?: string | null;
   endingRequestedBy?: string | null;
   endingRequestedAt?: string | null;
   autoCloseAt?: string | null;
   completionDeadlineAt?: string | null;
+  confirmedBy?: string[];
   completedBy?: string[];
   rating?: Record<string, { score: number; review?: string; createdAt?: string }>;
 }

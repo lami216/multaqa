@@ -14,7 +14,7 @@ const sessionSchema = new mongoose.Schema({
   postId: { type: mongoose.Schema.Types.ObjectId, ref: 'Post', default: null },
   status: {
     type: String,
-    enum: ['in_progress', 'ending_requested', 'ended'],
+    enum: ['in_progress', 'pending_confirmation', 'completed'],
     default: 'in_progress'
   },
   startedAt: { type: Date, required: true },
@@ -23,6 +23,7 @@ const sessionSchema = new mongoose.Schema({
   endingRequestedAt: { type: Date, default: null },
   autoCloseAt: { type: Date, default: null },
   completionDeadlineAt: { type: Date, default: null },
+  confirmedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   completedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   rating: {
     type: Map,

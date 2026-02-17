@@ -46,7 +46,7 @@ const processSessions = async () => {
     await session.save();
   }
 
-  const endingRequested = await Session.find({ status: 'ending_requested' });
+  const endingRequested = await Session.find({ status: 'pending_confirmation' });
   for (const session of endingRequested) {
     if (session.completionDeadlineAt && session.completionDeadlineAt <= now) {
       transitionSessionToEnded(session, now);
@@ -55,7 +55,7 @@ const processSessions = async () => {
   }
 
   const dueCleanup = await Session.find({
-    status: 'ended',
+    status: 'completed',
     completionDeadlineAt: { $lte: now }
   }).select('_id');
 
