@@ -36,6 +36,7 @@ const ConversationPage: React.FC = () => {
   const [lastStatusSync, setLastStatusSync] = useState<string | undefined>(undefined);
   const [sessionData, setSessionData] = useState<SessionItem | null>(null);
   const [openRating, setOpenRating] = useState(false);
+  const [dismissedRatingPromptKey, setDismissedRatingPromptKey] = useState<string | null>(null);
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [now, setNow] = useState(Date.now());
   const { clearUnreadCount } = useConversations();
@@ -148,12 +149,46 @@ const ConversationPage: React.FC = () => {
     void reloadSession();
   }, [reloadSession]);
 
+  const hasRatedCurrentUser = useMemo(
+    () => Boolean(currentUserId && sessionData?.completedBy?.some((participantId) => String(participantId) === currentUserId)),
+    [currentUserId, sessionData?.completedBy]
+  );
+  const isCurrentUserEndRequester = useMemo(
+    () => Boolean(currentUserId && sessionData?.endingRequestedBy && String(sessionData.endingRequestedBy) === currentUserId),
+    [currentUserId, sessionData?.endingRequestedBy]
+  );
+  const canCurrentUserRate = useMemo(
+    () => Boolean(
+      !hasRatedCurrentUser
+      && (
+        sessionData?.status === 'completed'
+        || (sessionData?.status === 'pending_confirmation' && isCurrentUserEndRequester)
+      )
+    ),
+    [hasRatedCurrentUser, isCurrentUserEndRequester, sessionData?.status]
+  );
+  const ratingPromptKey = useMemo(
+    () => (sessionData?._id && currentUserId ? `${sessionData._id}:${currentUserId}:${sessionData.status}:${hasRatedCurrentUser}` : null),
+    [currentUserId, hasRatedCurrentUser, sessionData?._id, sessionData?.status]
+  );
+
   useEffect(() => {
-    const hasRated = Boolean(currentUserId && sessionData?.completedBy?.some((participantId) => String(participantId) === currentUserId));
-    if ((sessionData?.status === 'pending_confirmation' || sessionData?.status === 'completed') && !hasRated) {
+    if (!ratingPromptKey) {
+      setDismissedRatingPromptKey(null);
+      setOpenRating(false);
+      return;
+    }
+
+    if (!canCurrentUserRate) {
+      setDismissedRatingPromptKey(null);
+      setOpenRating(false);
+      return;
+    }
+
+    if (dismissedRatingPromptKey !== ratingPromptKey) {
       setOpenRating(true);
     }
-  }, [currentUserId, sessionData]);
+  }, [canCurrentUserRate, dismissedRatingPromptKey, ratingPromptKey]);
 
   useEffect(() => {
     if (conversation?.unreadCount) {
@@ -412,8 +447,14 @@ const ConversationPage: React.FC = () => {
       {sessionData?._id && conversation?.otherParticipant?.id ? (
         <RatingModal
           open={openRating}
-          onClose={() => setOpenRating(false)}
-          onSubmitted={() => { void reloadSession(); }}
+          onClose={() => {
+            setOpenRating(false);
+            if (ratingPromptKey) setDismissedRatingPromptKey(ratingPromptKey);
+          }}
+          onSubmitted={() => {
+            setDismissedRatingPromptKey(null);
+            void reloadSession();
+          }}
           sessionId={sessionData._id}
           targetUserId={conversation.otherParticipant.id}
         />

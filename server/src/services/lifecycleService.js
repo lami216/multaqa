@@ -51,11 +51,12 @@ export const initializeSessionLifecycle = (session, now = new Date()) => {
 };
 
 export const transitionSessionToEndingRequested = (session, userId, now = new Date()) => {
+  const requesterId = userId ? toObjectId(userId) : session.endingRequestedBy ?? null;
   session.status = 'pending_confirmation';
-  session.endingRequestedBy = userId ? toObjectId(userId) : session.endingRequestedBy ?? null;
+  session.endingRequestedBy = requesterId;
   session.endingRequestedAt = session.endingRequestedAt ?? now;
   session.endedAt = null;
-  session.confirmedBy = [];
+  session.confirmedBy = requesterId ? [requesterId] : [];
 
   const deadline = new Date(now.getTime() + SESSION_END_CONFIRM_MS);
   session.completionDeadlineAt = deadline;
