@@ -154,6 +154,16 @@ const extractRemainingSubjectCodes = (remainingSubjects = []) =>
     .map((code) => (typeof code === 'string' ? code.trim() : ''))
     .filter(Boolean);
 
+const getAllowedProfileSubjectCodes = (profile) => (
+  [
+    ...(profile?.subjectCodes ?? []),
+    ...(profile?.subjects ?? []),
+    ...extractRemainingSubjectCodes(profile?.remainingSubjects ?? [])
+  ]
+    .map((code) => (typeof code === 'string' ? code.trim() : ''))
+    .filter(Boolean)
+);
+
 const extractQueryArray = (value) => {
   if (!value) return [];
   if (Array.isArray(value)) {
@@ -450,7 +460,8 @@ export const createPost = async (req, res) => {
     if (category === 'study_partner') {
       const { subjectCodes, postRole, description, availabilityDate } = req.body;
 
-      if (!profile?.subjectCodes?.length) {
+      const allowedProfileCodes = getAllowedProfileSubjectCodes(profile);
+      if (!allowedProfileCodes.length) {
         return res.status(400).json({ error: 'Profile subject codes are required for study partner posts.' });
       }
 
@@ -459,7 +470,7 @@ export const createPost = async (req, res) => {
         return res.status(400).json({ error: 'Select between 1 and 2 subjects for study partner posts.' });
       }
 
-      const allowedCodes = new Set(profile.subjectCodes.map((code) => code.trim()));
+      const allowedCodes = new Set(allowedProfileCodes);
       const invalidCodes = normalizedCodes.filter((code) => !allowedCodes.has(code));
       if (invalidCodes.length) {
         return res.status(400).json({ error: 'Selected subjects must exist in your profile.' });
@@ -515,7 +526,8 @@ export const createPost = async (req, res) => {
 
     if (category === 'project_team') {
       const { subjectCodes, description: teamDescription, availabilityDate, teamRoles } = req.body;
-      if (!profile?.subjectCodes?.length) {
+      const allowedProfileCodes = getAllowedProfileSubjectCodes(profile);
+      if (!allowedProfileCodes.length) {
         return res.status(400).json({ error: 'Profile subject codes are required for study team posts.' });
       }
 
@@ -524,7 +536,7 @@ export const createPost = async (req, res) => {
         return res.status(400).json({ error: 'Select between 1 and 2 subjects for study team posts.' });
       }
 
-      const allowedCodes = new Set(profile.subjectCodes.map((code) => code.trim()));
+      const allowedCodes = new Set(allowedProfileCodes);
       const invalidCodes = normalizedCodes.filter((code) => !allowedCodes.has(code));
       if (invalidCodes.length) {
         return res.status(400).json({ error: 'Selected subjects must exist in your profile.' });
@@ -638,14 +650,15 @@ export const updatePost = async (req, res) => {
 
       if (updates.subjectCodes) {
         const profile = await Profile.findOne({ userId: req.user._id });
-        if (!profile?.subjectCodes?.length) {
+        const allowedProfileCodes = getAllowedProfileSubjectCodes(profile);
+        if (!allowedProfileCodes.length) {
           return res.status(400).json({ error: 'Profile subject codes are required for study partner posts.' });
         }
         const normalizedCodes = updates.subjectCodes.map((code) => code.trim()).filter(Boolean);
         if (normalizedCodes.length < 1 || normalizedCodes.length > 2) {
           return res.status(400).json({ error: 'Select between 1 and 2 subjects for study partner posts.' });
         }
-        const allowedCodes = new Set(profile.subjectCodes.map((code) => code.trim()));
+        const allowedCodes = new Set(allowedProfileCodes);
         const invalidCodes = normalizedCodes.filter((code) => !allowedCodes.has(code));
         if (invalidCodes.length) {
           return res.status(400).json({ error: 'Selected subjects must exist in your profile.' });

@@ -1,12 +1,13 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Filter } from 'lucide-react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { fetchPosts, type PostPayload, type PostResponse } from '../lib/http';
-import { useAuth } from '../context/AuthContext';
 import PostCard from '../components/PostCard';
-import { PRIORITY_ROLE_OPTIONS } from '../lib/priorities';
-import { getSubjectNameByCode } from '../lib/catalog';
 import SubjectChipsSelector from '../components/subjects/SubjectChipsSelector';
+import { useAuth } from '../context/AuthContext';
+import { getSubjectNameByCode } from '../lib/catalog';
+import { fetchPosts, type PostPayload, type PostResponse } from '../lib/http';
+import { PRIORITY_ROLE_OPTIONS } from '../lib/priorities';
+import { getProfileSelectableSubjectCodes } from '../lib/profileSubjects';
 
 const toRole = (post: PostResponse): PostPayload['postRole'] | undefined => {
   if (post.postRole) return post.postRole;
@@ -44,7 +45,7 @@ const PostsFeedPage: React.FC = () => {
     }
   }, []);
 
-  const subjectOptions = useMemo(() => profile?.subjectCodes?.filter(Boolean) ?? [], [profile?.subjectCodes]);
+  const subjectOptions = useMemo(() => getProfileSelectableSubjectCodes(profile), [profile]);
 
   const selectedSubjectFullNames = useMemo(
     () => selectedSubjects.map((subjectCode) => ({ code: subjectCode, fullName: getSubjectNameByCode(subjectCode) || subjectCode })),
