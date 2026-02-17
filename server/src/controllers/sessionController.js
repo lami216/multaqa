@@ -94,11 +94,13 @@ export const submitSessionRating = async (req, res) => {
     if (!ensureParticipant(session, req.user._id)) {
       return res.status(403).json({ error: 'Not authorized' });
     }
-    if (session.status !== 'completed') {
+    const raterId = req.user._id.toString();
+    const requesterId = session.endingRequestedBy ? session.endingRequestedBy.toString() : null;
+    const canRateWhilePending = session.status === 'pending_confirmation' && requesterId === raterId;
+    if (session.status !== 'completed' && !canRateWhilePending) {
       return res.status(400).json({ error: 'Session is not ready for rating' });
     }
 
-    const raterId = req.user._id.toString();
     const completedBy = new Set((session.completedBy ?? []).map((entry) => entry.toString()));
     if (completedBy.has(raterId)) {
       return res.status(400).json({ error: 'Rating already submitted' });
@@ -109,16 +111,18 @@ export const submitSessionRating = async (req, res) => {
     }
 
     const normalizedScore = Number(score);
-    if (!Number.isFinite(normalizedScore) || normalizedScore < 1 || normalizedScore > 5) {
+    if (!Number.isFinite(normalizedScore) || normalizedScore < 0 || normalizedScore > 5) {
       return res.status(400).json({ error: 'Invalid score' });
     }
 
-    session.rating.set(targetUserId, {
-      score: normalizedScore,
-      review: typeof review === 'string' ? review.trim() : '',
-      createdAt: new Date()
-    });
-    await session.save();
+    if (normalizedScore >= 1) {
+      session.rating.set(targetUserId, {
+        score: normalizedScore,
+        review: typeof review === 'string' ? review.trim() : '',
+        createdAt: new Date()
+      });
+      await session.save();
+    }
 
     await markSessionRatedByUser(session, req.user._id);
 
