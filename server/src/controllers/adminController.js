@@ -4,7 +4,6 @@ import Post from '../models/Post.js';
 import Faculty from '../models/Faculty.js';
 import Major from '../models/Major.js';
 import Subject from '../models/Subject.js';
-import Event from '../models/Event.js';
 import Profile from '../models/Profile.js';
 import AcademicSetting from '../models/AcademicSetting.js';
 import redis from '../config/redis.js';
@@ -74,13 +73,6 @@ export const deletePostAdmin = async (req, res) => {
       return res.status(404).json({ error: 'Post not found' });
     }
 
-    await Event.create({
-      action: 'post_deleted',
-      actorId: req.user._id,
-      postId: id,
-      meta: { category: post.category }
-    });
-
     await redis.del('posts:*');
 
     res.json({ message: 'Post deleted successfully' });
@@ -92,7 +84,6 @@ export const deletePostAdmin = async (req, res) => {
 
 export const getDashboardStats = async (req, res) => {
   try {
-    const { action, limit = 10 } = req.query;
     const activePosts = await Post.countDocuments({
       status: 'active'
     });
@@ -134,13 +125,6 @@ export const getDashboardStats = async (req, res) => {
       return acc;
     }, {});
 
-    const eventQuery = action ? { action } : {};
-    const events = await Event.find(eventQuery)
-      .sort({ createdAt: -1 })
-      .limit(Math.min(parseInt(limit, 10) || 10, 50))
-      .populate('actorId', 'username role')
-      .populate('postId', 'title category');
-
     res.json({
       stats: {
         activePosts,
@@ -149,8 +133,7 @@ export const getDashboardStats = async (req, res) => {
         postsWithAccepted,
         closedWithoutAccepted,
         usersByRole
-      },
-      events
+      }
     });
   } catch (error) {
     console.error('Get dashboard stats error:', error);
