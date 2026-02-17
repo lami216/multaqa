@@ -6,6 +6,7 @@ import { fetchAcademicSettings, generateTelegramLinkTokenRequest, http, type Aca
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import {
   buildAcademicMajorKey,
+  getCatalogSubjectByCode,
   getFaculties,
   getLevelsByFaculty,
   getMajorsByFacultyAndLevel,
@@ -20,8 +21,10 @@ import {
 } from '../lib/catalog';
 import { PRIORITY_ROLE_LABELS } from '../lib/priorities';
 import { buildSubjectInitials } from '../lib/subjectDisplay';
+import { useLanguage } from '../context/LanguageContext';
 
 const ProfilePage: React.FC = () => {
+  const { language } = useLanguage();
   const { user, profile: authProfile, refresh, currentUserId } = useAuth();
   const { id } = useParams();
   const navigate = useNavigate();
@@ -237,6 +240,19 @@ const ProfilePage: React.FC = () => {
   };
 
   const allRemaining = profile?.remainingSubjects ?? [];
+  const remainingDisplaySubjects = allRemaining.map((item) => {
+    const catalogSubject = getCatalogSubjectByCode(item.subjectCode);
+    const fullName =
+      language === 'ar'
+        ? catalogSubject?.nameAr || catalogSubject?.nameFr || catalogSubject?.name
+        : catalogSubject?.nameFr || catalogSubject?.nameAr || catalogSubject?.name;
+    const fallback = buildSubjectInitials(fullName, item.subjectCode).slice(0, 2) || item.subjectCode;
+
+    return {
+      id: `${item.subjectCode}-${item.level}-${item.majorId}`,
+      label: fullName || fallback
+    };
+  });
   const reviewsCount = profileView?.reviewsCount ?? 0;
   const sessionsCount = profileView?.sessionsCount ?? 0;
   const avgRating = profileView?.avgRating ?? 0;
@@ -385,13 +401,13 @@ const ProfilePage: React.FC = () => {
               </div>
             )}
 
-            {!!allRemaining.length && (
+            {!!remainingDisplaySubjects.length && (
               <div className="card-surface p-4">
-                <h3 className="font-semibold text-slate-900 mb-2">مواد متبقية من مستوى سابق</h3>
+                <h3 className="font-semibold text-slate-900 mb-2">مواد متبقية من السنة الماضية</h3>
                 <div className="flex flex-wrap gap-2">
-                  {allRemaining.map((item) => (
-                    <span key={`${item.subjectCode}-${item.level}-${item.majorId}`} className="badge-soft bg-emerald-50 text-emerald-800">
-                      {item.subjectCode} <span className="ms-1 text-[10px]">{item.level}</span>
+                  {remainingDisplaySubjects.map((subject) => (
+                    <span key={subject.id} className="badge-soft" title={subject.label}>
+                      {subject.label}
                     </span>
                   ))}
                 </div>
