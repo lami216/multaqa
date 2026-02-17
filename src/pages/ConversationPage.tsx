@@ -1,25 +1,25 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Check, CheckCheck, ChevronLeft, RefreshCw, SendHorizonal } from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import {
-  fetchConversationMessages,
-  fetchConversations,
-  fetchMessageStatusChanges,
-  markConversationRead,
-  sendConversationMessage,
-  extendConversation,
-  fetchSessionByConversation,
-  requestSessionEnd,
-  confirmSessionEnd,
-  type ConversationMessageItem,
-  type ConversationSummary,
-  type SessionItem
-} from '../lib/http';
+import RatingModal from '../components/RatingModal';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { useAuth } from '../context/AuthContext';
 import { useConversations } from '../context/ConversationsContext';
 import { useSmartPolling } from '../hooks/useSmartPolling';
-import RatingModal from '../components/RatingModal';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../components/ui/dialog';
+import {
+  type ConversationMessageItem,
+  type ConversationSummary,
+  confirmSessionEnd,
+  extendConversation,
+  fetchConversationMessages,
+  fetchConversations,
+  fetchMessageStatusChanges,
+  fetchSessionByConversation,
+  markConversationRead,
+  requestSessionEnd,
+  type SessionItem, 
+  sendConversationMessage
+} from '../lib/http';
 
 const ConversationPage: React.FC = () => {
   const { conversationId } = useParams();
@@ -294,21 +294,12 @@ const ConversationPage: React.FC = () => {
   const isSessionParticipant = Boolean(
     currentUserId && sessionData?.participants?.some((participantId) => String(participantId) === currentUserId)
   );
-  const showEndSessionButton = Boolean(
-    isSessionParticipant && sessionData?.status === 'in_progress'
-  );
   const isPendingConfirmation = sessionData?.status === 'pending_confirmation';
   const canConfirmEnd = Boolean(isPendingConfirmation && currentUserId && !sessionData?.confirmedBy?.some((participantId) => String(participantId) === currentUserId));
+  const showEndSessionButton = Boolean(
+    isSessionParticipant && (sessionData?.status === 'in_progress' || canConfirmEnd)
+  );
   const isSessionCompleted = sessionData?.status === 'completed';
-
-  useEffect(() => {
-    if (isPendingConfirmation && canConfirmEnd) {
-      setOpenPendingEndModal(true);
-      return;
-    }
-    setOpenPendingEndModal(false);
-  }, [canConfirmEnd, isPendingConfirmation]);
-
   const handleRequestSessionEnd = async () => {
     if (!sessionData?._id || endingSession) return;
     setEndingSession(true);
@@ -381,14 +372,20 @@ const ConversationPage: React.FC = () => {
           تم إغلاق الجلسة.
         </div>
       ) : isPendingConfirmation ? (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 flex items-center justify-between">
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 flex items-center justify-between gap-2">
           <div>
             {canConfirmEnd ? 'تم طلب إنهاء هذه الجلسة من الطرف الآخر. يرجى التأكيد لإتمام الإغلاق النهائي.' : 'تم إرسال طلب إنهاء الجلسة. في انتظار تأكيد الطرف الآخر.'}
             {sessionData?.completionDeadlineAt ? ` مهلة التأكيد خلال 48 ساعة (${Math.max(0, Math.floor((new Date(sessionData.completionDeadlineAt).getTime() - now) / 3600000))}h).` : ''}
           </div>
-          <div className="flex gap-2">
-            {canConfirmEnd ? <button type="button" className="primary-btn" onClick={async () => { if (!sessionData?._id) return; const { data } = await confirmSessionEnd(sessionData._id); setSessionData(data.session); }}>Confirmer</button> : null}
-          </div>
+          {canConfirmEnd ? (
+            <button
+              type="button"
+              className="secondary-btn"
+              onClick={() => setOpenPendingEndModal(true)}
+            >
+              End Session
+            </button>
+          ) : null}
         </div>
       ) : remainingTotalSeconds !== null ? (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
@@ -405,7 +402,13 @@ const ConversationPage: React.FC = () => {
             <button
               type="button"
               className="secondary-btn mt-2 ms-2"
-              onClick={() => setOpenEndSessionModal(true)}
+              onClick={() => {
+                if (canConfirmEnd) {
+                  setOpenPendingEndModal(true);
+                  return;
+                }
+                setOpenEndSessionModal(true);
+              }}
             >
               End Session
             </button>

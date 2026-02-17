@@ -1,11 +1,15 @@
-import React, { useEffect, useMemo, useState } from 'react';
 import { Edit3, GraduationCap, MapPin, MessageCircle, Notebook, Settings, Star, User } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { fetchAcademicSettings, generateTelegramLinkTokenRequest, http, type AcademicSettingsResponse, type Profile, type RemainingSubjectItem } from '../lib/http';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
+import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import {
   buildAcademicMajorKey,
+  type CatalogFaculty,
+  type CatalogLevel,
+  type CatalogMajor,
+  type CatalogSubject, 
   getCatalogSubjectByCode,
   getFaculties,
   getLevelsByFaculty,
@@ -13,15 +17,11 @@ import {
   getSubjectsByMajorAndSemester,
   getSubjectsByMajorAndSemesters,
   getTermSemesterForLevel,
-  isFacultyEnabled,
-  type CatalogFaculty,
-  type CatalogLevel,
-  type CatalogMajor,
-  type CatalogSubject
+  isFacultyEnabled
 } from '../lib/catalog';
+import { type AcademicSettingsResponse, fetchAcademicSettings, generateTelegramLinkTokenRequest, http, type Profile, type RemainingSubjectItem } from '../lib/http';
 import { PRIORITY_ROLE_LABELS } from '../lib/priorities';
 import { buildSubjectInitials } from '../lib/subjectDisplay';
-import { useLanguage } from '../context/LanguageContext';
 
 const ProfilePage: React.FC = () => {
   const { language } = useLanguage();
@@ -256,6 +256,7 @@ const ProfilePage: React.FC = () => {
   const reviewsCount = profileView?.reviewsCount ?? 0;
   const sessionsCount = profileView?.sessionsCount ?? 0;
   const avgRating = profileView?.avgRating ?? 0;
+  const avgRatingDisplay = Number(avgRating).toFixed(1);
 
   return (
     <div className="space-y-6">
@@ -321,7 +322,7 @@ const ProfilePage: React.FC = () => {
           </div>
           <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-center">
             <p className="text-2xl font-bold text-emerald-600 flex items-center justify-center gap-1">
-              <Star size={16} className="fill-amber-400 text-amber-400" /> {avgRating}
+              <Star size={16} className="fill-amber-400 text-amber-400" /> {avgRatingDisplay}
             </p>
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Avg Rating</p>
           </div>

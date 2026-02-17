@@ -1,11 +1,12 @@
+import { CheckCircle2, PenSquare } from 'lucide-react';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle2, PenSquare } from 'lucide-react';
-import { createPost, type PostPayload, type StudyTeamRoleKey } from '../lib/http';
-import { useAuth } from '../context/AuthContext';
-import { PRIORITY_ROLE_OPTIONS } from '../lib/priorities';
-import { getSubjectNameByCode } from '../lib/catalog';
 import SubjectChipsSelector from '../components/subjects/SubjectChipsSelector';
+import { useAuth } from '../context/AuthContext';
+import { getSubjectNameByCode } from '../lib/catalog';
+import { createPost, type PostPayload, type StudyTeamRoleKey } from '../lib/http';
+import { PRIORITY_ROLE_OPTIONS } from '../lib/priorities';
+import { getProfileSelectableSubjectCodes } from '../lib/profileSubjects';
 
 const requestTypes: { value: PostPayload['category']; label: string }[] = [
   { value: 'study_partner', label: 'Study partner' },
@@ -45,7 +46,7 @@ const CreatePostPage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const subjectsLimitTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const subjectOptions = useMemo(() => profile?.subjectCodes?.filter(Boolean) ?? [], [profile?.subjectCodes]);
+  const subjectOptions = useMemo(() => getProfileSelectableSubjectCodes(profile), [profile]);
   const isStudyPartner = form.category === 'study_partner';
 
   const isStudyTeam = form.category === 'project_team';
