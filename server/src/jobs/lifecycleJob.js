@@ -3,7 +3,7 @@ import Message from '../models/Message.js';
 import Post from '../models/Post.js';
 import JoinRequest from '../models/JoinRequest.js';
 import Session from '../models/Session.js';
-import { cleanupSessionLifecycle, deleteNotificationsByConversationId, deleteNotificationsByPostId, initializeSessionLifecycle, transitionSessionToEnded, transitionSessionToEndingRequested } from '../services/lifecycleService.js';
+import { cleanupSessionLifecycle, deleteNotificationsByConversationId, deleteNotificationsByPostId, initializeSessionLifecycle, transitionSessionToEndingRequested } from '../services/lifecycleService.js';
 
 const ONE_MINUTE = 60 * 1000;
 
@@ -44,14 +44,6 @@ const processSessions = async () => {
       transitionSessionToEndingRequested(session, session.endingRequestedBy ?? null, now);
     }
     await session.save();
-  }
-
-  const endingRequested = await Session.find({ status: 'pending_confirmation' });
-  for (const session of endingRequested) {
-    if (session.completionDeadlineAt && session.completionDeadlineAt <= now) {
-      transitionSessionToEnded(session, now);
-      await session.save();
-    }
   }
 
   const dueCleanup = await Session.find({

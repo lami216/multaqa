@@ -63,6 +63,14 @@ export const confirmSessionEnd = async (req, res) => {
     if (session.status !== 'pending_confirmation') return res.status(400).json({ error: 'Session is not awaiting confirmation' });
 
     const currentUserId = req.user._id.toString();
+    const requesterId = session.endingRequestedBy ? session.endingRequestedBy.toString() : null;
+    if (!requesterId) {
+      return res.status(400).json({ error: 'Session end requester is missing' });
+    }
+    if (requesterId === currentUserId) {
+      return res.status(400).json({ error: 'Requester cannot self-confirm session end' });
+    }
+
     const confirmedBy = new Set((session.confirmedBy ?? []).map((entry) => entry.toString()));
     if (confirmedBy.has(currentUserId)) {
       return res.status(400).json({ error: 'Session end already confirmed by user' });
