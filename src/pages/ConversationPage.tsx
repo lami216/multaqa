@@ -300,6 +300,7 @@ const ConversationPage: React.FC = () => {
     isSessionParticipant && (sessionData?.status === 'in_progress' || canConfirmEnd)
   );
   const isSessionCompleted = sessionData?.status === 'completed';
+  const isSessionActive = sessionData?.status === 'in_progress';
   const handleRequestSessionEnd = async () => {
     if (!sessionData?._id || endingSession) return;
     setEndingSession(true);
@@ -387,7 +388,7 @@ const ConversationPage: React.FC = () => {
             </button>
           ) : null}
         </div>
-      ) : remainingTotalSeconds !== null ? (
+      ) : isSessionActive && remainingTotalSeconds !== null ? (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
           {isExpired ? (
             <div className="font-semibold">Conversation expired</div>
