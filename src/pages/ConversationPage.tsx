@@ -19,6 +19,7 @@ import { useAuth } from '../context/AuthContext';
 import { useConversations } from '../context/ConversationsContext';
 import { useSmartPolling } from '../hooks/useSmartPolling';
 import RatingModal from '../components/RatingModal';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../components/ui/dialog';
 
 const ConversationPage: React.FC = () => {
   const { conversationId } = useParams();
@@ -37,6 +38,8 @@ const ConversationPage: React.FC = () => {
   const [sessionData, setSessionData] = useState<SessionItem | null>(null);
   const [openRating, setOpenRating] = useState(false);
   const [dismissedRatingPromptKey, setDismissedRatingPromptKey] = useState<string | null>(null);
+  const [openEndSessionModal, setOpenEndSessionModal] = useState(false);
+  const [endingSession, setEndingSession] = useState(false);
   const countdownRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [now, setNow] = useState(Date.now());
   const { clearUnreadCount } = useConversations();
@@ -295,6 +298,19 @@ const ConversationPage: React.FC = () => {
   );
   const isPendingConfirmation = sessionData?.status === 'pending_confirmation';
   const canConfirmEnd = Boolean(isPendingConfirmation && currentUserId && !sessionData?.confirmedBy?.some((participantId) => String(participantId) === currentUserId));
+  const isSessionCompleted = sessionData?.status === 'completed';
+
+  const handleRequestSessionEnd = async () => {
+    if (!sessionData?._id || endingSession) return;
+    setEndingSession(true);
+    try {
+      const { data } = await requestSessionEnd(sessionData._id);
+      setSessionData(data.session);
+      setOpenEndSessionModal(false);
+    } finally {
+      setEndingSession(false);
+    }
+  };
 
   const conversationTitle = useMemo(() => {
     if (!conversation) return 'Conversation';
@@ -351,7 +367,11 @@ const ConversationPage: React.FC = () => {
         </div>
       </div>
 
-      {isPendingConfirmation && sessionData?.completionDeadlineAt ? (
+      {isSessionCompleted ? (
+        <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+          تم إغلاق الجلسة.
+        </div>
+      ) : isPendingConfirmation && sessionData?.completionDeadlineAt ? (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 flex items-center justify-between">
           <div>تم إنهاء الجلسة. مهلة تأكيد الطرف الآخر خلال 48 ساعة ({Math.max(0, Math.floor((new Date(sessionData.completionDeadlineAt).getTime() - now) / 3600000))}h).</div>
           <div className="flex gap-2">
@@ -373,11 +393,7 @@ const ConversationPage: React.FC = () => {
             <button
               type="button"
               className="secondary-btn mt-2 ms-2"
-              onClick={async () => {
-                if (!sessionData?._id) return;
-                const { data } = await requestSessionEnd(sessionData._id);
-                setSessionData(data.session);
-              }}
+              onClick={() => setOpenEndSessionModal(true)}
             >
               End Session
             </button>
@@ -459,6 +475,25 @@ const ConversationPage: React.FC = () => {
           targetUserId={conversation.otherParticipant.id}
         />
       ) : null}
+
+      <Dialog open={openEndSessionModal} onOpenChange={(next) => !endingSession && setOpenEndSessionModal(next)}>
+        <DialogContent className="sm:max-w-md space-y-4">
+          <DialogHeader>
+            <DialogTitle>تأكيد إنهاء الجلسة</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-slate-700">
+            سيتم إنهاء الجلسة الحالية وإغلاق هذه المحادثة. يمكنك دائماً بدء تواصل جديد لاحقاً. هل تريد المتابعة؟
+          </p>
+          <DialogFooter className="gap-2 sm:justify-end">
+            <button type="button" className="secondary-btn" disabled={endingSession} onClick={() => setOpenEndSessionModal(false)}>
+              رجوع
+            </button>
+            <button type="button" className="primary-btn" disabled={endingSession} onClick={() => { void handleRequestSessionEnd(); }}>
+              {endingSession ? 'جارٍ الإنهاء...' : 'تأكيد الإنهاء'}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
