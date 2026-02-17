@@ -273,14 +273,6 @@ export interface JoinRequestItem {
   updatedAt: string;
 }
 
-export interface AdminEventItem {
-  _id: string;
-  action: string;
-  actorId?: { _id: string; username: string; role?: string } | string;
-  postId?: { _id: string; title?: string; category?: string } | string;
-  meta?: Record<string, unknown>;
-  createdAt: string;
-}
 
 export interface AdminStatsResponse {
   stats: {
@@ -291,7 +283,6 @@ export interface AdminStatsResponse {
     closedWithoutAccepted: number;
     usersByRole: Record<string, number>;
   };
-  events: AdminEventItem[];
 }
 
 export interface MajorVisibilityConfig {
@@ -421,8 +412,8 @@ export const updateSubject = (id: string, payload: Partial<SubjectItem>) => http
 export const deleteFaculty = (id: string) => http.delete(`/admin/faculties/${id}`);
 export const deleteMajor = (id: string) => http.delete(`/admin/majors/${id}`);
 export const deleteSubject = (id: string) => http.delete(`/admin/subjects/${id}`);
-export const fetchAdminStats = (params?: { action?: string; limit?: number }) =>
-  http.get<AdminStatsResponse>('/admin/stats', { params });
+export const fetchAdminStats = () =>
+  http.get<AdminStatsResponse>('/admin/stats');
 export const fetchAcademicSettings = () => http.get<AcademicSettingsResponse>('/academic-settings');
 export const fetchAdminAcademicSettings = () => http.get<AcademicSettingsResponse>('/admin/academic-settings');
 export const updateAdminAcademicSettings = (payload: { currentTermType: 'odd' | 'even'; faculties: AcademicSettingsNode[] }) =>

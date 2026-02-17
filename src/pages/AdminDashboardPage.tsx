@@ -1,19 +1,16 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Activity, Shield, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { fetchAdminStats, type AdminEventItem, type AdminStatsResponse } from '../lib/http';
+import { fetchAdminStats, type AdminStatsResponse } from '../lib/http';
 
 const AdminDashboardPage: React.FC = () => {
   const [stats, setStats] = useState<AdminStatsResponse['stats'] | null>(null);
-  const [events, setEvents] = useState<AdminEventItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filterAction, setFilterAction] = useState<string>('');
 
-  const loadDashboard = async (action?: string) => {
+  const loadDashboard = async () => {
     setLoading(true);
-    const { data } = await fetchAdminStats(action ? { action } : undefined);
+    const { data } = await fetchAdminStats();
     setStats(data.stats);
-    setEvents(data.events);
     setLoading(false);
   };
 
@@ -21,23 +18,6 @@ const AdminDashboardPage: React.FC = () => {
     void loadDashboard();
   }, []);
 
-  const actionOptions = useMemo(
-    () => [
-      { value: '', label: 'Tous les évènements' },
-      { value: 'post_created', label: 'Post créé' },
-      { value: 'join_requested', label: 'Join demandé' },
-      { value: 'join_accepted', label: 'Join accepté' },
-      { value: 'join_rejected', label: 'Join rejeté' },
-      { value: 'post_closed', label: 'Post clôturé' },
-      { value: 'post_deleted', label: 'Post supprimé' }
-    ],
-    []
-  );
-
-  const handleFilterChange = async (value: string) => {
-    setFilterAction(value);
-    await loadDashboard(value || undefined);
-  };
 
   return (
     <div className="space-y-4">
@@ -45,7 +25,7 @@ const AdminDashboardPage: React.FC = () => {
         <Shield className="text-emerald-600" />
         <div>
           <h1 className="section-title">Console admin</h1>
-          <p className="helper-text">Vue d'ensemble sur les annonces, utilisateurs et évènements récents.</p>
+          <p className="helper-text">Vue d'ensemble sur les annonces et utilisateurs.</p>
         </div>
         <Link to="/admin/academic-settings" className="secondary-btn ms-auto">Academic Settings</Link>
       </div>
@@ -106,45 +86,6 @@ const AdminDashboardPage: React.FC = () => {
                     </div>
                   ))
                 : <p className="text-sm text-slate-500">Aucune donnée utilisateur.</p>}
-            </div>
-          </div>
-
-          <div className="card-surface p-4 space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div>
-                <h3 className="font-semibold text-slate-900">Évènements récents</h3>
-                <p className="text-sm text-slate-500">Filtrez par type d'action.</p>
-              </div>
-              <select
-                className="min-w-[200px]"
-                value={filterAction}
-                onChange={(event) => void handleFilterChange(event.target.value)}
-              >
-                {actionOptions.map((option) => (
-                  <option key={option.value} value={option.value}>{option.label}</option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-2">
-              {events.length ? (
-                events.map((eventItem) => {
-                  const actor = typeof eventItem.actorId === 'string' ? eventItem.actorId : eventItem.actorId?.username;
-                  const postTitle = typeof eventItem.postId === 'string' ? eventItem.postId : eventItem.postId?.title;
-                  return (
-                    <div key={eventItem._id} className="card-surface p-3 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-                      <div>
-                        <p className="text-sm font-semibold text-slate-900">{eventItem.action}</p>
-                        <p className="text-xs text-slate-500">
-                          {actor ? `Par ${actor}` : 'Acteur inconnu'} · {postTitle ? `Post: ${postTitle}` : 'Post non précisé'}
-                        </p>
-                      </div>
-                      <span className="text-xs text-slate-500">{new Date(eventItem.createdAt).toLocaleString()}</span>
-                    </div>
-                  );
-                })
-              ) : (
-                <p className="text-sm text-slate-500">Aucun évènement récent.</p>
-              )}
             </div>
           </div>
         </>

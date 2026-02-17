@@ -1,4 +1,5 @@
 import Session from '../models/Session.js';
+import Message from '../models/Message.js';
 import { cleanupSessionLifecycle, transitionSessionToEnded, transitionSessionToEndingRequested } from '../services/lifecycleService.js';
 
 const ensureParticipant = (session, userId) => session.participants.some((p) => p.toString() === userId.toString());
@@ -79,11 +80,21 @@ export const confirmSessionEnd = async (req, res) => {
     confirmedBy.add(currentUserId);
     session.confirmedBy = Array.from(confirmedBy);
 
+    let transitionedToCompleted = false;
     if (session.participants.length > 0 && confirmedBy.size >= session.participants.length) {
       transitionSessionToEnded(session, new Date());
+      transitionedToCompleted = true;
     }
 
     await session.save();
+
+    if (transitionedToCompleted) {
+      await Message.create({
+        conversationId: session.conversationId,
+        senderId: req.user._id,
+        text: 'تم إغلاق الجلسة.'
+      });
+    }
 
     res.json({ session });
   } catch (error) {

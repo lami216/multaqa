@@ -4,7 +4,6 @@ import Profile from '../models/Profile.js';
 import Conversation from '../models/Conversation.js';
 import Message from '../models/Message.js';
 import JoinRequest from '../models/JoinRequest.js';
-import Event from '../models/Event.js';
 import Notification from '../models/Notification.js';
 import Subject from '../models/Subject.js';
 import Session from '../models/Session.js';
@@ -175,13 +174,6 @@ const extractQueryArray = (value) => {
   return [];
 };
 
-const recordEvent = async ({ action, actorId, postId, meta }) => {
-  try {
-    await Event.create({ action, actorId, postId, meta });
-  } catch (error) {
-    console.error('Event log error:', error);
-  }
-};
 
 export const getPosts = async (req, res) => {
   try {
@@ -503,13 +495,6 @@ export const createPost = async (req, res) => {
         languagePref: profile.languages?.[0]
       });
 
-      await recordEvent({
-        action: 'post_created',
-        actorId: req.user._id,
-        postId: post._id,
-        meta: { category }
-      });
-
       await redis.del('posts:*');
 
       return res.status(201).json({ message: 'Post created successfully', post });
@@ -584,13 +569,6 @@ export const createPost = async (req, res) => {
         languagePref: profile.languages?.[0]
       });
 
-      await recordEvent({
-        action: 'post_created',
-        actorId: req.user._id,
-        postId: post._id,
-        meta: { category }
-      });
-
       await redis.del('posts:*');
 
       return res.status(201).json({ message: 'Post created successfully', post });
@@ -601,13 +579,6 @@ export const createPost = async (req, res) => {
       title,
       description,
       ...rest
-    });
-
-    await recordEvent({
-      action: 'post_created',
-      actorId: req.user._id,
-      postId: post._id,
-      meta: { category: post.category }
     });
 
     await redis.del('posts:*');
@@ -759,13 +730,6 @@ export const deletePost = async (req, res) => {
     await deleteNotificationsByPostId(id);
     await Post.findByIdAndDelete(id);
 
-    await recordEvent({
-      action: 'post_deleted',
-      actorId: req.user._id,
-      postId: id,
-      meta: { category: post.category }
-    });
-
     await redis.del('posts:*');
 
     res.json({ message: 'Post deleted successfully' });
@@ -842,13 +806,6 @@ export const createJoinRequest = async (req, res) => {
         requestId: joinRequest._id,
         senderId: req.user._id
       }
-    });
-
-    await recordEvent({
-      action: 'join_requested',
-      actorId: req.user._id,
-      postId: post._id,
-      meta: { postRole: resolvePostRole(post) }
     });
 
     await redis.del('posts:*');
@@ -1000,13 +957,6 @@ export const acceptJoinRequest = async (req, res) => {
       };
     });
 
-    await recordEvent({
-      action: 'join_accepted',
-      actorId: req.user._id,
-      postId: id,
-      meta: { requesterId: responsePayload?.joinRequest?.requesterId }
-    });
-
     await redis.del('posts:*');
 
     res.json(responsePayload);
@@ -1064,13 +1014,6 @@ export const rejectJoinRequest = async (req, res) => {
       }
     });
 
-    await recordEvent({
-      action: 'join_rejected',
-      actorId: req.user._id,
-      postId: post._id,
-      meta: { requesterId: joinRequest.requesterId }
-    });
-
     await redis.del('posts:*');
 
     res.json({ joinRequest });
@@ -1102,13 +1045,6 @@ export const closePost = async (req, res) => {
     post.closedAt = new Date();
     post.closeReason = closeReason?.trim() || '';
     await post.save();
-
-    await recordEvent({
-      action: 'post_closed',
-      actorId: req.user._id,
-      postId: post._id,
-      meta: { closeReason: post.closeReason }
-    });
 
     await redis.del('posts:*');
 
