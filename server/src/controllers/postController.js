@@ -13,6 +13,7 @@ import redis from '../config/redis.js';
 import { maskContactInfo } from '../utils/contentMasking.js';
 import { containsProfanity, maskProfanity } from '../utils/profanityFilter.js';
 import { getMajorAvailability } from '../services/academicSettingsService.js';
+import { incrementMatch, incrementPost } from '../services/majorStatsService.js';
 
 const getAvailabilityCutoff = (value) => {
   const date = new Date(value);
@@ -173,6 +174,18 @@ const extractQueryArray = (value) => {
   }
   return [];
 };
+
+const toObjectId = (value) => (
+  mongoose.Types.ObjectId.isValid(value)
+    ? new mongoose.Types.ObjectId(value)
+    : undefined
+);
+
+const getPostSnapshotFromProfile = (profile) => ({
+  majorId: toObjectId(profile?.majorId),
+  facultyId: toObjectId(profile?.facultyId),
+  level: profile?.level
+});
 
 
 export const getPosts = async (req, res) => {
@@ -439,6 +452,7 @@ export const createPost = async (req, res) => {
   try {
     const { category } = req.body;
     const profile = await Profile.findOne({ userId: req.user._id });
+    const postSnapshot = getPostSnapshotFromProfile(profile);
 
     if (!profile?.facultyId || !profile?.level || !profile?.majorId) {
       return res.status(403).json({ error: 'This major is still collecting students.' });
@@ -491,9 +505,11 @@ export const createPost = async (req, res) => {
         postRole,
         availabilityDate: availabilityCutoff,
         faculty: profile.faculty,
-        level: profile.level,
+        ...postSnapshot,
         languagePref: profile.languages?.[0]
       });
+
+      await incrementPost(post.majorId, post.facultyId);
 
       await redis.del('posts:*');
 
@@ -565,9 +581,11 @@ export const createPost = async (req, res) => {
         teamRoles: normalizedTeamRoles,
         participantTargetCount,
         faculty: profile.faculty,
-        level: profile.level,
+        ...postSnapshot,
         languagePref: profile.languages?.[0]
       });
+
+      await incrementPost(post.majorId, post.facultyId);
 
       await redis.del('posts:*');
 
@@ -578,8 +596,11 @@ export const createPost = async (req, res) => {
       authorId: req.user._id,
       title,
       description,
-      ...rest
+      ...rest,
+      ...postSnapshot
     });
+
+    await incrementPost(post.majorId, post.facultyId);
 
     await redis.del('posts:*');
 
@@ -852,6 +873,7 @@ export const acceptJoinRequest = async (req, res) => {
   try {
     const { id, requestId } = req.params;
     let responsePayload = null;
+    let matchSnapshot = null;
 
     await dbSession.withTransaction(async () => {
       const post = await Post.findById(id).session(dbSession);
@@ -931,6 +953,11 @@ export const acceptJoinRequest = async (req, res) => {
       post.acceptedUserIds = [joinRequest.requesterId];
       await post.save({ session: dbSession });
 
+      matchSnapshot = {
+        majorId: post.majorId,
+        facultyId: post.facultyId
+      };
+
       await JoinRequest.deleteMany(
         { postId: post._id, _id: { $ne: joinRequest._id } },
         { session: dbSession }
@@ -958,6 +985,9 @@ export const acceptJoinRequest = async (req, res) => {
     });
 
     await redis.del('posts:*');
+    if (matchSnapshot?.majorId && matchSnapshot?.facultyId) {
+      await incrementMatch(matchSnapshot.majorId, matchSnapshot.facultyId);
+    }
 
     res.json(responsePayload);
   } catch (error) {

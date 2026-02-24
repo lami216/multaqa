@@ -3,6 +3,7 @@ import Profile from '../models/Profile.js';
 import Post from '../models/Post.js';
 import redis from '../config/redis.js';
 import { maybeActivateMajor, getMajorAvailability } from '../services/academicSettingsService.js';
+import { incrementUser } from '../services/majorStatsService.js';
 
 
 const buildPublicProfileResult = async (user) => {
@@ -119,6 +120,8 @@ export const updateProfile = async (req, res) => {
         ? { ...updates, profileLocked: true }
         : updates;
 
+    const previousProfile = await Profile.findOne({ userId: req.user._id }).select('majorId');
+
     const profile = await Profile.findOneAndUpdate(
       { userId: req.user._id, profileLocked: { $ne: true } },
       {
@@ -137,6 +140,16 @@ export const updateProfile = async (req, res) => {
 
     await maybeActivateMajor(profile.facultyId, profile.level, profile.majorId);
     const majorAvailability = await getMajorAvailability(profile.facultyId, profile.level, profile.majorId);
+
+    const shouldIncrementUserCounter = Boolean(
+      profile?.majorId &&
+      profile?.facultyId &&
+      (!previousProfile?.majorId || previousProfile.majorId !== profile.majorId)
+    );
+
+    if (shouldIncrementUserCounter) {
+      await incrementUser(profile.majorId, profile.facultyId);
+    }
 
     res.json({ message: 'Profile updated successfully', profile, majorAvailability });
   } catch (error) {

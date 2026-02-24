@@ -50,9 +50,22 @@ const postSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  facultyId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Faculty',
+    immutable: true,
+    index: true
+  },
+  majorId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Major',
+    immutable: true,
+    index: true
+  },
   level: {
     type: String,
-    enum: ['L1', 'L2', 'L3', 'M1', 'M2']
+    enum: ['L1', 'L2', 'L3', 'M1', 'M2'],
+    immutable: true
   },
   languagePref: {
     type: String,
