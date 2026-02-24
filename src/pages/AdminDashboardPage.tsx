@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Activity, Shield, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { fetchAdminStats, type AdminStatsResponse } from '../lib/http';
+import AdminSidebar from '../components/admin/AdminSidebar';
 
 const AdminDashboardPage: React.FC = () => {
   const [stats, setStats] = useState<AdminStatsResponse['stats'] | null>(null);
@@ -20,7 +21,9 @@ const AdminDashboardPage: React.FC = () => {
 
 
   return (
-    <div className="space-y-4">
+    <div className="grid gap-4 md:grid-cols-[240px_minmax(0,1fr)]">
+      <AdminSidebar />
+      <div className="space-y-4">
       <div className="card-surface p-5 flex items-center gap-3">
         <Shield className="text-emerald-600" />
         <div>
@@ -90,6 +93,7 @@ const AdminDashboardPage: React.FC = () => {
           </div>
         </>
       )}
+      </div>
     </div>
   );
 };

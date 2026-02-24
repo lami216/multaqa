@@ -28,5 +28,6 @@ router.patch('/settings/academic', adminController.updateAcademicSettings);
 router.get('/academic-settings', adminController.getAcademicSettings);
 router.post('/academic-settings', adminController.updateAcademicSettings);
 router.put('/academic-settings', adminController.updateAcademicSettings);
+router.get('/war/majors', adminController.getWarMajors);
 
 export default router;

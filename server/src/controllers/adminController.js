@@ -6,6 +6,7 @@ import Major from '../models/Major.js';
 import Subject from '../models/Subject.js';
 import Profile from '../models/Profile.js';
 import AcademicSetting from '../models/AcademicSetting.js';
+import MajorStats from '../models/MajorStats.js';
 import redis from '../config/redis.js';
 import { getAcademicSettingsPayload } from '../services/academicSettingsService.js';
 
@@ -450,5 +451,55 @@ export const updateAcademicSettings = async (req, res) => {
   } catch (error) {
     console.error('Update academic settings error:', error);
     res.status(500).json({ error: 'Failed to update academic settings' });
+  }
+};
+
+export const getWarMajors = async (req, res) => {
+  try {
+    const rows = await MajorStats.find({})
+      .sort({ monthlyScore: -1 })
+      .limit(10)
+      .select('majorId facultyId monthlyScore allTimeScore monthlyPosts monthlyMatches monthlyUsers allTimePosts allTimeMatches allTimeUsers')
+      .populate('majorId', 'nameAr nameFr')
+      .populate('facultyId', 'nameAr nameFr')
+      .lean();
+
+    const majors = rows.map((row) => ({
+      majorId: row.majorId?._id ?? row.majorId,
+      major: row.majorId
+        ? {
+            _id: row.majorId._id,
+            nameAr: row.majorId.nameAr,
+            nameFr: row.majorId.nameFr
+          }
+        : null,
+      facultyId: row.facultyId?._id ?? row.facultyId,
+      faculty: row.facultyId
+        ? {
+            _id: row.facultyId._id,
+            nameAr: row.facultyId.nameAr,
+            nameFr: row.facultyId.nameFr
+          }
+        : null,
+      monthlyScore: row.monthlyScore ?? 0,
+      allTimeScore: row.allTimeScore ?? 0,
+      monthlyPosts: row.monthlyPosts ?? 0,
+      monthlyMatches: row.monthlyMatches ?? 0,
+      monthlyUsers: row.monthlyUsers ?? 0,
+      allTimePosts: row.allTimePosts ?? 0,
+      allTimeMatches: row.allTimeMatches ?? 0,
+      allTimeUsers: row.allTimeUsers ?? 0
+    }));
+
+    const summary = {
+      totalActiveMajors: majors.length,
+      totalPostsThisMonth: majors.reduce((acc, item) => acc + (item.monthlyPosts ?? 0), 0),
+      totalMatchesThisMonth: majors.reduce((acc, item) => acc + (item.monthlyMatches ?? 0), 0)
+    };
+
+    res.json({ majors, summary });
+  } catch (error) {
+    console.error('Get war majors error:', error);
+    res.status(500).json({ error: 'Failed to fetch war majors' });
   }
 };

@@ -285,6 +285,30 @@ export interface AdminStatsResponse {
   };
 }
 
+export interface AdminWarMajorRow {
+  majorId: string;
+  facultyId: string;
+  major: { _id: string; nameAr: string; nameFr: string } | null;
+  faculty: { _id: string; nameAr: string; nameFr: string } | null;
+  monthlyScore: number;
+  allTimeScore: number;
+  monthlyPosts: number;
+  monthlyMatches: number;
+  monthlyUsers: number;
+  allTimePosts: number;
+  allTimeMatches: number;
+  allTimeUsers: number;
+}
+
+export interface AdminWarMajorsResponse {
+  majors: AdminWarMajorRow[];
+  summary: {
+    totalActiveMajors: number;
+    totalPostsThisMonth: number;
+    totalMatchesThisMonth: number;
+  };
+}
+
 export interface MajorVisibilityConfig {
   enabled: boolean;
   threshold: number;
@@ -414,6 +438,8 @@ export const deleteMajor = (id: string) => http.delete(`/admin/majors/${id}`);
 export const deleteSubject = (id: string) => http.delete(`/admin/subjects/${id}`);
 export const fetchAdminStats = () =>
   http.get<AdminStatsResponse>('/admin/stats');
+export const fetchAdminWarMajors = () =>
+  http.get<AdminWarMajorsResponse>('/admin/war/majors');
 export const fetchAcademicSettings = () => http.get<AcademicSettingsResponse>('/academic-settings');
 export const fetchAdminAcademicSettings = () => http.get<AcademicSettingsResponse>('/admin/academic-settings');
 export const updateAdminAcademicSettings = (payload: { currentTermType: 'odd' | 'even'; faculties: AcademicSettingsNode[] }) =>

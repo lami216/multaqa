@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import StickyFooter from '../components/common/StickyFooter';
+import AdminSidebar from '../components/admin/AdminSidebar';
 import { getFaculties, buildAcademicMajorKey } from '../lib/catalog';
 import {
   fetchAdminAcademicSettings,
@@ -120,11 +120,12 @@ const AdminAcademicSettingsPage: React.FC = () => {
   }
 
   return (
-    <div className="space-y-4 pb-40 md:pb-28">
+    <div className="grid gap-4 pb-40 md:grid-cols-[240px_minmax(0,1fr)] md:pb-28">
+      <AdminSidebar />
+      <div className="space-y-4">
       <div className="card-surface p-5 space-y-3">
         <div className="flex items-center justify-between">
           <h1 className="section-title">Academic Settings</h1>
-          <Link className="secondary-btn" to="/admin">Statistics</Link>
         </div>
         <div className="flex gap-2">
           <button type="button" className={`secondary-btn ${draft.currentTermType === 'odd' ? 'ring-2 ring-emerald-300' : ''}`} onClick={() => setDraft((prev) => (prev ? { ...prev, currentTermType: 'odd' } : prev))} disabled={saving}>Odd term (S1/S3/S5)</button>
@@ -190,6 +191,7 @@ const AdminAcademicSettingsPage: React.FC = () => {
           <span>{saving ? 'Saving...' : 'Save Changes'}</span>
         </button>
       </StickyFooter>
+      </div>
     </div>
   );
 };
