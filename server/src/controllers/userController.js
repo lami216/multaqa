@@ -148,7 +148,7 @@ export const updateProfile = async (req, res) => {
     );
 
     if (shouldIncrementUserCounter) {
-      await incrementUser(profile.majorId, profile.facultyId);
+      await incrementUser(profile.majorId, profile.facultyId, profile.createdAt ?? profile.updatedAt ?? new Date());
     }
 
     res.json({ message: 'Profile updated successfully', profile, majorAvailability });

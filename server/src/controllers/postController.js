@@ -509,7 +509,7 @@ export const createPost = async (req, res) => {
         languagePref: profile.languages?.[0]
       });
 
-      await incrementPost(post.majorId, post.facultyId);
+      await incrementPost(post.majorId, post.facultyId, post.createdAt);
 
       await redis.del('posts:*');
 
@@ -585,7 +585,7 @@ export const createPost = async (req, res) => {
         languagePref: profile.languages?.[0]
       });
 
-      await incrementPost(post.majorId, post.facultyId);
+      await incrementPost(post.majorId, post.facultyId, post.createdAt);
 
       await redis.del('posts:*');
 
@@ -600,7 +600,7 @@ export const createPost = async (req, res) => {
       ...postSnapshot
     });
 
-    await incrementPost(post.majorId, post.facultyId);
+    await incrementPost(post.majorId, post.facultyId, post.createdAt);
 
     await redis.del('posts:*');
 
@@ -947,6 +947,9 @@ export const acceptJoinRequest = async (req, res) => {
       await conversation.save({ session: dbSession });
 
       joinRequest.status = 'accepted';
+      if (!joinRequest.acceptedAt) {
+        joinRequest.acceptedAt = now;
+      }
       await joinRequest.save({ session: dbSession });
 
       post.status = 'matched';
@@ -986,7 +989,7 @@ export const acceptJoinRequest = async (req, res) => {
 
     await redis.del('posts:*');
     if (matchSnapshot?.majorId && matchSnapshot?.facultyId) {
-      await incrementMatch(matchSnapshot.majorId, matchSnapshot.facultyId);
+      await incrementMatch(matchSnapshot.majorId, matchSnapshot.facultyId, responsePayload?.joinRequest?.acceptedAt ?? new Date());
     }
 
     res.json(responsePayload);

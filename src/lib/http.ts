@@ -286,27 +286,29 @@ export interface AdminStatsResponse {
 }
 
 export interface AdminWarMajorRow {
+  rank: number;
   majorId: string;
+  majorNameAr: string;
+  majorNameFr: string;
   facultyId: string;
-  major: { _id: string; nameAr: string; nameFr: string } | null;
-  faculty: { _id: string; nameAr: string; nameFr: string } | null;
-  monthlyScore: number;
-  allTimeScore: number;
-  monthlyPosts: number;
-  monthlyMatches: number;
-  monthlyUsers: number;
-  allTimePosts: number;
-  allTimeMatches: number;
-  allTimeUsers: number;
+  facultyNameAr: string;
+  facultyNameFr: string;
+  membersCount: number;
+  postsCount: number;
+  matchesCount: number;
+  score: number;
 }
 
 export interface AdminWarMajorsResponse {
-  majors: AdminWarMajorRow[];
-  summary: {
-    totalActiveMajors: number;
-    totalPostsThisMonth: number;
-    totalMatchesThisMonth: number;
+  mode: 'all' | 'month';
+  monthKey?: string;
+  kpis: {
+    TAM: number;
+    TP: number;
+    TPTM: number;
+    TMTM: number;
   };
+  top10: AdminWarMajorRow[];
 }
 
 export interface MajorVisibilityConfig {
@@ -438,8 +440,8 @@ export const deleteMajor = (id: string) => http.delete(`/admin/majors/${id}`);
 export const deleteSubject = (id: string) => http.delete(`/admin/subjects/${id}`);
 export const fetchAdminStats = () =>
   http.get<AdminStatsResponse>('/admin/stats');
-export const fetchAdminWarMajors = () =>
-  http.get<AdminWarMajorsResponse>('/admin/war/majors');
+export const fetchAdminWarMajors = (params?: { mode?: 'all'; month?: string }) =>
+  http.get<AdminWarMajorsResponse>('/admin/war/majors', { params });
 export const fetchAcademicSettings = () => http.get<AcademicSettingsResponse>('/academic-settings');
 export const fetchAdminAcademicSettings = () => http.get<AcademicSettingsResponse>('/admin/academic-settings');
 export const updateAdminAcademicSettings = (payload: { currentTermType: 'odd' | 'even'; faculties: AcademicSettingsNode[] }) =>

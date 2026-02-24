@@ -114,6 +114,8 @@ const profileSchema = new mongoose.Schema({
   timestamps: true
 });
 
+profileSchema.index({ majorId: 1 });
+profileSchema.index({ facultyId: 1, majorId: 1, level: 1 });
 
 const Profile = mongoose.model('Profile', profileSchema);
 

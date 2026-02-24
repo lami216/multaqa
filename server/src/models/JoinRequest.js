@@ -20,6 +20,10 @@ const joinRequestSchema = new mongoose.Schema({
     type: String,
     enum: ['pending', 'accepted', 'rejected'],
     default: 'pending'
+  },
+  acceptedAt: {
+    type: Date,
+    default: null
   }
 }, {
   timestamps: true
@@ -28,6 +32,8 @@ const joinRequestSchema = new mongoose.Schema({
 joinRequestSchema.index({ postId: 1, requesterId: 1 }, { unique: true });
 joinRequestSchema.index({ receiverId: 1, status: 1, createdAt: -1 });
 joinRequestSchema.index({ status: 1, createdAt: -1 });
+joinRequestSchema.index({ status: 1, updatedAt: 1 });
+joinRequestSchema.index({ status: 1, acceptedAt: 1 });
 
 const JoinRequest = mongoose.model('JoinRequest', joinRequestSchema);
 

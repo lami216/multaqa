@@ -116,6 +116,7 @@ postSchema.index({ status: 1 });
 postSchema.index({ expiresAt: 1 });
 postSchema.index({ availabilityDate: 1 });
 postSchema.index({ createdAt: -1 });
+postSchema.index({ createdAt: 1 });
 
 const Post = mongoose.model('Post', postSchema);
 
