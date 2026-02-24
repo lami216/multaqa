@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import MajorStats from '../models/MajorStats.js';
+import MajorStatsMonthly from '../models/MajorStatsMonthly.js';
 
 const scoreFormula = {
   posts: 3,
@@ -7,7 +8,13 @@ const scoreFormula = {
   users: 2
 };
 
-const getCurrentMonth = () => new Date().toISOString().slice(0, 7);
+const getMonthKey = (value = new Date()) => {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return new Date().toISOString().slice(0, 7);
+  }
+  return date.toISOString().slice(0, 7);
+};
 
 const toObjectId = (value) => {
   if (!value) return null;
@@ -16,7 +23,37 @@ const toObjectId = (value) => {
   return new mongoose.Types.ObjectId(value);
 };
 
-const incrementStat = async (majorId, facultyId, field) => {
+const updateMonthlyHistory = async (majorObjectId, facultyObjectId, monthKey, field) => {
+  await MajorStatsMonthly.findOneAndUpdate(
+    { majorId: majorObjectId, monthKey },
+    {
+      $set: { facultyId: facultyObjectId, updatedAt: new Date() },
+      $inc: {
+        postsCount: field === 'posts' ? 1 : 0,
+        matchesCount: field === 'matches' ? 1 : 0,
+        newUsersCount: field === 'users' ? 1 : 0
+      }
+    },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
+  );
+
+  await MajorStatsMonthly.updateOne(
+    { majorId: majorObjectId, monthKey },
+    [{
+      $set: {
+        score: {
+          $add: [
+            { $multiply: ['$postsCount', scoreFormula.posts] },
+            { $multiply: ['$matchesCount', scoreFormula.matches] },
+            { $multiply: ['$newUsersCount', scoreFormula.users] }
+          ]
+        }
+      }
+    }]
+  );
+};
+
+const incrementStat = async (majorId, facultyId, field, eventTime = new Date()) => {
   const majorObjectId = toObjectId(majorId);
   const facultyObjectId = toObjectId(facultyId);
 
@@ -24,7 +61,9 @@ const incrementStat = async (majorId, facultyId, field) => {
     return null;
   }
 
-  const month = getCurrentMonth();
+  const month = getMonthKey();
+  await updateMonthlyHistory(majorObjectId, facultyObjectId, getMonthKey(eventTime), field);
+
   return MajorStats.findOneAndUpdate(
     { majorId: majorObjectId },
     [
@@ -94,9 +133,10 @@ const incrementStat = async (majorId, facultyId, field) => {
   );
 };
 
-export const incrementPost = async (majorId, facultyId) => incrementStat(majorId, facultyId, 'posts');
+export const incrementPost = async (majorId, facultyId, eventTime) => incrementStat(majorId, facultyId, 'posts', eventTime);
 
-export const incrementMatch = async (majorId, facultyId) => incrementStat(majorId, facultyId, 'matches');
+export const incrementMatch = async (majorId, facultyId, eventTime) => incrementStat(majorId, facultyId, 'matches', eventTime);
 
-export const incrementUser = async (majorId, facultyId) => incrementStat(majorId, facultyId, 'users');
+export const incrementUser = async (majorId, facultyId, eventTime) => incrementStat(majorId, facultyId, 'users', eventTime);
 
+export const getMonthKeyFromDate = getMonthKey;

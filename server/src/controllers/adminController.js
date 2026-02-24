@@ -7,6 +7,8 @@ import Subject from '../models/Subject.js';
 import Profile from '../models/Profile.js';
 import AcademicSetting from '../models/AcademicSetting.js';
 import MajorStats from '../models/MajorStats.js';
+import MajorStatsMonthly from '../models/MajorStatsMonthly.js';
+import JoinRequest from '../models/JoinRequest.js';
 import redis from '../config/redis.js';
 import { getAcademicSettingsPayload } from '../services/academicSettingsService.js';
 
@@ -456,48 +458,81 @@ export const updateAcademicSettings = async (req, res) => {
 
 export const getWarMajors = async (req, res) => {
   try {
-    const rows = await MajorStats.find({})
-      .sort({ monthlyScore: -1 })
-      .limit(10)
-      .select('majorId facultyId monthlyScore allTimeScore monthlyPosts monthlyMatches monthlyUsers allTimePosts allTimeMatches allTimeUsers')
-      .populate('majorId', 'nameAr nameFr')
-      .populate('facultyId', 'nameAr nameFr')
-      .lean();
+    const { mode, month } = req.query;
+    const monthPattern = /^\d{4}-(0[1-9]|1[0-2])$/;
+    const resolvedMonthKey = month && monthPattern.test(month)
+      ? month
+      : new Date().toISOString().slice(0, 7);
+    const resolvedMode = mode === 'all' ? 'all' : 'month';
 
-    const majors = rows.map((row) => ({
-      majorId: row.majorId?._id ?? row.majorId,
-      major: row.majorId
-        ? {
-            _id: row.majorId._id,
-            nameAr: row.majorId.nameAr,
-            nameFr: row.majorId.nameFr
-          }
-        : null,
-      facultyId: row.facultyId?._id ?? row.facultyId,
-      faculty: row.facultyId
-        ? {
-            _id: row.facultyId._id,
-            nameAr: row.facultyId.nameAr,
-            nameFr: row.facultyId.nameFr
-          }
-        : null,
-      monthlyScore: row.monthlyScore ?? 0,
-      allTimeScore: row.allTimeScore ?? 0,
-      monthlyPosts: row.monthlyPosts ?? 0,
-      monthlyMatches: row.monthlyMatches ?? 0,
-      monthlyUsers: row.monthlyUsers ?? 0,
-      allTimePosts: row.allTimePosts ?? 0,
-      allTimeMatches: row.allTimeMatches ?? 0,
-      allTimeUsers: row.allTimeUsers ?? 0
-    }));
+    const monthStart = new Date(`${resolvedMonthKey}-01T00:00:00.000Z`);
+    const monthEnd = new Date(monthStart);
+    monthEnd.setUTCMonth(monthEnd.getUTCMonth() + 1);
 
-    const summary = {
-      totalActiveMajors: majors.length,
-      totalPostsThisMonth: majors.reduce((acc, item) => acc + (item.monthlyPosts ?? 0), 0),
-      totalMatchesThisMonth: majors.reduce((acc, item) => acc + (item.monthlyMatches ?? 0), 0)
-    };
+    const [tam, tp, tptm, tmtm] = await Promise.all([
+      Major.countDocuments({ active: true }),
+      Post.countDocuments({}),
+      Post.countDocuments({ createdAt: { $gte: monthStart, $lt: monthEnd } }),
+      JoinRequest.countDocuments({ status: 'accepted', acceptedAt: { $gte: monthStart, $lt: monthEnd } })
+    ]);
 
-    res.json({ majors, summary });
+    let rows = [];
+    if (resolvedMode === 'all') {
+      rows = await MajorStats.find({})
+        .sort({ allTimeScore: -1 })
+        .limit(10)
+        .select('majorId facultyId allTimeScore allTimePosts allTimeMatches')
+        .populate('majorId', 'nameAr nameFr')
+        .populate('facultyId', 'nameAr nameFr')
+        .lean();
+    } else {
+      rows = await MajorStatsMonthly.find({ monthKey: resolvedMonthKey })
+        .sort({ score: -1 })
+        .limit(10)
+        .select('majorId facultyId postsCount matchesCount score')
+        .populate('majorId', 'nameAr nameFr')
+        .populate('facultyId', 'nameAr nameFr')
+        .lean();
+    }
+
+    const majorIds = rows.map((row) => row.majorId?._id ?? row.majorId).filter(Boolean);
+    const memberCounts = await Profile.aggregate([
+      { $match: { majorId: { $in: majorIds.map((id) => id.toString()) } } },
+      { $group: { _id: '$majorId', membersCount: { $sum: 1 } } }
+    ]);
+    const membersMap = new Map(memberCounts.map((row) => [row._id, row.membersCount]));
+
+    const top10 = rows.map((row, index) => {
+      const majorId = row.majorId?._id ?? row.majorId;
+      const facultyId = row.facultyId?._id ?? row.facultyId;
+      const isAllMode = resolvedMode === 'all';
+
+      return {
+        rank: index + 1,
+        majorId,
+        majorNameAr: row.majorId?.nameAr ?? '',
+        majorNameFr: row.majorId?.nameFr ?? '',
+        facultyId,
+        facultyNameAr: row.facultyId?.nameAr ?? '',
+        facultyNameFr: row.facultyId?.nameFr ?? '',
+        membersCount: membersMap.get(String(majorId)) ?? 0,
+        postsCount: isAllMode ? (row.allTimePosts ?? 0) : (row.postsCount ?? 0),
+        matchesCount: isAllMode ? (row.allTimeMatches ?? 0) : (row.matchesCount ?? 0),
+        score: isAllMode ? (row.allTimeScore ?? 0) : (row.score ?? 0)
+      };
+    });
+
+    res.json({
+      mode: resolvedMode,
+      ...(resolvedMode === 'month' ? { monthKey: resolvedMonthKey } : {}),
+      kpis: {
+        TAM: tam,
+        TP: tp,
+        TPTM: tptm,
+        TMTM: tmtm
+      },
+      top10
+    });
   } catch (error) {
     console.error('Get war majors error:', error);
     res.status(500).json({ error: 'Failed to fetch war majors' });
