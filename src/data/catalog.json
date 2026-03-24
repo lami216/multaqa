@@ -276,6 +276,70 @@
           "nameFr": "Licence 3",
           "majors": [
             {
+              "id": "ABC",
+              "nameAr": "ABC",
+              "nameFr": "ABC",
+              "semesters": [
+                {
+                  "id": "S5",
+                  "nameAr": "السداسي 5",
+                  "nameFr": "Semestre 5",
+                  "subjects": [
+                    {
+                      "code": "ABC-S5-E",
+                      "nameAr": "Economie",
+                      "nameFr": "Economie"
+                    },
+                    {
+                      "code": "ABC-S5-E-2",
+                      "nameAr": "Electrochimie",
+                      "nameFr": "Electrochimie"
+                    },
+                    {
+                      "code": "ABC-S5-AB",
+                      "nameAr": "Analyses biologiques",
+                      "nameFr": "Analyses biologiques"
+                    },
+                    {
+                      "code": "ABC-S5-E-3",
+                      "nameAr": "Echantillonnage",
+                      "nameFr": "Echantillonnage"
+                    },
+                    {
+                      "code": "ABC-S5-MS",
+                      "nameAr": "Méthodes spécifiques",
+                      "nameFr": "Méthodes spécifiques"
+                    },
+                    {
+                      "code": "ABC-S5-AC",
+                      "nameAr": "Analyses chimiques",
+                      "nameFr": "Analyses chimiques"
+                    },
+                    {
+                      "code": "ABC-S5-CDLMPE",
+                      "nameAr": "Communication dans le milieu professionnel Entrepreneuriat",
+                      "nameFr": "Communication dans le milieu professionnel Entrepreneuriat"
+                    },
+                    {
+                      "code": "ABC-S5-BEB",
+                      "nameAr": "Biosécurité et Bioéthique",
+                      "nameFr": "Biosécurité et Bioéthique"
+                    },
+                    {
+                      "code": "ABC-S5-BBMEI",
+                      "nameAr": "Biochimie Biologie Moléculaire et Immunologie",
+                      "nameFr": "Biochimie Biologie Moléculaire et Immunologie"
+                    },
+                    {
+                      "code": "ABC-S5-M",
+                      "nameAr": "Microbiologie",
+                      "nameFr": "Microbiologie"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
               "id": "BIO-ENV",
               "nameAr": "بيولوجيا بيئية",
               "nameFr": "Biologie Environnementale",
@@ -386,6 +450,1133 @@
                       "code": "LAN6700",
                       "nameAr": "LAN6700 Anglais III",
                       "nameFr": "LAN6700 Anglais III"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "BMP",
+              "nameAr": "BMP",
+              "nameFr": "BMP",
+              "semesters": [
+                {
+                  "id": "S5",
+                  "nameAr": "السداسي 5",
+                  "nameFr": "Semestre 5",
+                  "subjects": [
+                    {
+                      "code": "BMP-S5-I",
+                      "nameAr": "Immunologie",
+                      "nameFr": "Immunologie"
+                    },
+                    {
+                      "code": "BMP-S5-LSADD",
+                      "nameAr": "Logiciel statistique analyse des données",
+                      "nameFr": "Logiciel statistique analyse des données"
+                    },
+                    {
+                      "code": "BMP-S5-BSI",
+                      "nameAr": "Biochimie structurale II",
+                      "nameFr": "Biochimie structurale II"
+                    },
+                    {
+                      "code": "BMP-S5-BMI",
+                      "nameAr": "Biochimie métabolique II",
+                      "nameFr": "Biochimie métabolique II"
+                    },
+                    {
+                      "code": "BMP-S5-GG",
+                      "nameAr": "Génie Génétique",
+                      "nameFr": "Génie Génétique"
+                    },
+                    {
+                      "code": "BMP-S5-D",
+                      "nameAr": "Droit",
+                      "nameFr": "Droit"
+                    },
+                    {
+                      "code": "BMP-S5-BS",
+                      "nameAr": "Bio statistiques",
+                      "nameFr": "Bio statistiques"
+                    },
+                    {
+                      "code": "BMP-S5-M2",
+                      "nameAr": "Microbiologie 2",
+                      "nameFr": "Microbiologie 2"
+                    },
+                    {
+                      "code": "BMP-S5-AI",
+                      "nameAr": "Anglais II",
+                      "nameFr": "Anglais II"
+                    },
+                    {
+                      "code": "BMP-S5-GDPI",
+                      "nameAr": "Génétique des populations II",
+                      "nameFr": "Génétique des populations II"
+                    }
+                  ]
+                },
+                {
+                  "id": "S6",
+                  "nameAr": "السداسي 6",
+                  "nameFr": "Semestre 6",
+                  "subjects": [
+                    {
+                      "code": "BMP-S6-DEDB",
+                      "nameAr": "Technique d’études des biomolécules",
+                      "nameFr": "Technique d’études des biomolécules"
+                    },
+                    {
+                      "code": "BMP-S6-BM",
+                      "nameAr": "Biologie moléculaire 2",
+                      "nameFr": "Biologie moléculaire 2"
+                    },
+                    {
+                      "code": "BMP-S6-BV",
+                      "nameAr": "Biotechnologie Végétale",
+                      "nameFr": "Biotechnologie Végétale"
+                    },
+                    {
+                      "code": "BMP-S6-N",
+                      "nameAr": "Neurophysiologie",
+                      "nameFr": "Neurophysiologie"
+                    },
+                    {
+                      "code": "BMP-S6-PDD",
+                      "nameAr": "Physiologie de développement",
+                      "nameFr": "Physiologie de développement"
+                    },
+                    {
+                      "code": "BMP-S6-E",
+                      "nameAr": "Economie",
+                      "nameFr": "Economie"
+                    },
+                    {
+                      "code": "BMP-S6-BA",
+                      "nameAr": "Biotechnologie Animale",
+                      "nameFr": "Biotechnologie Animale"
+                    },
+                    {
+                      "code": "BMP-S6-AIII",
+                      "nameAr": "Anglais III",
+                      "nameFr": "Anglais III"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "BOE",
+              "nameAr": "BOE",
+              "nameFr": "BOE",
+              "semesters": [
+                {
+                  "id": "S5",
+                  "nameAr": "السداسي 5",
+                  "nameFr": "Semestre 5",
+                  "subjects": [
+                    {
+                      "code": "BOE-S5-EAI",
+                      "nameAr": "Ecologie Animale II",
+                      "nameFr": "Ecologie Animale II"
+                    },
+                    {
+                      "code": "BOE-S5-D",
+                      "nameAr": "Droit",
+                      "nameFr": "Droit"
+                    },
+                    {
+                      "code": "BOE-S5-BS",
+                      "nameAr": "Bio statistique",
+                      "nameFr": "Bio statistique"
+                    },
+                    {
+                      "code": "BOE-S5-BM",
+                      "nameAr": "Biologie marine",
+                      "nameFr": "Biologie marine"
+                    },
+                    {
+                      "code": "BOE-S5-AI",
+                      "nameAr": "Anglais II",
+                      "nameFr": "Anglais II"
+                    },
+                    {
+                      "code": "BOE-S5-O",
+                      "nameAr": "Ornithologie",
+                      "nameFr": "Ornithologie"
+                    },
+                    {
+                      "code": "BOE-S5-DVI",
+                      "nameAr": "Diversité végétale II",
+                      "nameFr": "Diversité végétale II"
+                    },
+                    {
+                      "code": "BOE-S5-DAI",
+                      "nameAr": "Diversité animale II",
+                      "nameFr": "Diversité animale II"
+                    },
+                    {
+                      "code": "BOE-S5-EVI",
+                      "nameAr": "Écologie Végétale II",
+                      "nameFr": "Écologie Végétale II"
+                    },
+                    {
+                      "code": "BOE-S5-LSADD",
+                      "nameAr": "Logiciel statistique analyse des données",
+                      "nameFr": "Logiciel statistique analyse des données"
+                    }
+                  ]
+                },
+                {
+                  "id": "S6",
+                  "nameAr": "السداسي 6",
+                  "nameFr": "Semestre 6",
+                  "subjects": [
+                    {
+                      "code": "BOE-S6-EDM",
+                      "nameAr": "Ecologie des microorganismes",
+                      "nameFr": "Ecologie des microorganismes"
+                    },
+                    {
+                      "code": "BOE-S6-MDSEDE",
+                      "nameAr": "Microbiologie des sols et des eaux",
+                      "nameFr": "Microbiologie des sols et des eaux"
+                    },
+                    {
+                      "code": "BOE-S6-DDE",
+                      "nameAr": "Dynamique des écosystèmes",
+                      "nameFr": "Dynamique des écosystèmes"
+                    },
+                    {
+                      "code": "BOE-S6-AIII",
+                      "nameAr": "Anglais III",
+                      "nameFr": "Anglais III"
+                    },
+                    {
+                      "code": "BOE-S6-PIEE",
+                      "nameAr": "Photo interprétation et Environnement",
+                      "nameFr": "Photo interprétation et Environnement"
+                    },
+                    {
+                      "code": "BOE-S6-E",
+                      "nameAr": "Economie",
+                      "nameFr": "Economie"
+                    },
+                    {
+                      "code": "BOE-S6-P",
+                      "nameAr": "Pédologie",
+                      "nameFr": "Pédologie"
+                    },
+                    {
+                      "code": "BOE-S6-ETG",
+                      "nameAr": "Eco toxicologie générale",
+                      "nameFr": "Eco toxicologie générale"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "CHIMIE",
+              "nameAr": "CHIMIE",
+              "nameFr": "CHIMIE",
+              "semesters": [
+                {
+                  "id": "S5",
+                  "nameAr": "السداسي 5",
+                  "nameFr": "Semestre 5",
+                  "subjects": [
+                    {
+                      "code": "CHIMIE-S5-A3",
+                      "nameAr": "Anglais 3",
+                      "nameFr": "Anglais 3"
+                    },
+                    {
+                      "code": "CHIMIE-S5-RS",
+                      "nameAr": "Rédaction scientifique",
+                      "nameFr": "Rédaction scientifique"
+                    },
+                    {
+                      "code": "CHIMIE-S5-E",
+                      "nameAr": "Electrochimie",
+                      "nameFr": "Electrochimie"
+                    },
+                    {
+                      "code": "CHIMIE-S5-MSI",
+                      "nameAr": "Méthodes spectroscopiques II",
+                      "nameFr": "Méthodes spectroscopiques II"
+                    },
+                    {
+                      "code": "CHIMIE-S5-RESD",
+                      "nameAr": "Réactivité et stéréochimie dynamique",
+                      "nameFr": "Réactivité et stéréochimie dynamique"
+                    },
+                    {
+                      "code": "CHIMIE-S5-MS",
+                      "nameAr": "Méthodes séparatives",
+                      "nameFr": "Méthodes séparatives"
+                    },
+                    {
+                      "code": "CHIMIE-S5-CDMEDP",
+                      "nameAr": "Chimie des matériaux et des polymères",
+                      "nameFr": "Chimie des matériaux et des polymères"
+                    },
+                    {
+                      "code": "CHIMIE-S5-CQ",
+                      "nameAr": "Chimie quantique",
+                      "nameFr": "Chimie quantique"
+                    },
+                    {
+                      "code": "CHIMIE-S5-TCI",
+                      "nameAr": "Thermodynamique chimique II",
+                      "nameFr": "Thermodynamique chimique II"
+                    },
+                    {
+                      "code": "CHIMIE-S5-MDACI",
+                      "nameAr": "Méthodes d’analyses courantes II",
+                      "nameFr": "Méthodes d’analyses courantes II"
+                    }
+                  ]
+                },
+                {
+                  "id": "S6",
+                  "nameAr": "السداسي 6",
+                  "nameFr": "Semestre 6",
+                  "subjects": [
+                    {
+                      "code": "CHIMIE-S6-CDC",
+                      "nameAr": "Chimie de coordinations",
+                      "nameFr": "Chimie de coordinations"
+                    },
+                    {
+                      "code": "CHIMIE-S6-CVECI",
+                      "nameAr": "Chimie verte et chimie industrielle",
+                      "nameFr": "Chimie verte et chimie industrielle"
+                    },
+                    {
+                      "code": "CHIMIE-S6-CDLEEDLE",
+                      "nameAr": "Chimie de l’eau et de l’environnement",
+                      "nameFr": "Chimie de l’eau et de l’environnement"
+                    },
+                    {
+                      "code": "CHIMIE-S6-E",
+                      "nameAr": "Economie",
+                      "nameFr": "Economie"
+                    },
+                    {
+                      "code": "CHIMIE-S6-SECO",
+                      "nameAr": "Synthèse en chimie organique",
+                      "nameFr": "Synthèse en chimie organique"
+                    },
+                    {
+                      "code": "CHIMIE-S6-CDPEDG",
+                      "nameAr": "Chimie du pétrole et des gaz",
+                      "nameFr": "Chimie du pétrole et des gaz"
+                    },
+                    {
+                      "code": "CHIMIE-S6-CFEDSN",
+                      "nameAr": "Chimie fine et des substances naturelles",
+                      "nameFr": "Chimie fine et des substances naturelles"
+                    },
+                    {
+                      "code": "CHIMIE-S6-D",
+                      "nameAr": "Droit",
+                      "nameFr": "Droit"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "DA2I",
+              "nameAr": "DA2I",
+              "nameFr": "DA2I",
+              "semesters": [
+                {
+                  "id": "S5",
+                  "nameAr": "السداسي 5",
+                  "nameFr": "Semestre 5",
+                  "subjects": [
+                    {
+                      "code": "DA2I-S5-RIA",
+                      "nameAr": "Réseaux informatiques avancés",
+                      "nameFr": "Réseaux informatiques avancés"
+                    },
+                    {
+                      "code": "DA2I-S5-CDSI",
+                      "nameAr": "Conception des Systèmes Informatiques",
+                      "nameFr": "Conception des Systèmes Informatiques"
+                    },
+                    {
+                      "code": "DA2I-S5-CEAD",
+                      "nameAr": "Conception et applications distribuées",
+                      "nameFr": "Conception et applications distribuées"
+                    },
+                    {
+                      "code": "DA2I-S5-SDS",
+                      "nameAr": "Sécurité des systèmes",
+                      "nameFr": "Sécurité des systèmes"
+                    },
+                    {
+                      "code": "DA2I-S5-GL",
+                      "nameAr": "Génie Logiciel",
+                      "nameFr": "Génie Logiciel"
+                    },
+                    {
+                      "code": "DA2I-S5-ABDD",
+                      "nameAr": "Administration Bases de données",
+                      "nameFr": "Administration Bases de données"
+                    },
+                    {
+                      "code": "DA2I-S5-DN",
+                      "nameAr": "Droit NTIC",
+                      "nameFr": "Droit NTIC"
+                    },
+                    {
+                      "code": "DA2I-S5-E",
+                      "nameAr": "Entreprenariat",
+                      "nameFr": "Entreprenariat"
+                    },
+                    {
+                      "code": "DA2I-S5-AESDD",
+                      "nameAr": "Algorithmes et structures de données",
+                      "nameFr": "Algorithmes et structures de données"
+                    },
+                    {
+                      "code": "DA2I-S5-AS",
+                      "nameAr": "Administration Systèmes",
+                      "nameFr": "Administration Systèmes"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "EEA",
+              "nameAr": "EEA",
+              "nameFr": "EEA",
+              "semesters": [
+                {
+                  "id": "S5",
+                  "nameAr": "السداسي 5",
+                  "nameFr": "Semestre 5",
+                  "subjects": [
+                    {
+                      "code": "EEA-S5-CDM",
+                      "nameAr": "Commande des machine",
+                      "nameFr": "Commande des machine"
+                    },
+                    {
+                      "code": "EEA-S5-EDP",
+                      "nameAr": "Electronique de puissance",
+                      "nameFr": "Electronique de puissance"
+                    },
+                    {
+                      "code": "EEA-S5-IESDM",
+                      "nameAr": "Instrumentation et systèmes de mesures",
+                      "nameFr": "Instrumentation et systèmes de mesures"
+                    },
+                    {
+                      "code": "EEA-S5-II",
+                      "nameAr": "Informatique industrielle",
+                      "nameFr": "Informatique industrielle"
+                    },
+                    {
+                      "code": "EEA-S5-ENI",
+                      "nameAr": "Electronique numérique II",
+                      "nameFr": "Electronique numérique II"
+                    },
+                    {
+                      "code": "EEA-S5-PETDLE",
+                      "nameAr": "Production et transport de l’énergie",
+                      "nameFr": "Production et transport de l’énergie"
+                    },
+                    {
+                      "code": "EEA-S5-DDLEE",
+                      "nameAr": "Distribution de l’énergie électrique",
+                      "nameFr": "Distribution de l’énergie électrique"
+                    },
+                    {
+                      "code": "EEA-S5-AERC",
+                      "nameAr": "Asservissement et régulation continus",
+                      "nameFr": "Asservissement et régulation continus"
+                    },
+                    {
+                      "code": "EEA-S5-A3",
+                      "nameAr": "Anglais 3",
+                      "nameFr": "Anglais 3"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "GEOSS",
+              "nameAr": "GEOSS",
+              "nameFr": "GEOSS",
+              "semesters": [
+                {
+                  "id": "S5",
+                  "nameAr": "السداسي 5",
+                  "nameFr": "Semestre 5",
+                  "subjects": [
+                    {
+                      "code": "GEOSS-S5-RMEE",
+                      "nameAr": "Ressources minérales et énergétiques",
+                      "nameFr": "Ressources minérales et énergétiques"
+                    },
+                    {
+                      "code": "GEOSS-S5-ETDLIS",
+                      "nameAr": "Télédétection et traitement de l’imagerie satellitaire",
+                      "nameFr": "Télédétection et traitement de l’imagerie satellitaire"
+                    },
+                    {
+                      "code": "GEOSS-S5-CG",
+                      "nameAr": "Cycles géochimiques",
+                      "nameFr": "Cycles géochimiques"
+                    },
+                    {
+                      "code": "GEOSS-S5-GDP",
+                      "nameAr": "Géologie du Précambrien",
+                      "nameFr": "Géologie du Précambrien"
+                    },
+                    {
+                      "code": "GEOSS-S5-GR",
+                      "nameAr": "Géologie régionale",
+                      "nameFr": "Géologie régionale"
+                    },
+                    {
+                      "code": "GEOSS-S5-RS",
+                      "nameAr": "Rédaction scientifique",
+                      "nameFr": "Rédaction scientifique"
+                    },
+                    {
+                      "code": "GEOSS-S5-GN",
+                      "nameAr": "Géoressources naturelles",
+                      "nameFr": "Géoressources naturelles"
+                    },
+                    {
+                      "code": "GEOSS-S5-A3",
+                      "nameAr": "Anglais 3",
+                      "nameFr": "Anglais 3"
+                    }
+                  ]
+                },
+                {
+                  "id": "S6",
+                  "nameAr": "السداسي 6",
+                  "nameFr": "Semestre 6",
+                  "subjects": [
+                    {
+                      "code": "GEOSS-S6-GDBS",
+                      "nameAr": "Géodynamique des Bassins sédimentaire",
+                      "nameFr": "Géodynamique des Bassins sédimentaire"
+                    },
+                    {
+                      "code": "GEOSS-S6-GS",
+                      "nameAr": "Géologie Structurale",
+                      "nameFr": "Géologie Structurale"
+                    },
+                    {
+                      "code": "GEOSS-S6-GA",
+                      "nameAr": "Géophysique Analytique",
+                      "nameFr": "Géophysique Analytique"
+                    },
+                    {
+                      "code": "GEOSS-S6-G",
+                      "nameAr": "Géomorphologie",
+                      "nameFr": "Géomorphologie"
+                    },
+                    {
+                      "code": "GEOSS-S6-GG",
+                      "nameAr": "Géodynamique globale",
+                      "nameFr": "Géodynamique globale"
+                    },
+                    {
+                      "code": "GEOSS-S6-CDLE",
+                      "nameAr": "Chimie de l’eau",
+                      "nameFr": "Chimie de l’eau"
+                    },
+                    {
+                      "code": "GEOSS-S6-E",
+                      "nameAr": "Economie",
+                      "nameFr": "Economie"
+                    },
+                    {
+                      "code": "GEOSS-S6-D",
+                      "nameAr": "Droit",
+                      "nameFr": "Droit"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "IPG",
+              "nameAr": "IPG",
+              "nameFr": "IPG",
+              "semesters": [
+                {
+                  "id": "S5",
+                  "nameAr": "السداسي 5",
+                  "nameFr": "Semestre 5",
+                  "subjects": [
+                    {
+                      "code": "IPG-S5-ASLP",
+                      "nameAr": "Aperçu sur la pétrochimie",
+                      "nameFr": "Aperçu sur la pétrochimie"
+                    },
+                    {
+                      "code": "IPG-S5-G",
+                      "nameAr": "Géochimie",
+                      "nameFr": "Géochimie"
+                    },
+                    {
+                      "code": "IPG-S5-FEP",
+                      "nameAr": "Forage et puits",
+                      "nameFr": "Forage et puits"
+                    },
+                    {
+                      "code": "IPG-S5-ES",
+                      "nameAr": "Exploration sismique",
+                      "nameFr": "Exploration sismique"
+                    },
+                    {
+                      "code": "IPG-S5-IDR",
+                      "nameAr": "Ingénierie des réservoirs",
+                      "nameFr": "Ingénierie des réservoirs"
+                    },
+                    {
+                      "code": "IPG-S5-TECDG",
+                      "nameAr": "Traitement et conditionnement des gaz",
+                      "nameFr": "Traitement et conditionnement des gaz"
+                    },
+                    {
+                      "code": "IPG-S5-GDH",
+                      "nameAr": "Géopolitique des hydrocarbures",
+                      "nameFr": "Géopolitique des hydrocarbures"
+                    },
+                    {
+                      "code": "IPG-S5-DIE",
+                      "nameAr": "Etude d’Impact Environnemental",
+                      "nameFr": "Etude d’Impact Environnemental"
+                    },
+                    {
+                      "code": "IPG-S5-DDGP",
+                      "nameAr": "Exploitation des gisements production",
+                      "nameFr": "Exploitation des gisements production"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "MA",
+              "nameAr": "MA",
+              "nameFr": "MA",
+              "semesters": [
+                {
+                  "id": "S6",
+                  "nameAr": "السداسي 6",
+                  "nameFr": "Semestre 6",
+                  "subjects": [
+                    {
+                      "code": "MA-S6-CES",
+                      "nameAr": "Courbes et surfaces",
+                      "nameFr": "Courbes et surfaces"
+                    },
+                    {
+                      "code": "MA-S6-MEI",
+                      "nameAr": "Mesure et intégration II",
+                      "nameFr": "Mesure et intégration II"
+                    },
+                    {
+                      "code": "MA-S6-SI",
+                      "nameAr": "Statistique inférentielle",
+                      "nameFr": "Statistique inférentielle"
+                    },
+                    {
+                      "code": "MA-S6-OC",
+                      "nameAr": "Optimisation combinatoire",
+                      "nameFr": "Optimisation combinatoire"
+                    },
+                    {
+                      "code": "MA-S6-AEC",
+                      "nameAr": "Anneaux et corps",
+                      "nameFr": "Anneaux et corps"
+                    },
+                    {
+                      "code": "MA-S6-A",
+                      "nameAr": "Anglais",
+                      "nameFr": "Anglais"
+                    },
+                    {
+                      "code": "MA-S6-AEC-2",
+                      "nameAr": "Algorithmique et complexité",
+                      "nameFr": "Algorithmique et complexité"
+                    },
+                    {
+                      "code": "MA-S6-AC",
+                      "nameAr": "Analyse convexe",
+                      "nameFr": "Analyse convexe"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "MI",
+              "nameAr": "MI",
+              "nameFr": "MI",
+              "semesters": [
+                {
+                  "id": "S6",
+                  "nameAr": "السداسي 6",
+                  "nameFr": "Semestre 6",
+                  "subjects": [
+                    {
+                      "code": "MI-S6-R",
+                      "nameAr": "Réseaux",
+                      "nameFr": "Réseaux"
+                    },
+                    {
+                      "code": "MI-S6-MEI",
+                      "nameAr": "Mesure et intégration II",
+                      "nameFr": "Mesure et intégration II"
+                    },
+                    {
+                      "code": "MI-S6-E",
+                      "nameAr": "Entrepreunariat",
+                      "nameFr": "Entrepreunariat"
+                    },
+                    {
+                      "code": "MI-S6-JI",
+                      "nameAr": "Java II",
+                      "nameFr": "Java II"
+                    },
+                    {
+                      "code": "MI-S6-SI",
+                      "nameAr": "Statistique inférentielle",
+                      "nameFr": "Statistique inférentielle"
+                    },
+                    {
+                      "code": "MI-S6-OC",
+                      "nameAr": "Optimisation combinatoire",
+                      "nameFr": "Optimisation combinatoire"
+                    },
+                    {
+                      "code": "MI-S6-A",
+                      "nameAr": "Anglais",
+                      "nameFr": "Anglais"
+                    },
+                    {
+                      "code": "MI-S6-AEC",
+                      "nameAr": "Algorithmique et complexité",
+                      "nameFr": "Algorithmique et complexité"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "MIAGE",
+              "nameAr": "MIAGE",
+              "nameFr": "MIAGE",
+              "semesters": [
+                {
+                  "id": "S5",
+                  "nameAr": "السداسي 5",
+                  "nameFr": "Semestre 5",
+                  "subjects": [
+                    {
+                      "code": "MIAGE-S5-CA",
+                      "nameAr": "Comptabilité analytique",
+                      "nameFr": "Comptabilité analytique"
+                    },
+                    {
+                      "code": "MIAGE-S5-RIA",
+                      "nameAr": "Réseaux informatiques avancés",
+                      "nameFr": "Réseaux informatiques avancés"
+                    },
+                    {
+                      "code": "MIAGE-S5-CDSI",
+                      "nameAr": "Conception des Systèmes Informatiques",
+                      "nameFr": "Conception des Systèmes Informatiques"
+                    },
+                    {
+                      "code": "MIAGE-S5-GL",
+                      "nameAr": "Génie Logiciel",
+                      "nameFr": "Génie Logiciel"
+                    },
+                    {
+                      "code": "MIAGE-S5-E",
+                      "nameAr": "Entreprenariat",
+                      "nameFr": "Entreprenariat"
+                    },
+                    {
+                      "code": "MIAGE-S5-DN",
+                      "nameAr": "Droit NTIC",
+                      "nameFr": "Droit NTIC"
+                    },
+                    {
+                      "code": "MIAGE-S5-EDE",
+                      "nameAr": "Economie des entreprises",
+                      "nameFr": "Economie des entreprises"
+                    },
+                    {
+                      "code": "MIAGE-S5-ABDD",
+                      "nameAr": "Administration Bases de données",
+                      "nameFr": "Administration Bases de données"
+                    },
+                    {
+                      "code": "MIAGE-S5-AESDD",
+                      "nameAr": "Algorithmes et structures de données",
+                      "nameFr": "Algorithmes et structures de données"
+                    },
+                    {
+                      "code": "MIAGE-S5-IA",
+                      "nameAr": "Intelligence Artificielle",
+                      "nameFr": "Intelligence Artificielle"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "NS",
+              "nameAr": "NS",
+              "nameFr": "NS",
+              "semesters": [
+                {
+                  "id": "S5",
+                  "nameAr": "السداسي 5",
+                  "nameFr": "Semestre 5",
+                  "subjects": [
+                    {
+                      "code": "NS-S5-DESA",
+                      "nameAr": "Stratégie d’intervention et sécurité alimentaire",
+                      "nameFr": "Stratégie d’intervention et sécurité alimentaire"
+                    },
+                    {
+                      "code": "NS-S5-PECN",
+                      "nameAr": "Prise en charge nutritionnelle",
+                      "nameFr": "Prise en charge nutritionnelle"
+                    },
+                    {
+                      "code": "NS-S5-DENC",
+                      "nameAr": "Diététique et nutrition clinique",
+                      "nameFr": "Diététique et nutrition clinique"
+                    },
+                    {
+                      "code": "NS-S5-DESAALNIN",
+                      "nameAr": "Méthodes d’enquêtes statistique appliqué à la nutrition et indicateurs nutritionnels",
+                      "nameFr": "Méthodes d’enquêtes statistique appliqué à la nutrition et indicateurs nutritionnels"
+                    },
+                    {
+                      "code": "NS-S5-DNQELA",
+                      "nameAr": "Normes de qualités et aspects législatifs",
+                      "nameFr": "Normes de qualités et aspects législatifs"
+                    },
+                    {
+                      "code": "NS-S5-NCEEN",
+                      "nameAr": "Nutrition communautaire et évaluation nutritionnelle",
+                      "nameFr": "Nutrition communautaire et évaluation nutritionnelle"
+                    },
+                    {
+                      "code": "NS-S5-ADNEDJE",
+                      "nameAr": "Alimentation du Nourrisson et du Jeune Enfant",
+                      "nameFr": "Alimentation du Nourrisson et du Jeune Enfant"
+                    },
+                    {
+                      "code": "NS-S5-NDFEEA",
+                      "nameAr": "Nutrition des femmes enceintes et allaitentes",
+                      "nameFr": "Nutrition des femmes enceintes et allaitentes"
+                    },
+                    {
+                      "code": "NS-S5-BETDLE",
+                      "nameAr": "Biostatistique et Techniques d’enquêtes logiciels d’enquete",
+                      "nameFr": "Biostatistique et Techniques d’enquêtes logiciels d’enquete"
+                    },
+                    {
+                      "code": "NS-S5-PN",
+                      "nameAr": "Pathologies nutritionnelles",
+                      "nameFr": "Pathologies nutritionnelles"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "PEPE",
+              "nameAr": "PEPE",
+              "nameFr": "PEPE",
+              "semesters": [
+                {
+                  "id": "S5",
+                  "nameAr": "السداسي 5",
+                  "nameFr": "Semestre 5",
+                  "subjects": [
+                    {
+                      "code": "PEPE-S5-RA",
+                      "nameAr": "Réseaux d’assainissement",
+                      "nameFr": "Réseaux d’assainissement"
+                    },
+                    {
+                      "code": "PEPE-S5-REEP",
+                      "nameAr": "Ressources en eau et potabilisation",
+                      "nameFr": "Ressources en eau et potabilisation"
+                    },
+                    {
+                      "code": "PEPE-S5-SIG",
+                      "nameAr": "SIG",
+                      "nameFr": "SIG"
+                    },
+                    {
+                      "code": "PEPE-S5-SDP",
+                      "nameAr": "Systèmes de pompage",
+                      "nameFr": "Systèmes de pompage"
+                    },
+                    {
+                      "code": "PEPE-S5-E",
+                      "nameAr": "Entreprenariat",
+                      "nameFr": "Entreprenariat"
+                    },
+                    {
+                      "code": "PEPE-S5-DIE",
+                      "nameAr": "Etude d’impact environnemental",
+                      "nameFr": "Etude d’impact environnemental"
+                    },
+                    {
+                      "code": "PEPE-S5-TJDL",
+                      "nameAr": "Textes juridiques de l’eau",
+                      "nameFr": "Textes juridiques de l’eau"
+                    },
+                    {
+                      "code": "PEPE-S5-AED",
+                      "nameAr": "Adduction et distribution",
+                      "nameFr": "Adduction et distribution"
+                    },
+                    {
+                      "code": "PEPE-S5-RDES",
+                      "nameAr": "Recherche d’eau souterraine",
+                      "nameFr": "Recherche d’eau souterraine"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "PF",
+              "nameAr": "PF",
+              "nameFr": "PF",
+              "semesters": [
+                {
+                  "id": "S6",
+                  "nameAr": "السداسي 6",
+                  "nameFr": "Semestre 6",
+                  "subjects": [
+                    {
+                      "code": "PF-S6-PNEDP",
+                      "nameAr": "Physique Nucléaire et des Particules",
+                      "nameFr": "Physique Nucléaire et des Particules"
+                    },
+                    {
+                      "code": "PF-S6-MQI",
+                      "nameAr": "Mécanique Quantique II",
+                      "nameFr": "Mécanique Quantique II"
+                    },
+                    {
+                      "code": "PF-S6-PS",
+                      "nameAr": "Physique Statistique",
+                      "nameFr": "Physique Statistique"
+                    },
+                    {
+                      "code": "PF-S6-TAEPDT",
+                      "nameAr": "Thermodynamique avancée et phénomènes de Transfert",
+                      "nameFr": "Thermodynamique avancée et phénomènes de Transfert"
+                    },
+                    {
+                      "code": "PF-S6-E",
+                      "nameAr": "Economie",
+                      "nameFr": "Economie"
+                    },
+                    {
+                      "code": "PF-S6-D",
+                      "nameAr": "Droit",
+                      "nameFr": "Droit"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "SP",
+              "nameAr": "SP",
+              "nameFr": "SP",
+              "semesters": [
+                {
+                  "id": "S6",
+                  "nameAr": "السداسي 6",
+                  "nameFr": "Semestre 6",
+                  "subjects": [
+                    {
+                      "code": "SP-S6-PNEDP",
+                      "nameAr": "Physique nucléaire et des particules",
+                      "nameFr": "Physique nucléaire et des particules"
+                    },
+                    {
+                      "code": "SP-S6-MDF",
+                      "nameAr": "Mécanique des fluides",
+                      "nameFr": "Mécanique des fluides"
+                    },
+                    {
+                      "code": "SP-S6-EEE",
+                      "nameAr": "Electrocinétique et électronique",
+                      "nameFr": "Electrocinétique et électronique"
+                    },
+                    {
+                      "code": "SP-S6-CO",
+                      "nameAr": "Chimie organique 3",
+                      "nameFr": "Chimie organique 3"
+                    },
+                    {
+                      "code": "SP-S6-CM",
+                      "nameAr": "Chimie minérale 2",
+                      "nameFr": "Chimie minérale 2"
+                    },
+                    {
+                      "code": "SP-S6-E",
+                      "nameAr": "Economie",
+                      "nameFr": "Economie"
+                    },
+                    {
+                      "code": "SP-S6-D",
+                      "nameAr": "Droit",
+                      "nameFr": "Droit"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "TASSMQ",
+              "nameAr": "TASSMQ",
+              "nameFr": "TASSMQ",
+              "semesters": [
+                {
+                  "id": "S5",
+                  "nameAr": "السداسي 5",
+                  "nameFr": "Semestre 5",
+                  "subjects": [
+                    {
+                      "code": "TASSMQ-S5-DESA",
+                      "nameAr": "Stratégie d’intervention et sécurité alimentaire",
+                      "nameFr": "Stratégie d’intervention et sécurité alimentaire"
+                    },
+                    {
+                      "code": "TASSMQ-S5-GDEPLP",
+                      "nameAr": "Gestion de l’entreprise par les Processus",
+                      "nameFr": "Gestion de l’entreprise par les Processus"
+                    },
+                    {
+                      "code": "TASSMQ-S5-TAS2",
+                      "nameAr": "Technologies Alimentaires spécifiques 2",
+                      "nameFr": "Technologies Alimentaires spécifiques 2"
+                    },
+                    {
+                      "code": "TASSMQ-S5-AS",
+                      "nameAr": "Analyse sensorielle",
+                      "nameFr": "Analyse sensorielle"
+                    },
+                    {
+                      "code": "TASSMQ-S5-CDPLETDV",
+                      "nameAr": "Connaissance des produits locaux et Technologie de valorisation",
+                      "nameFr": "Connaissance des produits locaux et Technologie de valorisation"
+                    },
+                    {
+                      "code": "TASSMQ-S5-PDB",
+                      "nameAr": "Principes de biotechnologie",
+                      "nameFr": "Principes de biotechnologie"
+                    },
+                    {
+                      "code": "TASSMQ-S5-SDMDLQ",
+                      "nameAr": "Système de Management de la Qualité",
+                      "nameFr": "Système de Management de la Qualité"
+                    },
+                    {
+                      "code": "TASSMQ-S5-DNQELA",
+                      "nameAr": "Normes de qualités et aspects législatifs",
+                      "nameFr": "Normes de qualités et aspects législatifs"
+                    },
+                    {
+                      "code": "TASSMQ-S5-NCEEN",
+                      "nameAr": "Nutrition communautaire et évaluation nutritionnelle",
+                      "nameFr": "Nutrition communautaire et évaluation nutritionnelle"
+                    },
+                    {
+                      "code": "TASSMQ-S5-BETDLE",
+                      "nameAr": "Biostatistique et Techniques d’enquêtes logiciels d’enquete",
+                      "nameFr": "Biostatistique et Techniques d’enquêtes logiciels d’enquete"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "TSER",
+              "nameAr": "TSER",
+              "nameFr": "TSER",
+              "semesters": [
+                {
+                  "id": "S5",
+                  "nameAr": "السداسي 5",
+                  "nameFr": "Semestre 5",
+                  "subjects": [
+                    {
+                      "code": "TSER-S5-TE",
+                      "nameAr": "Technologies éoliennes",
+                      "nameFr": "Technologies éoliennes"
+                    },
+                    {
+                      "code": "TSER-S5-EAE",
+                      "nameAr": "Génie et Audit énergétiques",
+                      "nameFr": "Génie et Audit énergétiques"
+                    },
+                    {
+                      "code": "TSER-S5-MT",
+                      "nameAr": "Machines thermiques",
+                      "nameFr": "Machines thermiques"
+                    },
+                    {
+                      "code": "TSER-S5-A3",
+                      "nameAr": "Anglais 3",
+                      "nameFr": "Anglais 3"
+                    },
+                    {
+                      "code": "TSER-S5-TDSH",
+                      "nameAr": "Technologies des Systèmes hybrides",
+                      "nameFr": "Technologies des Systèmes hybrides"
+                    },
+                    {
+                      "code": "TSER-S5-TSP",
+                      "nameAr": "Technologies solaires photovoltaïques",
+                      "nameFr": "Technologies solaires photovoltaïques"
+                    },
+                    {
+                      "code": "TSER-S5-CTDLES",
+                      "nameAr": "Conversion thermique de l’énergie solaire",
+                      "nameFr": "Conversion thermique de l’énergie solaire"
+                    },
+                    {
+                      "code": "TSER-S5-BB",
+                      "nameAr": "Biomasse bioénergie",
+                      "nameFr": "Biomasse bioénergie"
+                    },
+                    {
+                      "code": "TSER-S5-F3",
+                      "nameAr": "Français 3",
+                      "nameFr": "Français 3"
                     }
                   ]
                 }
