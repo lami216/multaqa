@@ -14,6 +14,7 @@ import { maskContactInfo } from '../utils/contentMasking.js';
 import { containsProfanity, maskProfanity } from '../utils/profanityFilter.js';
 import { getMajorAvailability } from '../services/academicSettingsService.js';
 import { incrementMatch, incrementPost } from '../services/majorStatsService.js';
+import { computePostCompatibilityForUser } from '../services/postCompatibilityService.js';
 
 const getAvailabilityCutoff = (value) => {
   const date = new Date(value);
@@ -53,81 +54,6 @@ const countSharedSubjects = (userSubjects, postSubjects) => {
     }
   });
   return count;
-};
-
-const extractProgramValues = (source) => {
-  if (!source) return [];
-  return [
-    source.facultyId,
-    source.faculty,
-    source.majorId,
-    source.major,
-    source.departmentId,
-    source.department,
-    source.filiereId,
-    source.filiere,
-    source.programmeId,
-    source.programme,
-    source.programId,
-    source.program
-  ]
-    .map((value) => normalizeValue(value))
-    .filter(Boolean);
-};
-
-const calculateMatchingPercent = ({
-  userProfile,
-  authorProfile,
-  post,
-  userSubjects,
-  postSubjects
-}) => {
-  const userSubjectList = Array.isArray(userSubjects) ? userSubjects.filter(Boolean) : [];
-  const postSubjectList = Array.isArray(postSubjects) ? postSubjects.filter(Boolean) : [];
-  const hasSubjects = userSubjectList.length > 0 && postSubjectList.length > 0;
-
-  const levelCandidate = post?.level || authorProfile?.level;
-  const hasLevel = Boolean(userProfile?.level && levelCandidate);
-  const sameLevel = hasLevel && normalizeValue(userProfile?.level) === normalizeValue(levelCandidate);
-
-  const userProgramValues = extractProgramValues(userProfile);
-  const postProgramValues = [
-    ...extractProgramValues(post),
-    ...extractProgramValues(authorProfile)
-  ];
-  const hasProgram = userProgramValues.length > 0 && postProgramValues.length > 0;
-  const userProgramSet = new Set(userProgramValues);
-  const sameProgram = hasProgram && postProgramValues.some((value) => userProgramSet.has(value));
-
-  const weights = {
-    subjects: 60,
-    level: 20,
-    program: 20
-  };
-  const totalWeight =
-    (hasSubjects ? weights.subjects : 0) +
-    (hasLevel ? weights.level : 0) +
-    (hasProgram ? weights.program : 0);
-
-  if (!totalWeight) return 0;
-
-  let weightedScore = 0;
-  if (hasSubjects) {
-    const sharedSubjectsCount = countSharedSubjects(userSubjectList, postSubjectList);
-    const ratio = sharedSubjectsCount
-      ? sharedSubjectsCount / Math.max(userSubjectList.length, postSubjectList.length)
-      : 0;
-    weightedScore += weights.subjects * ratio;
-  }
-  if (hasLevel) {
-    weightedScore += weights.level * (sameLevel ? 1 : 0);
-  }
-  if (hasProgram) {
-    weightedScore += weights.program * (sameProgram ? 1 : 0);
-  }
-
-  const percent = Math.round((weightedScore / totalWeight) * 100);
-  return Math.max(0, Math.min(100, percent));
 };
 
 const resolveIntentBoost = (intent, post) => {
@@ -299,21 +225,16 @@ export const getPosts = async (req, res) => {
           return null;
         }
 
-        const matchingPercent = calculateMatchingPercent({
-          userProfile,
-          authorProfile: profile,
-          post,
-          userSubjects: fallbackSubjects,
-          postSubjects
-        });
-        if (matchingPercent === 0) {
+        const compatibility = computePostCompatibilityForUser(post, userProfile);
+        if (compatibility.compatibilityPercentage < 50) {
           return null;
         }
         const intentBoost = resolveIntentBoost(intent, post);
 
         return {
           ...post.toObject(),
-          matchingPercent,
+          compatibilityPercentage: compatibility.compatibilityPercentage,
+          compatibilityBreakdown: compatibility.compatibilityBreakdown,
           intentBoost,
           pendingJoinRequestsCount,
           unreadPostMessagesCount,
@@ -329,7 +250,7 @@ export const getPosts = async (req, res) => {
 
     const visiblePosts = postsWithProfiles.filter(Boolean);
     visiblePosts.sort((a, b) => {
-      if (b.matchingPercent !== a.matchingPercent) return b.matchingPercent - a.matchingPercent;
+      if (b.compatibilityPercentage !== a.compatibilityPercentage) return b.compatibilityPercentage - a.compatibilityPercentage;
       if (b.intentBoost !== a.intentBoost) return b.intentBoost - a.intentBoost;
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     });
@@ -407,31 +328,14 @@ export const getPost = async (req, res) => {
     }
 
     const userProfile = req.user?._id ? await Profile.findOne({ userId: req.user._id }) : null;
-    const fallbackSubjects = [
-      ...(userProfile?.subjectCodes ?? []),
-      ...(userProfile?.subjects ?? []),
-      ...extractRemainingSubjectCodes(userProfile?.remainingSubjects ?? [])
-    ];
-    const postSubjects = post.subjectCodes?.length
-      ? post.subjectCodes
-      : [
-          ...(profile?.subjectCodes ?? []),
-          ...(profile?.subjects ?? []),
-          ...extractRemainingSubjectCodes(profile?.remainingSubjects ?? [])
-        ];
-    const matchingPercent = calculateMatchingPercent({
-      userProfile,
-      authorProfile: profile,
-      post,
-      userSubjects: fallbackSubjects,
-      postSubjects
-    });
+    const compatibility = computePostCompatibilityForUser(post, userProfile);
 
     res.json({
       post: {
         ...post.toObject(),
         userId: post.authorId._id,
-        matchingPercent,
+        compatibilityPercentage: compatibility.compatibilityPercentage,
+        compatibilityBreakdown: compatibility.compatibilityBreakdown,
         pendingJoinRequestsCount,
         unreadPostMessagesCount,
         myJoinRequestStatus

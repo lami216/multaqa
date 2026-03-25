@@ -173,6 +173,12 @@ export interface PostResponse extends PostPayload {
   unreadPostMessagesCount?: number;
   myJoinRequestStatus?: 'none' | 'pending' | 'accepted' | 'rejected';
   matchPercent?: number;
+  compatibilityPercentage?: number;
+  compatibilityBreakdown?: {
+    subjectScore: number;
+    roleScore: number;
+    activityScore: number;
+  };
   createdAt: string;
   updatedAt: string;
   language?: string;
