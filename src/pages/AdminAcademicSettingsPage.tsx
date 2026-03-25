@@ -13,6 +13,22 @@ import {
 const DEFAULT_MAJOR_STATUS: 'collecting' = 'collecting';
 const DEFAULT_MAJOR_THRESHOLD = 99;
 
+const cloneAcademicDraft = (value: { currentTermType: 'odd' | 'even'; faculties: AcademicSettingsNode[] }) => ({
+  currentTermType: value.currentTermType,
+  faculties: value.faculties.map((faculty) => ({
+    facultyId: faculty.facultyId,
+    enabled: faculty.enabled,
+    levels: faculty.levels.map((level) => ({
+      levelId: level.levelId,
+      majors: level.majors.map((major) => ({
+        majorId: major.majorId,
+        status: major.status,
+        threshold: major.threshold
+      }))
+    }))
+  }))
+});
+
 const AdminAcademicSettingsPage: React.FC = () => {
   const faculties = useMemo(() => getFaculties(), []);
   const [settings, setSettings] = useState<AcademicSettingsResponse | null>(null);
@@ -30,8 +46,8 @@ const AdminAcademicSettingsPage: React.FC = () => {
         faculties: data.settings?.faculties ?? []
       };
       setSettings(data);
-      setDraft(nextDraft);
-      setOriginalSettings(nextDraft);
+      setDraft(cloneAcademicDraft(nextDraft));
+      setOriginalSettings(cloneAcademicDraft(nextDraft));
       setSelectedFaculty(nextDraft.faculties[0]?.facultyId ?? faculties[0]?.id ?? '');
     };
     void load();
@@ -75,7 +91,13 @@ const AdminAcademicSettingsPage: React.FC = () => {
     if (!draft || !selectedFaculty || !selectedLevel) return;
     setDraft((prev) => {
       if (!prev) return prev;
-      const nextFaculties = [...prev.faculties];
+      const nextFaculties = prev.faculties.map((faculty) => ({
+        ...faculty,
+        levels: faculty.levels.map((level) => ({
+          ...level,
+          majors: level.majors.map((major) => ({ ...major }))
+        }))
+      }));
       let faculty = nextFaculties.find((item) => item.facultyId === selectedFaculty);
       if (!faculty) {
         faculty = { facultyId: selectedFaculty, enabled: true, levels: [] };
@@ -108,8 +130,8 @@ const AdminAcademicSettingsPage: React.FC = () => {
         faculties: refreshed.settings?.faculties ?? []
       };
       setSettings(refreshed);
-      setDraft(syncedDraft);
-      setOriginalSettings(syncedDraft);
+      setDraft(cloneAcademicDraft(syncedDraft));
+      setOriginalSettings(cloneAcademicDraft(syncedDraft));
       toast.success('Academic settings saved.');
     } catch {
       toast.error('Failed to save academic settings.');
