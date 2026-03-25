@@ -149,6 +149,168 @@
                   ]
                 }
               ]
+            },
+            {
+              "id": "BG",
+              "nameAr": "BG",
+              "nameFr": "BG",
+              "semesters": [
+                {
+                  "id": "S1",
+                  "nameAr": "السداسي 1",
+                  "nameFr": "Semestre 1",
+                  "subjects": [
+                    {
+                      "code": "BG101",
+                      "nameAr": "Mathématiques I",
+                      "nameFr": "Mathématiques I"
+                    },
+                    {
+                      "code": "BG102",
+                      "nameAr": "Système Terre 1",
+                      "nameFr": "Système Terre 1"
+                    },
+                    {
+                      "code": "BG103",
+                      "nameAr": "Physique I",
+                      "nameFr": "Physique I"
+                    },
+                    {
+                      "code": "BG104",
+                      "nameAr": "Arabe I",
+                      "nameFr": "Arabe I"
+                    },
+                    {
+                      "code": "BG105",
+                      "nameAr": "Découverte de la biologie",
+                      "nameFr": "Découverte de la biologie"
+                    },
+                    {
+                      "code": "BG106",
+                      "nameAr": "Chimie organique I",
+                      "nameFr": "Chimie organique I"
+                    },
+                    {
+                      "code": "BG107",
+                      "nameAr": "Anglais I",
+                      "nameFr": "Anglais I"
+                    },
+                    {
+                      "code": "BG108",
+                      "nameAr": "Chimie Générale",
+                      "nameFr": "Chimie Générale"
+                    },
+                    {
+                      "code": "BG109",
+                      "nameAr": "Géodynamique interne",
+                      "nameFr": "Géodynamique interne"
+                    },
+                    {
+                      "code": "BG110",
+                      "nameAr": "Biologie cellulaire I",
+                      "nameFr": "Biologie cellulaire I"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "PC",
+              "nameAr": "PC",
+              "nameFr": "PC",
+              "semesters": [
+                {
+                  "id": "S1",
+                  "nameAr": "السداسي 1",
+                  "nameFr": "Semestre 1",
+                  "subjects": [
+                    {
+                      "code": "PC101",
+                      "nameAr": "Structure de la matière",
+                      "nameFr": "Structure de la matière"
+                    },
+                    {
+                      "code": "PC102",
+                      "nameAr": "Réactions chimiques",
+                      "nameFr": "Réactions chimiques"
+                    },
+                    {
+                      "code": "PC103",
+                      "nameAr": "Algèbre I",
+                      "nameFr": "Algèbre I"
+                    },
+                    {
+                      "code": "PC104",
+                      "nameAr": "Electrostatique",
+                      "nameFr": "Electrostatique"
+                    },
+                    {
+                      "code": "PC105",
+                      "nameAr": "Analyse I",
+                      "nameFr": "Analyse I"
+                    },
+                    {
+                      "code": "PC106",
+                      "nameAr": "Mécanique du point",
+                      "nameFr": "Mécanique du point"
+                    },
+                    {
+                      "code": "PC107",
+                      "nameAr": "Arabe I",
+                      "nameFr": "Arabe I"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "MPI",
+              "nameAr": "MPI",
+              "nameFr": "MPI",
+              "semesters": [
+                {
+                  "id": "S1",
+                  "nameAr": "السداسي 1",
+                  "nameFr": "Semestre 1",
+                  "subjects": [
+                    {
+                      "code": "MPI101",
+                      "nameAr": "Algèbre générale",
+                      "nameFr": "Algèbre générale"
+                    },
+                    {
+                      "code": "MPI102",
+                      "nameAr": "Bases de l’informatique & programmation",
+                      "nameFr": "Bases de l’informatique & programmation"
+                    },
+                    {
+                      "code": "MPI103",
+                      "nameAr": "Mécanique du point",
+                      "nameFr": "Mécanique du point"
+                    },
+                    {
+                      "code": "MPI104",
+                      "nameAr": "Anglais 1",
+                      "nameFr": "Anglais 1"
+                    },
+                    {
+                      "code": "MPI105",
+                      "nameAr": "Analyse I",
+                      "nameFr": "Analyse I"
+                    },
+                    {
+                      "code": "MPI106",
+                      "nameAr": "Électrostatique",
+                      "nameFr": "Électrostatique"
+                    },
+                    {
+                      "code": "MPI107",
+                      "nameAr": "Arabe 1",
+                      "nameFr": "Arabe 1"
+                    }
+                  ]
+                }
+              ]
             }
           ]
         },
@@ -263,6 +425,842 @@
                       "code": "PPE",
                       "nameAr": "مشروع شخصي للطالب",
                       "nameFr": "Projet Personnel de l’Étudiant"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "MAI",
+              "nameAr": "MAI",
+              "nameFr": "MAI",
+              "semesters": [
+                {
+                  "id": "S3",
+                  "nameAr": "السداسي 3",
+                  "nameFr": "Semestre 3",
+                  "subjects": [
+                    {
+                      "code": "MAI301",
+                      "nameAr": "Initiation aux logiciels de calcul scientifique",
+                      "nameFr": "Initiation aux logiciels de calcul scientifique"
+                    },
+                    {
+                      "code": "MAI302",
+                      "nameAr": "Algèbre linéaire 2",
+                      "nameFr": "Algèbre linéaire 2"
+                    },
+                    {
+                      "code": "MAI303",
+                      "nameAr": "Analyse et convergence",
+                      "nameFr": "Analyse et convergence"
+                    },
+                    {
+                      "code": "MAI304",
+                      "nameAr": "Topologie des espaces métriques",
+                      "nameFr": "Topologie des espaces métriques"
+                    },
+                    {
+                      "code": "MAI305",
+                      "nameAr": "Graphes et Applications",
+                      "nameFr": "Graphes et Applications"
+                    },
+                    {
+                      "code": "MAI306",
+                      "nameAr": "Systèmes d’exploitations",
+                      "nameFr": "Systèmes d’exploitations"
+                    },
+                    {
+                      "code": "MAI307",
+                      "nameAr": "Fonctions de plusieurs variables I",
+                      "nameFr": "Fonctions de plusieurs variables I"
+                    },
+                    {
+                      "code": "MAI308",
+                      "nameAr": "Langage C avancé",
+                      "nameFr": "Langage C avancé"
+                    },
+                    {
+                      "code": "MAI309",
+                      "nameAr": "Analyse vectorielle",
+                      "nameFr": "Analyse vectorielle"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "ABC",
+              "nameAr": "ABC",
+              "nameFr": "ABC",
+              "semesters": [
+                {
+                  "id": "S3",
+                  "nameAr": "السداسي 3",
+                  "nameFr": "Semestre 3",
+                  "subjects": [
+                    {
+                      "code": "ABC301",
+                      "nameAr": "Notions de base de chimie organique et inorganique",
+                      "nameFr": "Notions de base de chimie organique et inorganique"
+                    },
+                    {
+                      "code": "ABC302",
+                      "nameAr": "Notions de base de Biochimie",
+                      "nameFr": "Notions de base de Biochimie"
+                    },
+                    {
+                      "code": "ABC303",
+                      "nameAr": "Techniques d’analyse biochimique",
+                      "nameFr": "Techniques d’analyse biochimique"
+                    },
+                    {
+                      "code": "ABC304",
+                      "nameAr": "Notions de base de Biologie Moléculaire",
+                      "nameFr": "Notions de base de Biologie Moléculaire"
+                    },
+                    {
+                      "code": "ABC305",
+                      "nameAr": "Plans d’expériences / Validation des méthodes",
+                      "nameFr": "Plans d’expériences / Validation des méthodes"
+                    },
+                    {
+                      "code": "ABC306",
+                      "nameAr": "Chimie Analytique",
+                      "nameFr": "Chimie Analytique"
+                    },
+                    {
+                      "code": "ABC307",
+                      "nameAr": "Statistiques",
+                      "nameFr": "Statistiques"
+                    },
+                    {
+                      "code": "ABC308",
+                      "nameAr": "Informatique",
+                      "nameFr": "Informatique"
+                    },
+                    {
+                      "code": "ABC309",
+                      "nameAr": "Anglais",
+                      "nameFr": "Anglais"
+                    },
+                    {
+                      "code": "ABC310",
+                      "nameAr": "Techniques d’analyse moléculaire",
+                      "nameFr": "Techniques d’analyse moléculaire"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "TSER",
+              "nameAr": "TSER",
+              "nameFr": "TSER",
+              "semesters": [
+                {
+                  "id": "S3",
+                  "nameAr": "السداسي 3",
+                  "nameFr": "Semestre 3",
+                  "subjects": [
+                    {
+                      "code": "TSER301",
+                      "nameAr": "Mécanique des fluides",
+                      "nameFr": "Mécanique des fluides"
+                    },
+                    {
+                      "code": "TSER302",
+                      "nameAr": "Electrocinétique",
+                      "nameFr": "Electrocinétique"
+                    },
+                    {
+                      "code": "TSER303",
+                      "nameAr": "Thermodynamique de l’ingénieur",
+                      "nameFr": "Thermodynamique de l’ingénieur"
+                    },
+                    {
+                      "code": "TSER304",
+                      "nameAr": "Anglais III",
+                      "nameFr": "Anglais III"
+                    },
+                    {
+                      "code": "TSER305",
+                      "nameAr": "Electrotechnique",
+                      "nameFr": "Electrotechnique"
+                    },
+                    {
+                      "code": "TSER306",
+                      "nameAr": "Transferts thermiques",
+                      "nameFr": "Transferts thermiques"
+                    },
+                    {
+                      "code": "TSER307",
+                      "nameAr": "Electromagnétisme avancé",
+                      "nameFr": "Electromagnétisme avancé"
+                    },
+                    {
+                      "code": "TSER308",
+                      "nameAr": "Mathématique de l’ingénieur",
+                      "nameFr": "Mathématique de l’ingénieur"
+                    },
+                    {
+                      "code": "TSER309",
+                      "nameAr": "Programmation MatLab, Excell",
+                      "nameFr": "Programmation MatLab, Excell"
+                    },
+                    {
+                      "code": "TSER310",
+                      "nameAr": "Français 1",
+                      "nameFr": "Français 1"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "IPG",
+              "nameAr": "IPG",
+              "nameFr": "IPG",
+              "semesters": [
+                {
+                  "id": "S3",
+                  "nameAr": "السداسي 3",
+                  "nameFr": "Semestre 3",
+                  "subjects": [
+                    {
+                      "code": "IPG301",
+                      "nameAr": "Acoustique",
+                      "nameFr": "Acoustique"
+                    },
+                    {
+                      "code": "IPG302",
+                      "nameAr": "Géologie",
+                      "nameFr": "Géologie"
+                    },
+                    {
+                      "code": "IPG303",
+                      "nameAr": "Chimie Minérale",
+                      "nameFr": "Chimie Minérale"
+                    },
+                    {
+                      "code": "IPG304",
+                      "nameAr": "Français",
+                      "nameFr": "Français"
+                    },
+                    {
+                      "code": "IPG305",
+                      "nameAr": "Chimie des hydrocarbures",
+                      "nameFr": "Chimie des hydrocarbures"
+                    },
+                    {
+                      "code": "IPG306",
+                      "nameAr": "Anglais",
+                      "nameFr": "Anglais"
+                    },
+                    {
+                      "code": "IPG307",
+                      "nameAr": "Hydraulique et Mécanique des fluides",
+                      "nameFr": "Hydraulique et Mécanique des fluides"
+                    },
+                    {
+                      "code": "IPG308",
+                      "nameAr": "Mathématiques et Traitement du signal",
+                      "nameFr": "Mathématiques et Traitement du signal"
+                    },
+                    {
+                      "code": "IPG309",
+                      "nameAr": "Physique",
+                      "nameFr": "Physique"
+                    },
+                    {
+                      "code": "IPG310",
+                      "nameAr": "Géologie du pétrole",
+                      "nameFr": "Géologie du pétrole"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "GEO",
+              "nameAr": "Géologie",
+              "nameFr": "Géologie",
+              "semesters": [
+                {
+                  "id": "S3",
+                  "nameAr": "السداسي 3",
+                  "nameFr": "Semestre 3",
+                  "subjects": [
+                    {
+                      "code": "GEO301",
+                      "nameAr": "Paléontologie",
+                      "nameFr": "Paléontologie"
+                    },
+                    {
+                      "code": "GEO302",
+                      "nameAr": "Trigonométrie et géométrie",
+                      "nameFr": "Trigonométrie et géométrie"
+                    },
+                    {
+                      "code": "GEO303",
+                      "nameAr": "Stratigraphie",
+                      "nameFr": "Stratigraphie"
+                    },
+                    {
+                      "code": "GEO304",
+                      "nameAr": "Etude des minéraux",
+                      "nameFr": "Etude des minéraux"
+                    },
+                    {
+                      "code": "GEO305",
+                      "nameAr": "Pétrographie ignée et métamorphique",
+                      "nameFr": "Pétrographie ignée et métamorphique"
+                    },
+                    {
+                      "code": "GEO306",
+                      "nameAr": "Introduction à la géophysique",
+                      "nameFr": "Introduction à la géophysique"
+                    },
+                    {
+                      "code": "GEO307",
+                      "nameAr": "Introduction à la géochimie",
+                      "nameFr": "Introduction à la géochimie"
+                    },
+                    {
+                      "code": "GEO308",
+                      "nameAr": "Base de géodésie",
+                      "nameFr": "Base de géodésie"
+                    },
+                    {
+                      "code": "GEO309",
+                      "nameAr": "Rédaction scientifique",
+                      "nameFr": "Rédaction scientifique"
+                    },
+                    {
+                      "code": "GEO310",
+                      "nameAr": "Anglais II",
+                      "nameFr": "Anglais II"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "PEPE",
+              "nameAr": "PEPE",
+              "nameFr": "PEPE",
+              "semesters": [
+                {
+                  "id": "S3",
+                  "nameAr": "السداسي 3",
+                  "nameFr": "Semestre 3",
+                  "subjects": [
+                    {
+                      "code": "PEPE301",
+                      "nameAr": "Techniques d’analyse et protocoles",
+                      "nameFr": "Techniques d’analyse et protocoles"
+                    },
+                    {
+                      "code": "PEPE302",
+                      "nameAr": "Chimie minérale",
+                      "nameFr": "Chimie minérale"
+                    },
+                    {
+                      "code": "PEPE303",
+                      "nameAr": "Chimie organique",
+                      "nameFr": "Chimie organique"
+                    },
+                    {
+                      "code": "PEPE304",
+                      "nameAr": "Chimie analytique",
+                      "nameFr": "Chimie analytique"
+                    },
+                    {
+                      "code": "PEPE305",
+                      "nameAr": "Anglais II",
+                      "nameFr": "Anglais II"
+                    },
+                    {
+                      "code": "PEPE306",
+                      "nameAr": "Spéciation chimique",
+                      "nameFr": "Spéciation chimique"
+                    },
+                    {
+                      "code": "PEPE307",
+                      "nameAr": "Mécanique des fluides et hydraulique",
+                      "nameFr": "Mécanique des fluides et hydraulique"
+                    },
+                    {
+                      "code": "PEPE308",
+                      "nameAr": "Statistiques et analyses des données",
+                      "nameFr": "Statistiques et analyses des données"
+                    },
+                    {
+                      "code": "PEPE309",
+                      "nameAr": "Français",
+                      "nameFr": "Français"
+                    },
+                    {
+                      "code": "PEPE310",
+                      "nameAr": "Microbiologie des eaux",
+                      "nameFr": "Microbiologie des eaux"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "SP",
+              "nameAr": "SP",
+              "nameFr": "SP",
+              "semesters": [
+                {
+                  "id": "S3",
+                  "nameAr": "السداسي 3",
+                  "nameFr": "Semestre 3",
+                  "subjects": [
+                    {
+                      "code": "SP301",
+                      "nameAr": "Chimie des solutions",
+                      "nameFr": "Chimie des solutions"
+                    },
+                    {
+                      "code": "SP302",
+                      "nameAr": "Thermodynamique",
+                      "nameFr": "Thermodynamique"
+                    },
+                    {
+                      "code": "SP303",
+                      "nameAr": "Mécanique du solide",
+                      "nameFr": "Mécanique du solide"
+                    },
+                    {
+                      "code": "SP304",
+                      "nameAr": "Chimie minérale 1",
+                      "nameFr": "Chimie minérale 1"
+                    },
+                    {
+                      "code": "SP305",
+                      "nameAr": "Mathématiques pour physiciens 1",
+                      "nameFr": "Mathématiques pour physiciens 1"
+                    },
+                    {
+                      "code": "SP306",
+                      "nameAr": "Techniques de communication",
+                      "nameFr": "Techniques de communication"
+                    },
+                    {
+                      "code": "SP307",
+                      "nameAr": "Chimie organique 2",
+                      "nameFr": "Chimie organique 2"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "MIAGE",
+              "nameAr": "MIAGE",
+              "nameFr": "MIAGE",
+              "semesters": [
+                {
+                  "id": "S3",
+                  "nameAr": "السداسي 3",
+                  "nameFr": "Semestre 3",
+                  "subjects": [
+                    {
+                      "code": "MIAG301",
+                      "nameAr": "Composantes logiques et Architecture des ordinateurs",
+                      "nameFr": "Composantes logiques et Architecture des ordinateurs"
+                    },
+                    {
+                      "code": "MIAG302",
+                      "nameAr": "Programmation Internet",
+                      "nameFr": "Programmation Internet"
+                    },
+                    {
+                      "code": "MIAG303",
+                      "nameAr": "Programmation JavaSE",
+                      "nameFr": "Programmation JavaSE"
+                    },
+                    {
+                      "code": "MIAG304",
+                      "nameAr": "Programmation Python",
+                      "nameFr": "Programmation Python"
+                    },
+                    {
+                      "code": "MIAG305",
+                      "nameAr": "Base de données et Systèmes d’information",
+                      "nameFr": "Base de données et Systèmes d’information"
+                    },
+                    {
+                      "code": "MIAG306",
+                      "nameAr": "Système d’exploitation",
+                      "nameFr": "Système d’exploitation"
+                    },
+                    {
+                      "code": "MIAG307",
+                      "nameAr": "Automates et Langages",
+                      "nameFr": "Automates et Langages"
+                    },
+                    {
+                      "code": "MIAG308",
+                      "nameAr": "Projets Unix",
+                      "nameFr": "Projets Unix"
+                    },
+                    {
+                      "code": "MIAG309",
+                      "nameAr": "Anglais III",
+                      "nameFr": "Anglais III"
+                    },
+                    {
+                      "code": "MIAG310",
+                      "nameAr": "Français I",
+                      "nameFr": "Français I"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "DA2I",
+              "nameAr": "DA2I",
+              "nameFr": "DA2I",
+              "semesters": [
+                {
+                  "id": "S3",
+                  "nameAr": "السداسي 3",
+                  "nameFr": "Semestre 3",
+                  "subjects": [
+                    {
+                      "code": "DA2I301",
+                      "nameAr": "Composantes logiques et Architecture des ordinateurs",
+                      "nameFr": "Composantes logiques et Architecture des ordinateurs"
+                    },
+                    {
+                      "code": "DA2I302",
+                      "nameAr": "Programmation Internet",
+                      "nameFr": "Programmation Internet"
+                    },
+                    {
+                      "code": "DA2I303",
+                      "nameAr": "Programmation JavaSE",
+                      "nameFr": "Programmation JavaSE"
+                    },
+                    {
+                      "code": "DA2I304",
+                      "nameAr": "Programmation Python",
+                      "nameFr": "Programmation Python"
+                    },
+                    {
+                      "code": "DA2I305",
+                      "nameAr": "Base de données et Systèmes d’information",
+                      "nameFr": "Base de données et Systèmes d’information"
+                    },
+                    {
+                      "code": "DA2I306",
+                      "nameAr": "Système d’exploitation",
+                      "nameFr": "Système d’exploitation"
+                    },
+                    {
+                      "code": "DA2I307",
+                      "nameAr": "Automates et Langages",
+                      "nameFr": "Automates et Langages"
+                    },
+                    {
+                      "code": "DA2I308",
+                      "nameAr": "Projets Unix",
+                      "nameFr": "Projets Unix"
+                    },
+                    {
+                      "code": "DA2I309",
+                      "nameAr": "Anglais III",
+                      "nameFr": "Anglais III"
+                    },
+                    {
+                      "code": "DA2I310",
+                      "nameAr": "Français I",
+                      "nameFr": "Français I"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "STA-NS",
+              "nameAr": "STA-NS",
+              "nameFr": "STA-NS",
+              "semesters": [
+                {
+                  "id": "S3",
+                  "nameAr": "السداسي 3",
+                  "nameFr": "Semestre 3",
+                  "subjects": [
+                    {
+                      "code": "STAN301",
+                      "nameAr": "Biochimie structurale",
+                      "nameFr": "Biochimie structurale"
+                    },
+                    {
+                      "code": "STAN302",
+                      "nameAr": "Principes du GIA et éléments de physique industrielle",
+                      "nameFr": "Principes du GIA et éléments de physique industrielle"
+                    },
+                    {
+                      "code": "STAN303",
+                      "nameAr": "Diversité animale",
+                      "nameFr": "Diversité animale"
+                    },
+                    {
+                      "code": "STAN304",
+                      "nameAr": "Microbiologie Alimentaire, parasitologie et mycologie",
+                      "nameFr": "Microbiologie Alimentaire, parasitologie et mycologie"
+                    },
+                    {
+                      "code": "STAN305",
+                      "nameAr": "Connaissance des aliments",
+                      "nameFr": "Connaissance des aliments"
+                    },
+                    {
+                      "code": "STAN306",
+                      "nameAr": "Prévention des contaminations et technique de conservation",
+                      "nameFr": "Prévention des contaminations et technique de conservation"
+                    },
+                    {
+                      "code": "STAN307",
+                      "nameAr": "Français",
+                      "nameFr": "Français"
+                    },
+                    {
+                      "code": "STAN308",
+                      "nameAr": "Diversité végétale",
+                      "nameFr": "Diversité végétale"
+                    },
+                    {
+                      "code": "STAN309",
+                      "nameAr": "Systèmes de santé publique",
+                      "nameFr": "Systèmes de santé publique"
+                    },
+                    {
+                      "code": "STAN310",
+                      "nameAr": "Arabe",
+                      "nameFr": "Arabe"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "STA-TAS",
+              "nameAr": "STA-TAS",
+              "nameFr": "STA-TAS",
+              "semesters": [
+                {
+                  "id": "S3",
+                  "nameAr": "السداسي 3",
+                  "nameFr": "Semestre 3",
+                  "subjects": [
+                    {
+                      "code": "STAT301",
+                      "nameAr": "Biochimie structurale",
+                      "nameFr": "Biochimie structurale"
+                    },
+                    {
+                      "code": "STAT302",
+                      "nameAr": "Principes du GIA et éléments de physique industrielle",
+                      "nameFr": "Principes du GIA et éléments de physique industrielle"
+                    },
+                    {
+                      "code": "STAT303",
+                      "nameAr": "Diversité animale",
+                      "nameFr": "Diversité animale"
+                    },
+                    {
+                      "code": "STAT304",
+                      "nameAr": "Microbiologie Alimentaire, parasitologie et mycologie",
+                      "nameFr": "Microbiologie Alimentaire, parasitologie et mycologie"
+                    },
+                    {
+                      "code": "STAT305",
+                      "nameAr": "Connaissance des aliments",
+                      "nameFr": "Connaissance des aliments"
+                    },
+                    {
+                      "code": "STAT306",
+                      "nameAr": "Prévention des contaminations et technique de conservation",
+                      "nameFr": "Prévention des contaminations et technique de conservation"
+                    },
+                    {
+                      "code": "STAT307",
+                      "nameAr": "Français",
+                      "nameFr": "Français"
+                    },
+                    {
+                      "code": "STAT308",
+                      "nameAr": "Diversité végétale",
+                      "nameFr": "Diversité végétale"
+                    },
+                    {
+                      "code": "STAT309",
+                      "nameAr": "Systèmes de santé publique",
+                      "nameFr": "Systèmes de santé publique"
+                    },
+                    {
+                      "code": "STAT310",
+                      "nameAr": "Arabe",
+                      "nameFr": "Arabe"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "CHI",
+              "nameAr": "Chimie",
+              "nameFr": "Chimie",
+              "semesters": [
+                {
+                  "id": "S3",
+                  "nameAr": "السداسي 3",
+                  "nameFr": "Semestre 3",
+                  "subjects": [
+                    {
+                      "code": "CHI301",
+                      "nameAr": "Circuits et Signaux",
+                      "nameFr": "Circuits et Signaux"
+                    },
+                    {
+                      "code": "CHI302",
+                      "nameAr": "Chimie minérale",
+                      "nameFr": "Chimie minérale"
+                    },
+                    {
+                      "code": "CHI303",
+                      "nameAr": "Chimie des solutions",
+                      "nameFr": "Chimie des solutions"
+                    },
+                    {
+                      "code": "CHI304",
+                      "nameAr": "Stéréochimie",
+                      "nameFr": "Stéréochimie"
+                    },
+                    {
+                      "code": "CHI305",
+                      "nameAr": "Techniques de communication",
+                      "nameFr": "Techniques de communication"
+                    },
+                    {
+                      "code": "CHI306",
+                      "nameAr": "Chimie organique descriptive",
+                      "nameFr": "Chimie organique descriptive"
+                    },
+                    {
+                      "code": "CHI307",
+                      "nameAr": "Probabilités discrètes",
+                      "nameFr": "Probabilités discrètes"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "EEA",
+              "nameAr": "EEA",
+              "nameFr": "EEA",
+              "semesters": [
+                {
+                  "id": "S3",
+                  "nameAr": "السداسي 3",
+                  "nameFr": "Semestre 3",
+                  "subjects": [
+                    {
+                      "code": "EEA301",
+                      "nameAr": "Outils mathématiques",
+                      "nameFr": "Outils mathématiques"
+                    },
+                    {
+                      "code": "EEA302",
+                      "nameAr": "Electronique analogique I",
+                      "nameFr": "Electronique analogique I"
+                    },
+                    {
+                      "code": "EEA303",
+                      "nameAr": "Machines électriques I",
+                      "nameFr": "Machines électriques I"
+                    },
+                    {
+                      "code": "EEA304",
+                      "nameAr": "Electronique numérique I",
+                      "nameFr": "Electronique numérique I"
+                    },
+                    {
+                      "code": "EEA305",
+                      "nameAr": "Anglais 3",
+                      "nameFr": "Anglais 3"
+                    },
+                    {
+                      "code": "EEA306",
+                      "nameAr": "Circuits linéaires",
+                      "nameFr": "Circuits linéaires"
+                    },
+                    {
+                      "code": "EEA307",
+                      "nameAr": "Electromagnétisme avancée",
+                      "nameFr": "Electromagnétisme avancée"
+                    },
+                    {
+                      "code": "EEA308",
+                      "nameAr": "Programmation en C",
+                      "nameFr": "Programmation en C"
+                    },
+                    {
+                      "code": "EEA309",
+                      "nameAr": "Français I",
+                      "nameFr": "Français I"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "PF",
+              "nameAr": "PF",
+              "nameFr": "PF",
+              "semesters": [
+                {
+                  "id": "S3",
+                  "nameAr": "السداسي 3",
+                  "nameFr": "Semestre 3",
+                  "subjects": [
+                    {
+                      "code": "PF301",
+                      "nameAr": "Programmation en C",
+                      "nameFr": "Programmation en C"
+                    },
+                    {
+                      "code": "PF302",
+                      "nameAr": "Thermodynamique",
+                      "nameFr": "Thermodynamique"
+                    },
+                    {
+                      "code": "PF303",
+                      "nameAr": "Mécanique du Solide",
+                      "nameFr": "Mécanique du Solide"
+                    },
+                    {
+                      "code": "PF304",
+                      "nameAr": "Techniques de communications",
+                      "nameFr": "Techniques de communications"
+                    },
+                    {
+                      "code": "PF305",
+                      "nameAr": "Electromagnétisme Avancé",
+                      "nameFr": "Electromagnétisme Avancé"
+                    },
+                    {
+                      "code": "PF306",
+                      "nameAr": "Mathématiques pour Physiciens I",
+                      "nameFr": "Mathématiques pour Physiciens I"
                     }
                   ]
                 }
