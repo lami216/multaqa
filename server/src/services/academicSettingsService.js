@@ -1,5 +1,6 @@
 import AcademicSetting from '../models/AcademicSetting.js';
 import Profile from '../models/Profile.js';
+import catalog from '../../../src/data/catalog.json' with { type: 'json' };
 
 export const buildAcademicMajorKey = (facultyId, levelId, majorId) => `${facultyId || ''}|${levelId || ''}|${majorId || ''}`;
 
@@ -7,6 +8,32 @@ const DEFAULT_SETTINGS = {
   key: 'academic',
   currentTermType: 'odd',
   faculties: []
+};
+
+const DEFAULT_MAJOR_STATUS = 'collecting';
+const DEFAULT_MAJOR_THRESHOLD = 99;
+
+const getCatalogMajorKeys = () => {
+  const faculties = Array.isArray(catalog?.faculties) ? catalog.faculties : [];
+  const keys = [];
+
+  for (const faculty of faculties) {
+    const facultyId = String(faculty?.id ?? '').trim();
+    if (!facultyId) continue;
+
+    for (const level of faculty?.levels ?? []) {
+      const levelId = String(level?.id ?? '').trim();
+      if (!levelId) continue;
+
+      for (const major of level?.majors ?? []) {
+        const majorId = String(major?.id ?? '').trim();
+        if (!majorId) continue;
+        keys.push(buildAcademicMajorKey(facultyId, levelId, majorId));
+      }
+    }
+  }
+
+  return keys;
 };
 
 export const getAcademicSettingsRecord = async () => {
@@ -46,7 +73,21 @@ export const computeAcademicCounts = async () => {
 };
 
 export const getMajorAvailabilityMap = (settings, counts = {}) => {
-  const availability = {};
+  const availability = Object.fromEntries(
+    getCatalogMajorKeys().map((key) => {
+      const registeredCount = counts[key] ?? 0;
+      const isOpenByDefault = registeredCount >= DEFAULT_MAJOR_THRESHOLD;
+      return [
+        key,
+        {
+          status: isOpenByDefault ? 'active' : DEFAULT_MAJOR_STATUS,
+          threshold: isOpenByDefault ? null : DEFAULT_MAJOR_THRESHOLD,
+          registeredCount
+        }
+      ];
+    })
+  );
+
   for (const faculty of settings?.faculties ?? []) {
     for (const level of faculty?.levels ?? []) {
       for (const major of level?.majors ?? []) {
@@ -72,7 +113,11 @@ export const getMajorAvailability = async (facultyId, levelId, majorId) => {
   const counts = await computeAcademicCounts();
   const availabilityMap = getMajorAvailabilityMap(settings, counts);
   const key = buildAcademicMajorKey(facultyId, levelId, majorId);
-  return availabilityMap[key] ?? { status: 'active', threshold: 0, registeredCount: counts[key] ?? 0 };
+
+  const fallbackCount = counts[key] ?? 0;
+  const fallbackStatus = fallbackCount >= DEFAULT_MAJOR_THRESHOLD ? 'active' : DEFAULT_MAJOR_STATUS;
+
+  return availabilityMap[key] ?? { status: fallbackStatus, threshold: DEFAULT_MAJOR_THRESHOLD, registeredCount: fallbackCount };
 };
 
 export const maybeActivateMajor = async (facultyId, levelId, majorId) => {
