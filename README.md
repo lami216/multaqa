@@ -17,7 +17,7 @@ Follow these steps to spin up the project locally without digging through the en
      VITE_API_URL=http://localhost:5000
      VITE_IMAGEKIT_PUBLIC_KEY=your_imagekit_public_key
      VITE_IMAGEKIT_URL_ENDPOINT=https://ik.imagekit.io/your_id
-     ```
+     ``
 
 2. **Install dependencies**
    ```bash
