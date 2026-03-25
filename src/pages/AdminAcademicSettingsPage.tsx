@@ -10,6 +10,9 @@ import {
   type AcademicSettingsResponse
 } from '../lib/http';
 
+const DEFAULT_MAJOR_STATUS: 'collecting' = 'collecting';
+const DEFAULT_MAJOR_THRESHOLD = 99;
+
 const AdminAcademicSettingsPage: React.FC = () => {
   const faculties = useMemo(() => getFaculties(), []);
   const [settings, setSettings] = useState<AcademicSettingsResponse | null>(null);
@@ -85,7 +88,7 @@ const AdminAcademicSettingsPage: React.FC = () => {
       }
       let major = level.majors.find((item) => item.majorId === majorId);
       if (!major) {
-        major = { majorId, status: 'active', threshold: null };
+        major = { majorId, status: DEFAULT_MAJOR_STATUS, threshold: DEFAULT_MAJOR_THRESHOLD };
         level.majors.push(major);
       }
       major.status = patch.status ?? major.status;
@@ -158,7 +161,7 @@ const AdminAcademicSettingsPage: React.FC = () => {
           {!selectedLevel && <p className="text-sm text-slate-500">Select level first.</p>}
           {majors.map((major) => {
             const key = buildAcademicMajorKey(selectedFaculty, selectedLevel, major.id);
-            const current = majorDraftLookup.get(key) ?? { status: 'active', threshold: null };
+            const current = majorDraftLookup.get(key) ?? { status: DEFAULT_MAJOR_STATUS, threshold: DEFAULT_MAJOR_THRESHOLD };
             const registered = settings.counts?.[key] ?? settings.majorAvailability?.[key]?.registeredCount ?? 0;
             return (
               <div key={major.id} className="rounded-lg border border-slate-200 p-3 space-y-2">
