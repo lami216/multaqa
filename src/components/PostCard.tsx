@@ -17,6 +17,12 @@ const roleLabels: Record<string, string> = {
 
 const categoryLabel = (category: string) => (category === 'project_team' ? 'study_team' : category);
 
+const getCompatibilityBadgeClass = (score: number) => {
+  if (score >= 80) return 'bg-emerald-600 text-white';
+  if (score >= 60) return 'bg-amber-400 text-slate-900';
+  return 'bg-orange-500 text-white';
+};
+
 interface PostCardProps {
   post: PostResponse;
   currentUserId?: string | null;
@@ -123,7 +129,18 @@ const PostCard: React.FC<PostCardProps> = ({
             </div>
           </Link>
           <div className="space-y-2">
-            {typeof post.matchPercent === 'number' ? (
+            {typeof post.compatibilityPercentage === 'number' ? (
+              <div className="space-y-1 text-right">
+                <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm font-semibold shadow-sm ${getCompatibilityBadgeClass(post.compatibilityPercentage)}`}>
+                  {post.compatibilityPercentage}% Match
+                </span>
+                {post.compatibilityBreakdown ? (
+                  <p className="text-xs text-slate-500">
+                    Subject: {post.compatibilityBreakdown.subjectScore} · Role: {post.compatibilityBreakdown.roleScore} · Activity: {post.compatibilityBreakdown.activityScore}
+                  </p>
+                ) : null}
+              </div>
+            ) : typeof post.matchPercent === 'number' ? (
               <span className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-3 py-1 text-base font-semibold text-white shadow-sm">
                 Match <span className="text-lg font-bold">{post.matchPercent}%</span>
               </span>
