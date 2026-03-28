@@ -4,6 +4,7 @@ import User from '../models/User.js';
 import Profile from '../models/Profile.js';
 import Post from '../models/Post.js';
 import { containsProfanity, maskProfanity } from '../utils/profanityFilter.js';
+import { sendTelegramNotification } from '../utils/telegram.js';
 
 const buildParticipantsKey = (userId, otherUserId) => {
   return [userId.toString(), otherUserId.toString()].sort().join(':');
@@ -105,6 +106,11 @@ export const createOrGetConversation = async (req, res) => {
         maxExpiresAt,
         lastMessageAt: null
       });
+
+      await sendTelegramNotification(
+        otherUserId,
+        '📩 لديك محادثة جديدة داخل ملتقى'
+      );
     }
 
     await ensureConversationLifetime(conversation);
@@ -345,6 +351,16 @@ export const sendMessage = async (req, res) => {
 
     conversation.lastMessageAt = new Date();
     await conversation.save();
+
+    const recipientId = conversation.participants.find(
+      (participant) => participant.toString() !== req.user._id.toString()
+    );
+    if (recipientId) {
+      await sendTelegramNotification(
+        recipientId,
+        '💬 لديك رسالة جديدة داخل ملتقى'
+      );
+    }
 
     res.status(201).json({ message });
   } catch (error) {
