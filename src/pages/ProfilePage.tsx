@@ -1,7 +1,8 @@
-import { Edit3, GraduationCap, MapPin, MessageCircle, Notebook, Settings, Star, User } from 'lucide-react';
+import { Copy, Edit3, GraduationCap, MapPin, MessageCircle, Notebook, Send, Settings, Star, User } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import {
@@ -38,6 +39,9 @@ const ProfilePage: React.FC = () => {
   const [remainingError, setRemainingError] = useState('');
 
   const [linkingTelegram, setLinkingTelegram] = useState(false);
+  const [telegramLinkModalOpen, setTelegramLinkModalOpen] = useState(false);
+  const [telegramLinkData, setTelegramLinkData] = useState<{ token: string; botUsername: string } | null>(null);
+  const [copySuccess, setCopySuccess] = useState(false);
   const [activeTab, setActiveTab] = useState<'posts' | 'resources' | 'reviews'>('posts');
   const [academicSettings, setAcademicSettings] = useState<AcademicSettingsResponse>({
     academicTermType: 'odd',
@@ -56,9 +60,27 @@ const ProfilePage: React.FC = () => {
         console.error('Telegram bot username is missing in link token response');
         return;
       }
-      window.location.href = `https://t.me/${botUsername}?start=${encodeURIComponent(token)}`;
+      setTelegramLinkData({ token, botUsername });
+      setTelegramLinkModalOpen(true);
+      setCopySuccess(false);
     } finally {
       setLinkingTelegram(false);
+    }
+  };
+
+  const telegramStartCommand = telegramLinkData ? `/start ${telegramLinkData.token}` : '';
+  const telegramDeepLink = telegramLinkData
+    ? `https://t.me/${telegramLinkData.botUsername}?start=${encodeURIComponent(telegramLinkData.token)}`
+    : '';
+
+  const handleCopyTelegramCommand = async () => {
+    if (!telegramStartCommand) return;
+    try {
+      await navigator.clipboard.writeText(telegramStartCommand);
+      setCopySuccess(true);
+    } catch (error) {
+      console.error('Failed to copy Telegram command', error);
+      setCopySuccess(false);
     }
   };
   const faculties = getFaculties().filter((faculty) => isFacultyEnabled(faculty.id, academicSettings.catalogVisibility));
@@ -260,6 +282,40 @@ const ProfilePage: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      <Dialog open={telegramLinkModalOpen} onOpenChange={setTelegramLinkModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader className="space-y-2 text-right">
+            <DialogTitle className="text-slate-900">ربط تيليغرام</DialogTitle>
+            <DialogDescription className="text-sm leading-relaxed text-slate-600">
+              إذا فتح البوت بدون ربط تلقائي، انسخ هذا الأمر وأرسله يدويًا داخل البوت
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 text-right">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm">
+              <p className="font-semibold text-slate-700">اسم البوت</p>
+              <p className="mt-1 font-mono text-slate-900" dir="ltr">
+                @{telegramLinkData?.botUsername}
+              </p>
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm">
+              <p className="font-semibold text-slate-700">الأمر</p>
+              <p className="mt-1 break-all font-mono text-slate-900" dir="ltr">
+                {telegramStartCommand}
+              </p>
+            </div>
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <button type="button" className="secondary-btn" onClick={() => void handleCopyTelegramCommand()}>
+                <Copy size={16} className="me-1" />
+                {copySuccess ? 'تم النسخ' : 'نسخ الأمر'}
+              </button>
+              <a href={telegramDeepLink} className="primary-btn text-center" target="_blank" rel="noreferrer">
+                <Send size={16} className="me-1" /> فتح تيليغرام
+              </a>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <section className="card-surface p-5 space-y-6">
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div className="flex items-start gap-4">
