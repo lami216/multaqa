@@ -27,12 +27,16 @@ export const sendTelegramNotification = async (userId, message) => {
   try {
     const user = await User.findById(userId).select('telegramLinked telegramChatId');
     if (!user?.telegramLinked || !user?.telegramChatId) {
-      return;
+      console.info(`[telegram] skipped user=${userId} reason=not_linked`);
+      return false;
     }
 
     await sendTelegramMessageToChat(user.telegramChatId, message);
+    console.info(`[telegram] sent user=${userId}`);
+    return true;
   } catch {
-    // silent
+    console.error(`[telegram] failed user=${userId}`);
+    return false;
   }
 };
 

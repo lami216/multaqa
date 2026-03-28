@@ -15,6 +15,7 @@ import { containsProfanity, maskProfanity } from '../utils/profanityFilter.js';
 import { getMajorAvailability } from '../services/academicSettingsService.js';
 import { incrementMatch, incrementPost } from '../services/majorStatsService.js';
 import { computePostCompatibilityForUser } from '../services/postCompatibilityService.js';
+import { sendTelegramNotification } from '../utils/telegram.js';
 
 const getAvailabilityCutoff = (value) => {
   const date = new Date(value);
@@ -733,6 +734,11 @@ export const createJoinRequest = async (req, res) => {
       }
     });
 
+    await sendTelegramNotification(
+      post.authorId,
+      '📚 لديك طلب مراجعة جديد على منشورك'
+    );
+
     await redis.del('posts:*');
 
     res.status(201).json({ joinRequest });
@@ -778,6 +784,7 @@ export const acceptJoinRequest = async (req, res) => {
     const { id, requestId } = req.params;
     let responsePayload = null;
     let matchSnapshot = null;
+    let telegramRecipientId = null;
 
     await dbSession.withTransaction(async () => {
       const post = await Post.findById(id).session(dbSession);
@@ -882,6 +889,8 @@ export const acceptJoinRequest = async (req, res) => {
         }
       }], { session: dbSession });
 
+      telegramRecipientId = joinRequest.requesterId.toString();
+
       await deleteNotificationsByJoinRequestId(requestId, dbSession);
 
       responsePayload = {
@@ -894,6 +903,9 @@ export const acceptJoinRequest = async (req, res) => {
     await redis.del('posts:*');
     if (matchSnapshot?.majorId && matchSnapshot?.facultyId) {
       await incrementMatch(matchSnapshot.majorId, matchSnapshot.facultyId, responsePayload?.joinRequest?.acceptedAt ?? new Date());
+    }
+    if (telegramRecipientId) {
+      await sendTelegramNotification(telegramRecipientId, '✅ تم قبول طلبك للمراجعة');
     }
 
     res.json(responsePayload);
@@ -950,6 +962,11 @@ export const rejectJoinRequest = async (req, res) => {
         message: 'Votre demande a été refusée par le propriétaire du post.'
       }
     });
+
+    await sendTelegramNotification(
+      joinRequest.requesterId,
+      '❌ تم رفض طلبك للمراجعة'
+    );
 
     await redis.del('posts:*');
 
