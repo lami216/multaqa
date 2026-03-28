@@ -49,7 +49,11 @@ const getPostRole = (post) => (
 );
 
 const getPostActivity = (post) => (
-  post?.postRole === 'td' || post?.postRole === 'archive' ? post.postRole : null
+  post?.postRole === 'td' || post?.postRole === 'archive'
+    ? post.postRole
+    : Array.isArray(post?.teamRoles)
+      ? (post.teamRoles.find((role) => role === 'td' || role === 'archive') ?? null)
+      : null
 );
 
 export const computePostCompatibilityForUser = (post, receiverProfile) => {
@@ -90,6 +94,10 @@ export const computePostCompatibilityForUser = (post, receiverProfile) => {
   let activityScore = 0;
   if (receiverActivityPreference && postActivity) {
     activityScore = receiverActivityPreference === postActivity ? 20 : 10;
+  } else if (receiverActivityPreference || postActivity) {
+    console.info(
+      `[compatibility] activity_missing_side receiverActivity=${receiverActivityPreference ?? 'missing'} postActivity=${postActivity ?? 'missing'} postId=${post?._id ?? 'unknown'}`
+    );
   }
 
   const compatibilityPercentage = subjectScore + roleScore + activityScore;
@@ -102,4 +110,3 @@ export const computePostCompatibilityForUser = (post, receiverProfile) => {
     }
   };
 };
-

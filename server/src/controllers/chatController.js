@@ -5,7 +5,7 @@ import User from '../models/User.js';
 import Profile from '../models/Profile.js';
 import redis from '../config/redis.js';
 import { containsProfanity, maskProfanity } from '../utils/profanityFilter.js';
-import { sendTelegramNotification } from '../utils/telegram.js';
+import { sendTelegramNotificationForEvent } from '../utils/telegram.js';
 
 export const getChats = async (req, res) => {
   try {
@@ -86,7 +86,11 @@ export const createOrGetChat = async (req, res) => {
       });
 
       await redis.del(`notifications:unread:${otherUserId}`);
-      await sendTelegramNotification(otherUserId, `لديك محادثة جديدة من ${req.user.username}`);
+      await sendTelegramNotificationForEvent({
+        eventName: 'new_conversation_created',
+        recipientUserId: otherUserId,
+        message: `لديك محادثة جديدة من ${req.user.username}`
+      });
     }
 
     res.json({ chat });
@@ -183,7 +187,11 @@ export const sendMessage = async (req, res) => {
     });
 
     await redis.del(`notifications:unread:${recipientId}`);
-    await sendTelegramNotification(recipientId, `رسالة جديدة من ${req.user.username}`);
+    await sendTelegramNotificationForEvent({
+      eventName: 'new_message_sent',
+      recipientUserId: recipientId,
+      message: `رسالة جديدة من ${req.user.username}`
+    });
 
     res.status(201).json({ message });
   } catch (error) {
