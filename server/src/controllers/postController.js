@@ -15,7 +15,7 @@ import { containsProfanity, maskProfanity } from '../utils/profanityFilter.js';
 import { getMajorAvailability } from '../services/academicSettingsService.js';
 import { incrementMatch, incrementPost } from '../services/majorStatsService.js';
 import { computePostCompatibilityForUser } from '../services/postCompatibilityService.js';
-import { sendTelegramNotification } from '../utils/telegram.js';
+import { sendTelegramNotificationForEvent } from '../utils/telegram.js';
 
 const getAvailabilityCutoff = (value) => {
   const date = new Date(value);
@@ -226,16 +226,18 @@ export const getPosts = async (req, res) => {
           return null;
         }
 
-        const compatibility = computePostCompatibilityForUser(post, userProfile);
-        if (compatibility.compatibilityPercentage < 50) {
+        const compatibility = isAuthor
+          ? null
+          : computePostCompatibilityForUser(post, userProfile);
+        if (!isAuthor && compatibility.compatibilityPercentage < 50) {
           return null;
         }
         const intentBoost = resolveIntentBoost(intent, post);
 
         return {
           ...post.toObject(),
-          compatibilityPercentage: compatibility.compatibilityPercentage,
-          compatibilityBreakdown: compatibility.compatibilityBreakdown,
+          compatibilityPercentage: isAuthor ? null : compatibility?.compatibilityPercentage,
+          compatibilityBreakdown: isAuthor ? null : compatibility?.compatibilityBreakdown,
           intentBoost,
           pendingJoinRequestsCount,
           unreadPostMessagesCount,
@@ -329,14 +331,14 @@ export const getPost = async (req, res) => {
     }
 
     const userProfile = req.user?._id ? await Profile.findOne({ userId: req.user._id }) : null;
-    const compatibility = computePostCompatibilityForUser(post, userProfile);
+    const compatibility = isAuthor ? null : computePostCompatibilityForUser(post, userProfile);
 
     res.json({
       post: {
         ...post.toObject(),
         userId: post.authorId._id,
-        compatibilityPercentage: compatibility.compatibilityPercentage,
-        compatibilityBreakdown: compatibility.compatibilityBreakdown,
+        compatibilityPercentage: isAuthor ? null : compatibility?.compatibilityPercentage,
+        compatibilityBreakdown: isAuthor ? null : compatibility?.compatibilityBreakdown,
         pendingJoinRequestsCount,
         unreadPostMessagesCount,
         myJoinRequestStatus
@@ -734,10 +736,11 @@ export const createJoinRequest = async (req, res) => {
       }
     });
 
-    await sendTelegramNotification(
-      post.authorId,
-      '📚 لديك طلب مراجعة جديد على منشورك'
-    );
+    await sendTelegramNotificationForEvent({
+      eventName: 'join_request_created',
+      recipientUserId: post.authorId,
+      message: '📚 لديك طلب مراجعة جديد على منشورك'
+    });
 
     await redis.del('posts:*');
 
@@ -905,7 +908,11 @@ export const acceptJoinRequest = async (req, res) => {
       await incrementMatch(matchSnapshot.majorId, matchSnapshot.facultyId, responsePayload?.joinRequest?.acceptedAt ?? new Date());
     }
     if (telegramRecipientId) {
-      await sendTelegramNotification(telegramRecipientId, '✅ تم قبول طلبك للمراجعة');
+      await sendTelegramNotificationForEvent({
+        eventName: 'join_request_accepted',
+        recipientUserId: telegramRecipientId,
+        message: '✅ تم قبول طلبك للمراجعة'
+      });
     }
 
     res.json(responsePayload);
@@ -963,10 +970,11 @@ export const rejectJoinRequest = async (req, res) => {
       }
     });
 
-    await sendTelegramNotification(
-      joinRequest.requesterId,
-      '❌ تم رفض طلبك للمراجعة'
-    );
+    await sendTelegramNotificationForEvent({
+      eventName: 'join_request_rejected',
+      recipientUserId: joinRequest.requesterId,
+      message: '❌ تم رفض طلبك للمراجعة'
+    });
 
     await redis.del('posts:*');
 
