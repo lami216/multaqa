@@ -29,11 +29,29 @@ const buildStudyPartnerTitle = (subjectCodes) => `Study partner • ${subjectCod
 const toLegacyRole = (postRole) => {
   if (postRole === 'can_help') return 'helper';
   if (postRole === 'need_help') return 'learner';
-  if (postRole === 'td' || postRole === 'archive') return 'partner';
   return undefined;
 };
 
-const resolvePostRole = (post) => post?.postRole ?? toLegacyRole(post?.studentRole);
+const resolvePostRole = (post) => {
+  if (post?.postRole === 'need_help' || post?.postRole === 'can_help') return post.postRole;
+  return toLegacyRole(post?.studentRole);
+};
+
+const resolvePostActivity = (post) => {
+  if (post?.postActivity === 'td' || post?.postActivity === 'archive') return post.postActivity;
+  if (post?.postRole === 'td' || post?.postRole === 'archive') return post.postRole;
+  return null;
+};
+
+const normalizeStudyPartnerPostFields = (post) => {
+  if (!post || post.category !== 'study_partner') return post;
+  const normalized = { ...post };
+  if (!normalized.postActivity && (normalized.postRole === 'td' || normalized.postRole === 'archive')) {
+    normalized.postActivity = normalized.postRole;
+    normalized.postRole = null;
+  }
+  return normalized;
+};
 
 const maxAcceptedForRole = (postRole) => {
   if (postRole === 'can_help') return 3;
@@ -65,7 +83,7 @@ const resolveIntentBoost = (intent, post) => {
     return 0;
   }
   if (intent === 'STUDY_TOGETHER') {
-    if (post.category === 'study_partner' && (resolvePostRole(post) === 'td' || resolvePostRole(post) === 'archive')) return 2;
+    if (post.category === 'study_partner' && resolvePostActivity(post)) return 2;
     return 0;
   }
   if (intent === 'I_CAN_HELP') {
@@ -234,8 +252,10 @@ export const getPosts = async (req, res) => {
         }
         const intentBoost = resolveIntentBoost(intent, post);
 
+        const normalizedPost = normalizeStudyPartnerPostFields(post.toObject());
+
         return {
-          ...post.toObject(),
+          ...normalizedPost,
           compatibilityPercentage: isAuthor ? null : compatibility?.compatibilityPercentage,
           compatibilityBreakdown: isAuthor ? null : compatibility?.compatibilityBreakdown,
           intentBoost,
@@ -333,9 +353,11 @@ export const getPost = async (req, res) => {
     const userProfile = req.user?._id ? await Profile.findOne({ userId: req.user._id }) : null;
     const compatibility = isAuthor ? null : computePostCompatibilityForUser(post, userProfile);
 
+    const normalizedPost = normalizeStudyPartnerPostFields(post.toObject());
+
     res.json({
       post: {
-        ...post.toObject(),
+        ...normalizedPost,
         userId: post.authorId._id,
         compatibilityPercentage: isAuthor ? null : compatibility?.compatibilityPercentage,
         compatibilityBreakdown: isAuthor ? null : compatibility?.compatibilityBreakdown,
@@ -371,7 +393,7 @@ export const createPost = async (req, res) => {
     }
 
     if (category === 'study_partner') {
-      const { subjectCodes, postRole, description, availabilityDate } = req.body;
+      const { subjectCodes, postRole, postActivity, description, availabilityDate } = req.body;
 
       const allowedProfileCodes = getAllowedProfileSubjectCodes(profile);
       if (!allowedProfileCodes.length) {
@@ -410,6 +432,7 @@ export const createPost = async (req, res) => {
         category,
         subjectCodes: normalizedCodes,
         postRole,
+        postActivity,
         availabilityDate: availabilityCutoff,
         faculty: profile.faculty,
         ...postSnapshot,
@@ -537,7 +560,7 @@ export const updatePost = async (req, res) => {
     }
 
     if (post.category === 'study_partner') {
-      const allowedFields = ['description', 'subjectCodes', 'postRole', 'availabilityDate'];
+      const allowedFields = ['description', 'subjectCodes', 'postRole', 'postActivity', 'availabilityDate'];
       const invalidFields = Object.keys(updates).filter((key) => !allowedFields.includes(key));
       if (invalidFields.length) {
         return res.status(400).json({ error: 'Study partner posts accept only subjects, role, description, and availability date updates.' });

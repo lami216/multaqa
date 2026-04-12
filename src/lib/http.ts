@@ -114,6 +114,8 @@ export interface RemainingSubjectItem {
 }
 
 export type PriorityRoleKey = 'need_help' | 'can_help' | 'td' | 'archive';
+export type PostRoleKey = 'need_help' | 'can_help';
+export type PostActivityKey = 'td' | 'archive';
 export type StudyTeamRoleKey = 'general_review' | 'td' | 'archive';
 
 export interface Profile {
@@ -153,7 +155,8 @@ export interface PostPayload {
   languagePref?: 'Arabic' | 'French';
   location?: 'campus' | 'online';
   subjectCodes?: string[];
-  postRole?: PriorityRoleKey;
+  postRole?: PostRoleKey;
+  postActivity?: PostActivityKey;
   teamRoles?: StudyTeamRoleKey[];
   availabilityDate?: string;
   participantTargetCount?: number;

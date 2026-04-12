@@ -27,6 +27,9 @@ import { useSmartPolling } from '../hooks/useSmartPolling';
 const roleLabels: Record<string, string> = {
   need_help: 'محتاج مساعدة',
   can_help: 'اقدر اساعد',
+};
+
+const activityLabels: Record<string, string> = {
   general_review: 'مراجعة عامة',
   td: 'حل TD',
   archive: 'حل الأرشيف',
@@ -199,6 +202,9 @@ setPost({ ...(data.post as PostResponse), userId: (data.post as PostResponse).us
 
   const isStudyPartner = post?.category === 'study_partner';
   const isStudyTeam = post?.category === 'project_team';
+  const legacyPostRole = (post as { postRole?: string } | null)?.postRole;
+  const normalizedRole = post?.postRole === 'need_help' || post?.postRole === 'can_help' ? post.postRole : undefined;
+  const normalizedActivity = post?.postActivity ?? (legacyPostRole === 'td' || legacyPostRole === 'archive' ? legacyPostRole : undefined);
   const authorUsername = post?.author?.username ?? 'Utilisateur';
   const isSessionParticipant = Boolean(
     currentUserId && sessionParticipants.some((participantId) => participantId === currentUserId)
@@ -351,9 +357,14 @@ setPost({ ...(data.post as PostResponse), userId: (data.post as PostResponse).us
         <div className="space-y-2">
           <div className="flex flex-wrap items-center gap-2">
             <span className="badge-soft inline-flex">{post?.category === 'project_team' ? 'study_team' : post?.category}</span>
-            {post.postRole ? (
+            {normalizedRole ? (
               <span className="badge-soft bg-slate-100 text-slate-700">
-                Rôle {roleLabels[post.postRole] ?? post.postRole}
+                Rôle {roleLabels[normalizedRole] ?? normalizedRole}
+              </span>
+            ) : null}
+            {normalizedActivity ? (
+              <span className="badge-soft bg-indigo-50 text-indigo-700">
+                Activité {activityLabels[normalizedActivity] ?? normalizedActivity}
               </span>
             ) : null}
             {typeof post.matchPercent === 'number' ? (

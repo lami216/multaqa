@@ -5,18 +5,22 @@ import PostCard from '../components/PostCard';
 import SubjectChipsSelector from '../components/subjects/SubjectChipsSelector';
 import { useAuth } from '../context/AuthContext';
 import { getSubjectNameByCode } from '../lib/catalog';
-import { fetchPosts, type PostPayload, type PostResponse } from '../lib/http';
+import { fetchPosts, type PostPayload, type PostResponse, type PostRoleKey } from '../lib/http';
 import { PRIORITY_ROLE_OPTIONS } from '../lib/priorities';
 import { getProfileSelectableSubjectCodes } from '../lib/profileSubjects';
 
 const toRole = (post: PostResponse): PostPayload['postRole'] | undefined => {
-  if (post.postRole) return post.postRole;
+  if (post.postRole === 'need_help' || post.postRole === 'can_help') return post.postRole;
   const legacyRole = (post as PostResponse & { studentRole?: string }).studentRole;
   if (legacyRole === 'helper') return 'can_help';
   if (legacyRole === 'learner') return 'need_help';
-  if (legacyRole === 'partner') return 'td';
   return undefined;
 };
+
+const STUDY_PARTNER_ROLE_OPTIONS: { key: PostRoleKey; label: string; helper: string }[] = [
+  { key: 'need_help', label: PRIORITY_ROLE_OPTIONS[0].label, helper: PRIORITY_ROLE_OPTIONS[0].helper },
+  { key: 'can_help', label: PRIORITY_ROLE_OPTIONS[1].label, helper: PRIORITY_ROLE_OPTIONS[1].helper },
+];
 
 const PostsFeedPage: React.FC = () => {
   const [category, setCategory] = useState('');
@@ -209,7 +213,7 @@ const PostsFeedPage: React.FC = () => {
             </div>
             {rolesLimitWarning && <p className="text-xs text-amber-700">{rolesLimitWarning}</p>}
             <div className="grid sm:grid-cols-2 gap-2">
-              {PRIORITY_ROLE_OPTIONS.map((role) => (
+              {STUDY_PARTNER_ROLE_OPTIONS.map((role) => (
                 <button
                   key={role.key}
                   type="button"

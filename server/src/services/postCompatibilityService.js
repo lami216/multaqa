@@ -49,11 +49,13 @@ const getPostRole = (post) => (
 );
 
 const getPostActivity = (post) => (
-  post?.postRole === 'td' || post?.postRole === 'archive'
-    ? post.postRole
-    : Array.isArray(post?.teamRoles)
-      ? (post.teamRoles.find((role) => role === 'td' || role === 'archive') ?? null)
-      : null
+  post?.postActivity === 'td' || post?.postActivity === 'archive'
+    ? post.postActivity
+    : post?.postRole === 'td' || post?.postRole === 'archive'
+      ? post.postRole
+      : Array.isArray(post?.teamRoles)
+        ? (post.teamRoles.find((role) => role === 'td' || role === 'archive') ?? null)
+        : null
 );
 
 export const computePostCompatibilityForUser = (post, receiverProfile) => {

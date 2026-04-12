@@ -31,7 +31,8 @@ export const loginSchema = z.object({
 const studyPartnerCreateSchema = z.object({
   category: z.literal('study_partner'),
   subjectCodes: z.array(z.string().min(1)).min(1).max(2),
-  postRole: z.enum(['need_help', 'can_help', 'td', 'archive']),
+  postRole: z.enum(['need_help', 'can_help']),
+  postActivity: z.enum(['td', 'archive']),
   availabilityDate: z.coerce.date(),
   description: z.string().max(500).optional()
 }).strict();
@@ -68,7 +69,8 @@ export const updatePostSchema = z.object({
   languagePref: z.enum(['Arabic', 'French']).optional(),
   location: z.enum(['campus', 'online']).optional(),
   subjectCodes: z.array(z.string().min(1)).min(1).max(2).optional(),
-  postRole: z.enum(['need_help', 'can_help', 'td', 'archive']).optional(),
+  postRole: z.enum(['need_help', 'can_help']).optional(),
+  postActivity: z.enum(['td', 'archive']).optional(),
   availabilityDate: z.coerce.date().optional(),
   participantTargetCount: z.number().int().min(3).optional(),
   teamRoles: z.array(z.enum(['general_review', 'td', 'archive'])).min(1).optional(),
