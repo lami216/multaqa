@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import SubjectChipsSelector from '../components/subjects/SubjectChipsSelector';
 import { useAuth } from '../context/AuthContext';
 import { getSubjectNameByCode } from '../lib/catalog';
-import { createPost, type PostPayload, type StudyTeamRoleKey } from '../lib/http';
+import { createPost, type PostActivityKey, type PostPayload, type PostRoleKey, type StudyTeamRoleKey } from '../lib/http';
 import { PRIORITY_ROLE_OPTIONS } from '../lib/priorities';
 import { getProfileSelectableSubjectCodes } from '../lib/profileSubjects';
 
@@ -18,6 +18,16 @@ const STUDY_TEAM_ROLE_OPTIONS: { key: StudyTeamRoleKey; label: string; helper: s
   { key: 'general_review', label: 'مراجعة عامة', helper: 'طلب تعاون عام مناسب لمحتاج مساعدة وأقدر أساعد.' },
   { key: 'td', label: 'حل TD', helper: 'أركز على حل وتمرينات TD.' },
   { key: 'archive', label: 'حل الأرشيف', helper: 'أركز على الأسئلة والأرشيف.' },
+];
+
+const STUDY_PARTNER_ROLE_OPTIONS: { key: PostRoleKey; label: string; helper: string }[] = [
+  { key: 'need_help', label: PRIORITY_ROLE_OPTIONS[0].label, helper: PRIORITY_ROLE_OPTIONS[0].helper },
+  { key: 'can_help', label: PRIORITY_ROLE_OPTIONS[1].label, helper: PRIORITY_ROLE_OPTIONS[1].helper },
+];
+
+const STUDY_PARTNER_ACTIVITY_OPTIONS: { key: PostActivityKey; label: string; helper: string }[] = [
+  { key: 'td', label: PRIORITY_ROLE_OPTIONS[2].label, helper: PRIORITY_ROLE_OPTIONS[2].helper },
+  { key: 'archive', label: PRIORITY_ROLE_OPTIONS[3].label, helper: PRIORITY_ROLE_OPTIONS[3].helper },
 ];
 
 const CreatePostPage: React.FC = () => {
@@ -35,7 +45,8 @@ const CreatePostPage: React.FC = () => {
   });
   const [tagsInput, setTagsInput] = useState('');
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
-  const [selectedRoles, setSelectedRoles] = useState<PostPayload['postRole'][]>([]);
+  const [selectedRole, setSelectedRole] = useState<PostPayload['postRole']>();
+  const [selectedActivity, setSelectedActivity] = useState<PostPayload['postActivity']>();
   const [selectedTeamRoles, setSelectedTeamRoles] = useState<StudyTeamRoleKey[]>([]);
   const [availabilityDate, setAvailabilityDate] = useState('');
   const [participantTargetCount, setParticipantTargetCount] = useState(3);
@@ -50,11 +61,13 @@ const CreatePostPage: React.FC = () => {
   const isStudyPartner = form.category === 'study_partner';
 
   const isStudyTeam = form.category === 'project_team';
-  const roleSelectionValid = selectedRoles.length >= 1 && selectedRoles.length <= 2;
+  const roleSelectionValid = Boolean(selectedRole);
+  const activitySelectionValid = Boolean(selectedActivity);
   const studyPartnerValid =
     selectedSubjects.length >= 1 &&
     selectedSubjects.length <= 2 &&
     roleSelectionValid &&
+    activitySelectionValid &&
     Boolean(availabilityDate);
 
   const studyTeamValid =
@@ -100,28 +113,13 @@ const CreatePostPage: React.FC = () => {
 
   const toggleRole = (role: PostPayload['postRole']) => {
     if (!role) return;
-
-    setSelectedRoles((prev) => {
-      if (prev.includes(role)) {
-        return prev.filter((item) => item !== role);
-      }
-
-      if (prev.length >= 2) {
-        return prev;
-      }
-
-      const isConflict =
-        (role === 'need_help' && prev.includes('can_help')) ||
-        (role === 'can_help' && prev.includes('need_help'));
-
-      if (isConflict) {
-        return prev;
-      }
-
-      return [...prev, role];
-    });
+    setSelectedRole((prev) => (prev === role ? undefined : role));
   };
 
+  const toggleActivity = (activity: PostPayload['postActivity']) => {
+    if (!activity) return;
+    setSelectedActivity((prev) => (prev === activity ? undefined : activity));
+  };
 
   const toggleTeamRole = (role: StudyTeamRoleKey) => {
     setSelectedTeamRoles((prev) => {
@@ -152,7 +150,7 @@ const CreatePostPage: React.FC = () => {
     setError('');
 
     if (isStudyPartner && !studyPartnerValid) {
-      setError('Sélectionnez vos matières, votre rôle et une date de disponibilité.');
+      setError('Sélectionnez vos matières, votre rôle, votre activité et une date de disponibilité.');
       setSaving(false);
       return;
     }
@@ -167,7 +165,8 @@ const CreatePostPage: React.FC = () => {
       ? {
         category: 'study_partner',
         subjectCodes: selectedSubjects,
-        postRole: selectedRoles[0],
+        postRole: selectedRole,
+        postActivity: selectedActivity,
         availabilityDate,
         description: shortDescription.trim() ? shortDescription.trim() : undefined,
       }
@@ -244,17 +243,38 @@ const CreatePostPage: React.FC = () => {
                 <div className="md:col-span-2 space-y-2">
                   <label className="text-sm font-semibold text-slate-700">الدور</label>
                   <div className="grid sm:grid-cols-2 gap-2">
-                    {PRIORITY_ROLE_OPTIONS.map((role) => (
+                    {STUDY_PARTNER_ROLE_OPTIONS.map((role) => (
                       <button
                         key={role.key}
                         type="button"
                         onClick={() => toggleRole(role.key)}
                         className={`rounded-xl border px-3 py-2 text-left transition ${
-                          selectedRoles.includes(role.key) ? 'border-emerald-400 bg-emerald-50 shadow-sm' : 'border-slate-200 bg-white'
+                          selectedRole === role.key ? 'border-emerald-400 bg-emerald-50 shadow-sm' : 'border-slate-200 bg-white'
                         }`}
                       >
                         <p className="text-sm font-semibold text-slate-800">{role.label}</p>
                         <p className="text-xs text-slate-500">{role.helper}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {isStudyPartner && (
+                <div className="md:col-span-2 space-y-2">
+                  <label className="text-sm font-semibold text-slate-700">النشاط</label>
+                  <div className="grid sm:grid-cols-2 gap-2">
+                    {STUDY_PARTNER_ACTIVITY_OPTIONS.map((activity) => (
+                      <button
+                        key={activity.key}
+                        type="button"
+                        onClick={() => toggleActivity(activity.key)}
+                        className={`rounded-xl border px-3 py-2 text-left transition ${
+                          selectedActivity === activity.key ? 'border-emerald-400 bg-emerald-50 shadow-sm' : 'border-slate-200 bg-white'
+                        }`}
+                      >
+                        <p className="text-sm font-semibold text-slate-800">{activity.label}</p>
+                        <p className="text-xs text-slate-500">{activity.helper}</p>
                       </button>
                     ))}
                   </div>

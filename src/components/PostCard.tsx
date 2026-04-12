@@ -10,6 +10,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 const roleLabels: Record<string, string> = {
   need_help: 'محتاج مساعدة',
   can_help: 'اقدر اساعد',
+};
+
+const activityLabels: Record<string, string> = {
   general_review: 'مراجعة عامة',
   td: 'حل TD',
   archive: 'حل الأرشيف',
@@ -37,7 +40,13 @@ const PostCard: React.FC<PostCardProps> = ({
   clampDescription = false,
 }) => {
   const isAuthor = currentUserId ? resolveAuthorId(post) === currentUserId : false;
-  const roleLabel = post.postRole ? roleLabels[post.postRole] ?? post.postRole : 'Non précisé';
+  const legacyPostRole = (post as { postRole?: string }).postRole;
+  const normalizedRole = post.postRole === 'need_help' || post.postRole === 'can_help' ? post.postRole : undefined;
+  const normalizedActivity =
+    post.postActivity
+      ?? (legacyPostRole === 'td' || legacyPostRole === 'archive' ? legacyPostRole : undefined);
+  const roleLabel = normalizedRole ? roleLabels[normalizedRole] : 'Non précisé';
+  const activityLabel = normalizedActivity ? activityLabels[normalizedActivity] ?? normalizedActivity : 'Non précisé';
   const descriptionClassName = `text-sm text-slate-700 leading-relaxed${clampDescription ? ' line-clamp-3' : ''}`;
   const [selectedSubjectName, setSelectedSubjectName] = useState('');
 
@@ -77,6 +86,7 @@ const PostCard: React.FC<PostCardProps> = ({
                   );
                 })}
                 <span className="badge-soft bg-slate-100 text-slate-700">Rôle {roleLabel}</span>
+                <span className="badge-soft bg-indigo-50 text-indigo-700">Activité {activityLabel}</span>
               </div>
               <p className="text-sm text-slate-600">{(post.subjectCodes ?? []).map((subjectCode) => getSubjectFullName(subjectCode) || subjectCode).join(' & ')}</p>
               {post.availabilityDate ? (
@@ -109,8 +119,11 @@ const PostCard: React.FC<PostCardProps> = ({
               {post.description ? (
                 <p className={descriptionClassName}>{post.description}</p>
               ) : null}
-              {post.postRole ? (
+              {normalizedRole ? (
                 <p className="text-sm font-semibold text-slate-700">Rôle {roleLabel}</p>
+              ) : null}
+              {normalizedActivity ? (
+                <p className="text-sm font-semibold text-slate-700">Activité {activityLabel}</p>
               ) : null}
             </>
           )}

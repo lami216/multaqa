@@ -34,7 +34,11 @@ const postSchema = new mongoose.Schema({
   }],
   postRole: {
     type: String,
-    enum: ['need_help', 'can_help', 'td', 'archive']
+    enum: ['need_help', 'can_help']
+  },
+  postActivity: {
+    type: String,
+    enum: ['td', 'archive']
   },
   teamRoles: [{
     type: String,
@@ -109,6 +113,7 @@ postSchema.index({ category: 1 });
 postSchema.index({ faculty: 1 });
 postSchema.index({ level: 1 });
 postSchema.index({ postRole: 1 });
+postSchema.index({ postActivity: 1 });
 postSchema.index({ teamRoles: 1 });
 postSchema.index({ subjectCodes: 1 });
 postSchema.index({ tags: 1 });
