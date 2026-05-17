@@ -180,3 +180,26 @@ export const uploadAvatar = async (req, res) => {
     res.status(500).json({ error: 'Failed to upload avatar' });
   }
 };
+
+
+export const updateProfileSettings = async (req, res) => {
+  try {
+    const updates = req.body;
+    const profile = await Profile.findOneAndUpdate(
+      { userId: req.user._id },
+      {
+        $set: updates,
+        $setOnInsert: { userId: req.user._id }
+      },
+      { new: true, runValidators: true, upsert: true, setDefaultsOnInsert: true }
+    );
+
+    await redis.del(`profile:${req.user.username}`);
+    await redis.del(`profile:id:${req.user._id}`);
+
+    res.json({ message: 'Profile settings updated successfully', profile });
+  } catch (error) {
+    console.error('Update profile settings error:', error);
+    res.status(500).json({ error: 'Failed to update profile settings' });
+  }
+};

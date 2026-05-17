@@ -7,6 +7,9 @@ import {
 
 export const generateLinkToken = async (req, res) => {
   try {
+    if (req.user?.telegramLinked) {
+      return res.status(409).json({ error: 'Telegram account is already connected' });
+    }
     const telegramBotToken = process.env.TELEGRAM_BOT_TOKEN;
     if (!telegramBotToken) {
       return res.status(500).json({ error: 'TELEGRAM_BOT_TOKEN is not configured' });
@@ -76,4 +79,19 @@ export const webhook = async (req, res) => {
   }
 
   return res.status(200).json({ ok: true });
+};
+
+
+export const disconnect = async (req, res) => {
+  try {
+    await User.findByIdAndUpdate(req.user._id, {
+      $set: { telegramLinked: false },
+      $unset: { telegramChatId: '' }
+    });
+
+    res.json({ message: 'Telegram disconnected' });
+  } catch (error) {
+    console.error('Disconnect Telegram error:', error);
+    res.status(500).json({ error: 'Failed to disconnect Telegram' });
+  }
 };

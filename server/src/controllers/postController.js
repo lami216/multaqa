@@ -1,10 +1,10 @@
 import Post from '../models/Post.js';
+import Notification from '../models/Notification.js';
 import User from '../models/User.js';
 import Profile from '../models/Profile.js';
 import Conversation from '../models/Conversation.js';
 import Message from '../models/Message.js';
 import JoinRequest from '../models/JoinRequest.js';
-import Notification from '../models/Notification.js';
 import Subject from '../models/Subject.js';
 import Session from '../models/Session.js';
 import { deleteNotificationsByConversationId, deleteNotificationsByJoinRequestId, deleteNotificationsByPostId, initializeSessionLifecycle } from '../services/lifecycleService.js';
@@ -15,7 +15,38 @@ import { containsProfanity, maskProfanity } from '../utils/profanityFilter.js';
 import { getMajorAvailability } from '../services/academicSettingsService.js';
 import { incrementMatch, incrementPost } from '../services/majorStatsService.js';
 import { computePostCompatibilityForUser } from '../services/postCompatibilityService.js';
+import { buildAppLink, createNotification, createNotificationsForUsers, notificationText } from '../services/notificationService.js';
 import { sendTelegramNotificationForEvent } from '../utils/telegram.js';
+
+const notifyMatchingUsersAboutPost = async (post, actorId) => {
+  const subjectCodes = Array.isArray(post.subjectCodes) ? post.subjectCodes : [];
+  if (!post?._id || !post.facultyId || !post.level || !post.majorId || !subjectCodes.length) return;
+
+  const matchingProfiles = await Profile.find({
+    userId: { $ne: actorId },
+    facultyId: post.facultyId,
+    level: post.level,
+    majorId: post.majorId,
+    subjectCodes: { $in: subjectCodes }
+  }).select('userId');
+
+  await createNotificationsForUsers({
+    userIds: matchingProfiles.map((profile) => profile.userId),
+    actorId,
+    type: 'suitable_post',
+    payload: {
+      postId: post._id,
+      senderId: actorId,
+      link: `/posts/${post._id}`,
+      message: notificationText.suitablePost.ar
+    },
+    telegram: {
+      eventName: 'suitable_post_created',
+      ar: notificationText.suitablePost.ar,
+      fr: notificationText.suitablePost.fr
+    }
+  });
+};
 
 const getAvailabilityCutoff = (value) => {
   const date = new Date(value);
@@ -440,6 +471,7 @@ export const createPost = async (req, res) => {
       });
 
       await incrementPost(post.majorId, post.facultyId, post.createdAt);
+      await notifyMatchingUsersAboutPost(post, req.user._id);
 
       await redis.del('posts:*');
 
@@ -516,6 +548,7 @@ export const createPost = async (req, res) => {
       });
 
       await incrementPost(post.majorId, post.facultyId, post.createdAt);
+      await notifyMatchingUsersAboutPost(post, req.user._id);
 
       await redis.del('posts:*');
 
@@ -531,6 +564,7 @@ export const createPost = async (req, res) => {
     });
 
     await incrementPost(post.majorId, post.facultyId, post.createdAt);
+    await notifyMatchingUsersAboutPost(post, req.user._id);
 
     await redis.del('posts:*');
 
@@ -749,20 +783,22 @@ export const createJoinRequest = async (req, res) => {
       status: 'pending'
     });
 
-    await Notification.create({
+    await createNotification({
       userId: post.authorId,
       type: 'join_request_received',
       payload: {
         postId: post._id,
         requestId: joinRequest._id,
-        senderId: req.user._id
+        senderId: req.user._id,
+        senderUsername: req.user.username,
+        link: `/posts/${post._id}`,
+        message: notificationText.joinRequestReceived.ar
+      },
+      telegram: {
+        eventName: 'join_request_created',
+        ar: notificationText.joinRequestReceived.ar,
+        fr: notificationText.joinRequestReceived.fr
       }
-    });
-
-    await sendTelegramNotificationForEvent({
-      eventName: 'join_request_created',
-      recipientUserId: post.authorId,
-      message: '📚 لديك طلب مراجعة جديد على منشورك'
     });
 
     await redis.del('posts:*');
@@ -903,6 +939,8 @@ export const acceptJoinRequest = async (req, res) => {
         { session: dbSession }
       );
 
+      await deleteNotificationsByJoinRequestId(requestId, dbSession);
+
       await Notification.create([{
         userId: joinRequest.requesterId,
         type: 'join_request_accepted',
@@ -911,13 +949,13 @@ export const acceptJoinRequest = async (req, res) => {
           requestId: joinRequest._id,
           senderId: req.user._id,
           conversationId: conversation._id,
-          sessionId: lifecycleSession._id
+          sessionId: lifecycleSession._id,
+          link: `/messages/${conversation._id}`,
+          message: notificationText.joinRequestAccepted.ar
         }
       }], { session: dbSession });
 
       telegramRecipientId = joinRequest.requesterId.toString();
-
-      await deleteNotificationsByJoinRequestId(requestId, dbSession);
 
       responsePayload = {
         joinRequest: joinRequest.toObject(),
@@ -931,10 +969,13 @@ export const acceptJoinRequest = async (req, res) => {
       await incrementMatch(matchSnapshot.majorId, matchSnapshot.facultyId, responsePayload?.joinRequest?.acceptedAt ?? new Date());
     }
     if (telegramRecipientId) {
+      await redis.del(`notifications:unread:${telegramRecipientId}`);
       await sendTelegramNotificationForEvent({
         eventName: 'join_request_accepted',
         recipientUserId: telegramRecipientId,
-        message: '✅ تم قبول طلبك للمراجعة'
+        message: `${notificationText.joinRequestAccepted.ar}
+${notificationText.joinRequestAccepted.fr}
+🔗 ${buildAppLink(`/messages/${responsePayload?.conversationId}`)}`
       });
     }
 
@@ -982,21 +1023,21 @@ export const rejectJoinRequest = async (req, res) => {
     await JoinRequest.deleteOne({ _id: joinRequest._id });
     await deleteNotificationsByJoinRequestId(joinRequest._id);
 
-    await Notification.create({
+    await createNotification({
       userId: joinRequest.requesterId,
       type: 'join_request_rejected',
       payload: {
         postId: post._id,
         requestId: joinRequest._id,
         receiverId: req.user._id,
-        message: 'Votre demande a été refusée par le propriétaire du post.'
+        link: `/posts/${post._id}`,
+        message: notificationText.joinRequestRejected.ar
+      },
+      telegram: {
+        eventName: 'join_request_rejected',
+        ar: notificationText.joinRequestRejected.ar,
+        fr: notificationText.joinRequestRejected.fr
       }
-    });
-
-    await sendTelegramNotificationForEvent({
-      eventName: 'join_request_rejected',
-      recipientUserId: joinRequest.requesterId,
-      message: '❌ تم رفض طلبك للمراجعة'
     });
 
     await redis.del('posts:*');

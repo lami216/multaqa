@@ -1,4 +1,4 @@
-import { Copy, Edit3, GraduationCap, MapPin, MessageCircle, Notebook, Send, Settings, Star, User } from 'lucide-react';
+import { CheckCircle2, Copy, Edit3, GraduationCap, LogOut, MapPin, MessageCircle, Notebook, Send, Settings, Star, User, XCircle } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
@@ -20,13 +20,13 @@ import {
   getTermSemesterForLevel,
   isFacultyEnabled
 } from '../lib/catalog';
-import { type AcademicSettingsResponse, fetchAcademicSettings, generateTelegramLinkTokenRequest, http, type Profile, type RemainingSubjectItem } from '../lib/http';
+import { type AcademicSettingsResponse, disconnectTelegramRequest, fetchAcademicSettings, generateTelegramLinkTokenRequest, http, type Profile, type RemainingSubjectItem, updateProfileSettingsRequest } from '../lib/http';
 import { PRIORITY_ROLE_LABELS } from '../lib/priorities';
 import { buildSubjectInitials } from '../lib/subjectDisplay';
 
 const ProfilePage: React.FC = () => {
   const { language, t } = useLanguage();
-  const { user, profile: authProfile, refresh, currentUserId } = useAuth();
+  const { user, profile: authProfile, refresh, currentUserId, logout, setProfile: setAuthProfile } = useAuth();
   const { id } = useParams();
   const navigate = useNavigate();
   type ProfileView = Profile & { userId?: string; avgRating?: number; sessionsCount?: number; reviewsCount?: number };
@@ -38,10 +38,15 @@ const ProfilePage: React.FC = () => {
   const [remainingMessage, setRemainingMessage] = useState('');
   const [remainingError, setRemainingError] = useState('');
 
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsSaving, setSettingsSaving] = useState(false);
+  const [settingsMessage, setSettingsMessage] = useState('');
+  const [settingsDraft, setSettingsDraft] = useState({ displayName: '', bio: '', availability: '', language: 'Arabic' as 'Arabic' | 'French' });
   const [linkingTelegram, setLinkingTelegram] = useState(false);
   const [telegramLinkModalOpen, setTelegramLinkModalOpen] = useState(false);
   const [telegramLinkData, setTelegramLinkData] = useState<{ token: string; botUsername: string } | null>(null);
   const [copySuccess, setCopySuccess] = useState(false);
+  const [disconnectingTelegram, setDisconnectingTelegram] = useState(false);
   const [activeTab, setActiveTab] = useState<'posts' | 'resources' | 'reviews'>('posts');
   const [academicSettings, setAcademicSettings] = useState<AcademicSettingsResponse>({
     academicTermType: 'odd',
@@ -51,7 +56,7 @@ const ProfilePage: React.FC = () => {
   });
 
   const handleTelegramLink = async () => {
-    if (linkingTelegram) return;
+    if (linkingTelegram || user?.telegramLinked) return;
     setLinkingTelegram(true);
     try {
       const { data } = await generateTelegramLinkTokenRequest();
@@ -81,6 +86,46 @@ const ProfilePage: React.FC = () => {
     } catch (error) {
       console.error('Failed to copy Telegram command', error);
       setCopySuccess(false);
+    }
+  };
+
+  const openSettings = () => {
+    setSettingsDraft({
+      displayName: profile?.displayName ?? '',
+      bio: profile?.bio ?? '',
+      availability: profile?.availability ?? '',
+      language: (profile?.languages?.[0] === 'French' ? 'French' : 'Arabic')
+    });
+    setSettingsMessage('');
+    setSettingsOpen(true);
+  };
+
+  const saveSettings = async () => {
+    setSettingsSaving(true);
+    setSettingsMessage('');
+    try {
+      const { data } = await updateProfileSettingsRequest({
+        displayName: settingsDraft.displayName.trim(),
+        bio: settingsDraft.bio.trim(),
+        availability: settingsDraft.availability.trim(),
+        languages: [settingsDraft.language]
+      });
+      setProfile((prev) => ({ ...(prev ?? {}), ...data.profile, userId: currentUserId }));
+      setAuthProfile(data.profile);
+      setSettingsMessage(t.profile.saved);
+      await refresh();
+    } finally {
+      setSettingsSaving(false);
+    }
+  };
+
+  const disconnectTelegram = async () => {
+    setDisconnectingTelegram(true);
+    try {
+      await disconnectTelegramRequest();
+      await refresh();
+    } finally {
+      setDisconnectingTelegram(false);
     }
   };
   const faculties = getFaculties().filter((faculty) => isFacultyEnabled(faculty.id, academicSettings.catalogVisibility));
@@ -316,6 +361,118 @@ const ProfilePage: React.FC = () => {
         </DialogContent>
       </Dialog>
 
+      <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+          <DialogHeader className="space-y-2 text-start">
+            <DialogTitle className="text-2xl font-black text-slate-950">{t.profile.settingsTitle}</DialogTitle>
+            <DialogDescription className="text-sm leading-relaxed text-slate-600">
+              {t.profile.settingsDescription}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-5">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="space-y-2 text-sm font-bold text-slate-700">
+                {t.profile.displayName}
+                <input
+                  value={settingsDraft.displayName}
+                  onChange={(event) => setSettingsDraft((prev) => ({ ...prev, displayName: event.target.value }))}
+                  className="w-full"
+                  maxLength={80}
+                />
+              </label>
+              <label className="space-y-2 text-sm font-bold text-slate-700">
+                {t.profile.availability}
+                <input
+                  value={settingsDraft.availability}
+                  onChange={(event) => setSettingsDraft((prev) => ({ ...prev, availability: event.target.value }))}
+                  className="w-full"
+                  maxLength={160}
+                />
+              </label>
+            </div>
+
+            <label className="space-y-2 text-sm font-bold text-slate-700">
+              {t.profile.bio}
+              <textarea
+                value={settingsDraft.bio}
+                onChange={(event) => setSettingsDraft((prev) => ({ ...prev, bio: event.target.value }))}
+                className="min-h-28 w-full resize-none"
+                maxLength={500}
+              />
+            </label>
+
+            <div className="rounded-3xl border border-slate-200 bg-slate-50/80 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h3 className="font-bold text-slate-900">{t.profile.academicInfo}</h3>
+                  <p className="mt-1 text-sm text-slate-500">{t.profile.readOnlyAcademic}</p>
+                </div>
+                <span className="badge-soft bg-slate-100 text-slate-600 ring-slate-200">{t.profile.readOnly}</span>
+              </div>
+              <div className="mt-3 grid gap-2 text-sm text-slate-700 sm:grid-cols-3">
+                <span>{facultyLabel}</span>
+                <span>{levelLabel}</span>
+                <span>{majorLabel}</span>
+              </div>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="space-y-2 text-sm font-bold text-slate-700">
+                {t.profile.languagePreference}
+                <select
+                  value={settingsDraft.language}
+                  onChange={(event) => setSettingsDraft((prev) => ({ ...prev, language: event.target.value as 'Arabic' | 'French' }))}
+                  className="w-full"
+                >
+                  <option value="Arabic">{t.common.arabic}</option>
+                  <option value="French">{t.common.french}</option>
+                </select>
+              </label>
+              <div className="rounded-3xl border border-slate-200 bg-white p-4">
+                <h3 className="font-bold text-slate-900">{t.profile.notificationPreferences}</h3>
+                <p className="mt-2 text-sm text-slate-500">{t.profile.notificationsReadonly}</p>
+              </div>
+            </div>
+
+            <div className="rounded-3xl border border-slate-200 bg-white p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-3">
+                  {user?.telegramLinked ? <CheckCircle2 className="text-emerald-600" /> : <XCircle className="text-slate-400" />}
+                  <div>
+                    <h3 className="font-bold text-slate-900">Telegram</h3>
+                    <p className="text-sm text-slate-500">{user?.telegramLinked ? t.profile.telegramConnected : t.profile.telegram}</p>
+                  </div>
+                </div>
+                {user?.telegramLinked ? (
+                  <button type="button" className="secondary-btn" onClick={() => void disconnectTelegram()} disabled={disconnectingTelegram}>
+                    {t.profile.disconnectTelegram}
+                  </button>
+                ) : (
+                  <button type="button" className="secondary-btn" onClick={() => void handleTelegramLink()} disabled={linkingTelegram}>
+                    {t.profile.telegram}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {settingsMessage && <p className="text-sm font-semibold text-emerald-700">{settingsMessage}</p>}
+
+            <div className="flex flex-col-reverse gap-2 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
+              <button type="button" className="secondary-btn text-red-600 hover:bg-red-50 hover:text-red-700" onClick={() => void logout()}>
+                <LogOut size={16} /> {t.profile.logout}
+              </button>
+              <div className="flex gap-2">
+                <button type="button" className="secondary-btn" onClick={() => setSettingsOpen(false)}>{t.profile.cancel}</button>
+                <button type="button" className="primary-btn" onClick={() => void saveSettings()} disabled={settingsSaving}>
+                  {settingsSaving ? t.profile.saving : t.profile.saveSettings}
+                </button>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <section className="premium-panel overflow-hidden p-5 space-y-6 sm:p-6">
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div className="flex items-start gap-4">
@@ -341,7 +498,7 @@ const ProfilePage: React.FC = () => {
                     <Edit3 size={16} /> {t.profile.edit}
                   </Link>
                 )}
-                <button type="button" className="secondary-btn" aria-label="Settings">
+                <button type="button" className="secondary-btn" aria-label="Settings" onClick={openSettings}>
                   <Settings size={16} /> {t.profile.settings}
                 </button>
               </>
@@ -360,9 +517,15 @@ const ProfilePage: React.FC = () => {
               </button>
             ) : null}
             {isOwner ? (
-              <button type="button" className="secondary-btn" onClick={() => void handleTelegramLink()} disabled={linkingTelegram}>
-                {t.profile.telegram}
-              </button>
+              user?.telegramLinked ? (
+                <span className="badge-soft bg-emerald-50 text-emerald-700 ring-emerald-100">
+                  <CheckCircle2 size={14} /> {t.profile.telegramConnected}
+                </span>
+              ) : (
+                <button type="button" className="secondary-btn" onClick={() => void handleTelegramLink()} disabled={linkingTelegram}>
+                  {t.profile.telegram}
+                </button>
+              )
             ) : null}
           </div>
         </div>

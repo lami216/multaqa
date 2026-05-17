@@ -4,7 +4,7 @@ import User from '../models/User.js';
 import Profile from '../models/Profile.js';
 import Post from '../models/Post.js';
 import { containsProfanity, maskProfanity } from '../utils/profanityFilter.js';
-import { sendTelegramNotificationForEvent } from '../utils/telegram.js';
+import { createNotification, notificationText } from '../services/notificationService.js';
 
 const buildParticipantsKey = (userId, otherUserId) => {
   return [userId.toString(), otherUserId.toString()].sort().join(':');
@@ -107,10 +107,21 @@ export const createOrGetConversation = async (req, res) => {
         lastMessageAt: null
       });
 
-      await sendTelegramNotificationForEvent({
-        eventName: 'new_conversation_created',
-        recipientUserId: otherUserId,
-        message: '📩 لديك محادثة جديدة داخل ملتقى'
+      await createNotification({
+        userId: otherUserId,
+        type: 'chat_initiated',
+        payload: {
+          conversationId: conversation._id,
+          initiatorId: req.user._id,
+          initiatorUsername: req.user.username,
+          link: `/messages/${conversation._id}`,
+          message: notificationText.chatInitiated.ar
+        },
+        telegram: {
+          eventName: 'new_conversation_created',
+          ar: notificationText.chatInitiated.ar,
+          fr: notificationText.chatInitiated.fr
+        }
       });
     }
 
@@ -357,10 +368,22 @@ export const sendMessage = async (req, res) => {
       (participant) => participant.toString() !== req.user._id.toString()
     );
     if (recipientId) {
-      await sendTelegramNotificationForEvent({
-        eventName: 'new_message_sent',
-        recipientUserId: recipientId,
-        message: '💬 لديك رسالة جديدة داخل ملتقى'
+      await createNotification({
+        userId: recipientId,
+        type: 'new_message',
+        payload: {
+          conversationId: conversation._id,
+          messageId: message._id,
+          senderId: req.user._id,
+          senderUsername: req.user.username,
+          link: `/messages/${conversation._id}`,
+          message: notificationText.newMessage.ar
+        },
+        telegram: {
+          eventName: 'new_message_sent',
+          ar: notificationText.newMessage.ar,
+          fr: notificationText.newMessage.fr
+        }
       });
     }
 

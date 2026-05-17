@@ -1,4 +1,4 @@
-import axios, { AxiosHeaders, type AxiosError, type AxiosRequestConfig } from 'axios';
+import axios, { type AxiosError, AxiosHeaders, type AxiosRequestConfig } from 'axios';
 
 const rawBase = ((import.meta as unknown as { env?: Record<string, string | undefined> }).env?.VITE_API_BASE_URL ?? '')
   .replace(/\/+$/, '') ?? '';
@@ -100,6 +100,7 @@ export interface ApiUser {
   averageRating?: number;
   totalReviews?: number;
   sessionsCount?: number;
+  telegramLinked?: boolean;
 }
 
 export interface SubjectPriorityItem {
@@ -376,6 +377,9 @@ export const loginRequest = (payload: { email: string; password: string }) => ht
 export const signupRequest = (payload: { email: string; password: string; username: string }) => http.post<AuthResponse>('/auth/register', payload);
 export const logoutRequest = () => http.post('/auth/logout');
 export const generateTelegramLinkTokenRequest = () => http.post<{ token: string; botUsername: string }>('/telegram/link-token');
+export const disconnectTelegramRequest = () => http.delete<{ message: string }>('/telegram/link');
+export const updateProfileSettingsRequest = (payload: Pick<Profile, 'displayName' | 'bio' | 'availability' | 'languages'>) =>
+  http.patch<{ message: string; profile: Profile }>('/users/me/settings', payload);
 export const fetchPosts = (params?: Record<string, string>) => http.get<{ posts: PostResponse[] }>('/posts', { params });
 export const createPost = (payload: PostPayload) => http.post('/posts', payload);
 export const updatePost = (id: string, payload: Partial<PostPayload>) => http.patch(`/posts/${id}`, payload);

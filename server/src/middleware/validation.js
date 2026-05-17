@@ -116,6 +116,14 @@ export const profileSchema = z.object({
   prioritiesOrder: z.array(z.enum(['need_help', 'can_help', 'td', 'archive'])).length(4).optional()
 });
 
+
+export const profileSettingsUpdateSchema = z.object({
+  displayName: z.string().max(80).optional(),
+  bio: z.string().max(500).optional(),
+  availability: z.string().max(160).optional(),
+  languages: z.array(z.enum(['Arabic', 'French'])).optional()
+}).strict();
+
 export const messageSchema = z.object({
   body: z.string().min(1).max(2000)
 });
