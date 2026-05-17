@@ -1,25 +1,28 @@
 import React from 'react';
-import { Bell, Home, MessageCircle, Shield, User } from 'lucide-react';
+import { Bell, Home, MessageCircle, PenSquare, Shield, User } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useConversations } from '../../context/ConversationsContext';
+import { useLanguage } from '../../context/LanguageContext';
 import { useNotifications } from '../../context/NotificationsContext';
 
 const BottomNav: React.FC = () => {
   const { user } = useAuth();
   const { unreadCount } = useConversations();
   const { unreadCount: unreadNotifications } = useNotifications();
+  const { t } = useLanguage();
   const items = [
-    { to: '/', label: 'Accueil', icon: Home },
-    { to: '/notifications', label: 'Notifications', icon: Bell },
-    { to: '/messages', label: 'Messages', icon: MessageCircle },
-    { to: '/profile', label: 'Profil', icon: User },
-    ...(user?.role === 'admin' ? [{ to: '/admin', label: 'Admin', icon: Shield }] : []),
+    { to: '/', label: t.nav.home, icon: Home },
+    { to: '/posts', label: t.nav.posts, icon: PenSquare },
+    { to: '/messages', label: t.nav.messages, icon: MessageCircle },
+    { to: '/profile', label: t.nav.profile, icon: User },
+    { to: '/notifications', label: t.nav.notifications, icon: Bell },
+    ...(user?.role === 'admin' ? [{ to: '/admin', label: t.nav.admin, icon: Shield }] : []),
   ];
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-20 bg-white border-t border-slate-200 shadow-inner md:hidden">
-      <div className="flex justify-around items-center py-2">
+    <nav className="fixed inset-x-3 bottom-3 z-30 rounded-[1.75rem] border border-white/70 bg-white/90 shadow-hover backdrop-blur-xl md:hidden" aria-label="Mobile navigation">
+      <div className="safe-bottom flex items-center justify-around px-2 pt-2">
         {items.map((item) => {
           const Icon = item.icon;
           const unreadBadge = item.to === '/messages' ? unreadCount : item.to === '/notifications' ? unreadNotifications : 0;
@@ -28,20 +31,20 @@ const BottomNav: React.FC = () => {
               key={item.to}
               to={item.to}
               className={({ isActive }) =>
-                `flex flex-col items-center gap-1 px-3 text-xs font-semibold transition ${
-                  isActive ? 'text-emerald-700' : 'text-slate-500'
+                `relative flex min-w-0 flex-1 flex-col items-center gap-1 rounded-2xl px-2 py-2 text-[11px] font-black transition ${
+                  isActive ? 'bg-slate-950 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
                 }`
               }
             >
               <span className="relative inline-flex">
-                <Icon size={22} className="text-current" />
+                <Icon size={20} className="text-current" />
                 {unreadBadge > 0 && (
-                  <span className="absolute -top-1 -right-2 rounded-full bg-rose-500 text-white text-[10px] font-semibold px-1 min-w-[16px] h-4 flex items-center justify-center">
+                  <span className="absolute -end-2 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-black text-white">
                     {unreadBadge}
                   </span>
                 )}
               </span>
-              <span>{item.label}</span>
+              <span className="max-w-full truncate">{item.label}</span>
             </NavLink>
           );
         })}

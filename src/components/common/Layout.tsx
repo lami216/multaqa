@@ -8,9 +8,9 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { language } = useLanguage();
 
   return (
-    <div className={`min-h-screen bg-slate-50 pb-20 md:pb-0 app-shell ${language === 'ar' ? 'rtl-mode' : ''}`}>
+    <div className={`min-h-screen pb-28 md:pb-0 app-shell ${language === 'ar' ? 'rtl-mode' : ''}`}>
       <Header />
-      <main className="container-balanced py-6 space-y-6">{children}</main>
+      <main className="container-balanced space-y-6 py-5 sm:py-7">{children}</main>
       <BottomNav />
       <Toaster />
     </div>

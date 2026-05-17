@@ -25,7 +25,7 @@ import { PRIORITY_ROLE_LABELS } from '../lib/priorities';
 import { buildSubjectInitials } from '../lib/subjectDisplay';
 
 const ProfilePage: React.FC = () => {
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
   const { user, profile: authProfile, refresh, currentUserId } = useAuth();
   const { id } = useParams();
   const navigate = useNavigate();
@@ -316,21 +316,21 @@ const ProfilePage: React.FC = () => {
         </DialogContent>
       </Dialog>
 
-      <section className="card-surface p-5 space-y-6">
+      <section className="premium-panel overflow-hidden p-5 space-y-6 sm:p-6">
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div className="flex items-start gap-4">
-            <Avatar className="h-20 w-20 rounded-full border-2 border-emerald-100">
+            <Avatar className="h-24 w-24 rounded-[2rem] border-4 border-white shadow-card">
               <AvatarImage src={avatarUrl} alt="Avatar" />
               <AvatarFallback className="bg-emerald-50 text-emerald-700 flex items-center justify-center text-3xl font-bold">
                 {(profile?.displayName?.[0] ?? user?.username?.[0])?.toUpperCase() ?? <User />}
               </AvatarFallback>
             </Avatar>
             <div className="space-y-1.5">
-              <h1 className="text-2xl font-bold text-slate-900">{profile?.displayName ?? (id ? undefined : user?.username)}</h1>
+              <h1 className="text-3xl font-black tracking-tight text-slate-950">{profile?.displayName ?? (id ? undefined : user?.username)}</h1>
               <p className="text-slate-600 flex items-center gap-2 text-sm">
                 <GraduationCap size={16} /> {facultyLabel} · {levelLabel} · {majorLabel}
               </p>
-              <p className="text-sm text-slate-700 leading-relaxed">{profile?.bio ?? 'Ajoutez une bio pour présenter votre parcours.'}</p>
+              <p className="text-sm text-slate-700 leading-relaxed">{profile?.bio ?? t.profile.defaultBio}</p>
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -338,11 +338,11 @@ const ProfilePage: React.FC = () => {
               <>
                 {!profile?.profileLocked && (
                   <Link to="/profile/edit" className="secondary-btn">
-                    <Edit3 size={16} className="me-1" /> Edit Profile
+                    <Edit3 size={16} /> {t.profile.edit}
                   </Link>
                 )}
                 <button type="button" className="secondary-btn" aria-label="Settings">
-                  <Settings size={16} className="me-1" /> Settings
+                  <Settings size={16} /> {t.profile.settings}
                 </button>
               </>
 ) : null}
@@ -356,12 +356,12 @@ const ProfilePage: React.FC = () => {
                   navigate(`/messages/${data.conversationId}`);
                 }}
               >
-                <MessageCircle size={16} className="me-1" /> Message
+                <MessageCircle size={16} /> {t.profile.message}
               </button>
             ) : null}
             {isOwner ? (
               <button type="button" className="secondary-btn" onClick={() => void handleTelegramLink()} disabled={linkingTelegram}>
-                ربط حسابي بتيليغرام
+                {t.profile.telegram}
               </button>
             ) : null}
           </div>
@@ -370,26 +370,26 @@ const ProfilePage: React.FC = () => {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-center">
             <p className="text-2xl font-bold text-emerald-600">{reviewsCount}</p>
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Total Reviews</p>
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-500">{t.profile.reviews}</p>
           </div>
           <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-center">
             <p className="text-2xl font-bold text-emerald-600">{sessionsCount}</p>
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Sessions</p>
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-500">{t.profile.sessions}</p>
           </div>
           <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-center">
             <p className="text-2xl font-bold text-emerald-600 flex items-center justify-center gap-1">
               <Star size={16} className="fill-amber-400 text-amber-400" /> {avgRatingDisplay}
             </p>
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Avg Rating</p>
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-500">{t.profile.rating}</p>
           </div>
         </div>
 
         <div className="border-b border-slate-200">
           <div className="flex flex-wrap gap-1">
             {[
-              { key: 'posts', label: 'Posts' },
-              { key: 'resources', label: 'Resources' },
-              { key: 'reviews', label: 'Reviews' }
+              { key: 'posts', label: t.profile.posts },
+              { key: 'resources', label: t.profile.resources },
+              { key: 'reviews', label: t.profile.reviewsTab }
             ].map((tab) => (
               <button
                 key={tab.key}
@@ -564,14 +564,14 @@ const ProfilePage: React.FC = () => {
         {activeTab === 'resources' && (
           <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-slate-600">
             <h3 className="text-base font-semibold text-slate-800">Resources</h3>
-            <p className="mt-2 text-sm">Resource content will appear here.</p>
+            <p className="mt-2 text-sm">{t.profile.resourcesEmpty}</p>
           </div>
         )}
 
         {activeTab === 'reviews' && (
           <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-slate-600">
             <h3 className="text-base font-semibold text-slate-800">Reviews</h3>
-            <p className="mt-2 text-sm">Private reviews UI placeholder.</p>
+            <p className="mt-2 text-sm">{t.profile.reviewsEmpty}</p>
           </div>
         )}
       </section>

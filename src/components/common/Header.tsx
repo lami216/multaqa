@@ -1,25 +1,25 @@
 import React from 'react';
+import { Bell, Home, Languages, Menu, MessageCircle, PenSquare, Shield, User, X } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
-import { Languages, Menu, X } from 'lucide-react';
-import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
+import { useLanguage } from '../../context/LanguageContext';
 import { useNotifications } from '../../context/NotificationsContext';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 
 const Header: React.FC = () => {
   const location = useLocation();
-  const { language, setLanguage } = useLanguage();
+  const { language, setLanguage, t } = useLanguage();
   const { user, profile, logout } = useAuth();
   const { unreadCount: unreadNotifications } = useNotifications();
   const [open, setOpen] = React.useState(false);
 
   const navLinks = [
-    { path: '/', label: 'Accueil' },
-    { path: '/posts', label: 'Posts' },
-    { path: '/messages', label: 'Messages' },
-    { path: '/notifications', label: 'Notifications' },
-    { path: '/profile', label: 'Profil' },
-    ...(user?.role === 'admin' ? [{ path: '/admin', label: 'Admin' }] : []),
+    { path: '/', label: t.nav.home, icon: Home },
+    { path: '/posts', label: t.nav.posts, icon: PenSquare },
+    { path: '/messages', label: t.nav.messages, icon: MessageCircle },
+    { path: '/notifications', label: t.nav.notifications, icon: Bell },
+    { path: '/profile', label: t.nav.profile, icon: User },
+    ...(user?.role === 'admin' ? [{ path: '/admin', label: t.nav.admin, icon: Shield }] : []),
   ];
 
   const switchLanguage = (lang: 'ar' | 'fr') => {
@@ -28,162 +28,131 @@ const Header: React.FC = () => {
   };
 
   const avatarUrl = profile?.avatarUrl ? `${profile.avatarUrl}?v=${new Date(profile.updatedAt ?? Date.now()).getTime()}` : undefined;
-  const fallbackInitial = user?.username?.[0]?.toUpperCase();
+  const fallbackInitial = user?.username?.[0]?.toUpperCase() ?? 'M';
 
   return (
-    <header className="bg-white shadow-sm border-b border-slate-100 sticky top-0 z-20">
-      <div className="container-balanced flex items-center justify-between gap-4 py-3">
-        <Link to="/" className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 font-black">
+    <header className="glass-nav sticky top-0 z-40">
+      <div className="container-balanced flex items-center justify-between gap-3 py-3">
+        <Link to="/" className="group flex items-center gap-3" aria-label="Multaqa home">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-slate-950 to-emerald-700 text-lg font-black text-white shadow-card transition group-hover:scale-105">
             M
           </div>
           <div className="leading-tight">
-            <p className="text-lg font-extrabold text-slate-900">Multaqa</p>
-            <p className="text-xs text-slate-500">Find your ideal study partner</p>
+            <p className="text-lg font-black tracking-tight text-slate-950">Multaqa</p>
+            <p className="hidden text-xs font-medium text-slate-500 sm:block">Student collaboration hub</p>
           </div>
         </Link>
 
-        <div className="hidden md:flex items-center gap-3">
-          {navLinks.map((link) => (
-            <Link
-              key={link.path}
-              to={link.path}
-              className={`px-4 py-2 text-sm font-semibold rounded-xl transition-colors duration-200 ${
-                location.pathname === link.path
-                  ? 'bg-emerald-50 text-emerald-700'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-              }`}
-            >
-              <span className="relative inline-flex items-center">
+        <nav className="hidden items-center gap-1 rounded-full border border-slate-200/70 bg-white/70 p-1 shadow-sm md:flex" aria-label="Primary navigation">
+          {navLinks.map((link) => {
+            const Icon = link.icon;
+            const active = location.pathname === link.path || (link.path !== '/' && location.pathname.startsWith(link.path));
+            return (
+              <Link
+                key={link.path}
+                to={link.path}
+                className={`relative inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm font-bold transition-all ${
+                  active ? 'bg-slate-950 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-950'
+                }`}
+              >
+                <Icon size={15} />
                 {link.label}
                 {link.path === '/notifications' && unreadNotifications > 0 && (
-                  <span className="ms-1 rounded-full bg-rose-500 px-1.5 text-[10px] text-white">{unreadNotifications}</span>
+                  <span className="ms-0.5 rounded-full bg-rose-500 px-1.5 text-[10px] font-black text-white">{unreadNotifications}</span>
                 )}
-              </span>
-            </Link>
-          ))}
-        </div>
-
-        <div className="flex items-center gap-3">
-          {user && (
-            <div className="hidden sm:flex items-center gap-2 text-sm text-slate-700">
-              <Link to="/profile" className="flex items-center gap-2">
-                <Avatar className="h-9 w-9 border border-slate-200">
-                  <AvatarImage src={avatarUrl} alt="Avatar" />
-                  <AvatarFallback className="bg-emerald-50 text-emerald-700 font-semibold">
-                    {fallbackInitial}
-                  </AvatarFallback>
-                </Avatar>
-                <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 font-semibold">{user.username}</span>
               </Link>
-              <button
-                type="button"
-                onClick={() => logout()}
-                className="text-slate-600 hover:text-slate-900 font-semibold"
-              >
-                Se déconnecter
-              </button>
-            </div>
-          )}
-          <div className="hidden sm:flex items-center rounded-full border border-slate-200 bg-slate-50 px-1 py-1 text-xs font-semibold text-slate-700">
+            );
+          })}
+        </nav>
+
+        <div className="flex items-center gap-2">
+          <div className="hidden items-center rounded-full border border-slate-200 bg-white/80 p-1 text-xs font-black text-slate-600 shadow-sm sm:flex" aria-label={t.common.language}>
             <button
               type="button"
               onClick={() => switchLanguage('ar')}
-              className={`px-3 py-1 rounded-full flex items-center gap-1 transition ${
-                language === 'ar' ? 'bg-white shadow-sm text-emerald-700' : ''
-              }`}
+              className={`rounded-full px-3 py-1.5 transition ${language === 'ar' ? 'bg-emerald-600 text-white shadow-sm' : 'hover:bg-slate-100'}`}
             >
-              <Languages size={14} /> العربية
+              العربية
             </button>
             <button
               type="button"
               onClick={() => switchLanguage('fr')}
-              className={`px-3 py-1 rounded-full transition ${
-                language === 'fr' ? 'bg-white shadow-sm text-emerald-700' : ''
-              }`}
+              className={`rounded-full px-3 py-1.5 transition ${language === 'fr' ? 'bg-emerald-600 text-white shadow-sm' : 'hover:bg-slate-100'}`}
             >
               Français
             </button>
           </div>
+
+          {user ? (
+            <div className="hidden items-center gap-2 sm:flex">
+              <Link to="/profile" className="inline-flex items-center gap-2 rounded-full bg-white/75 p-1 pe-3 text-sm font-bold text-slate-700 shadow-sm ring-1 ring-slate-200/70 transition hover:text-emerald-700">
+                <Avatar className="h-9 w-9 border border-white shadow-sm">
+                  <AvatarImage src={avatarUrl} alt={`${user.username} avatar`} />
+                  <AvatarFallback className="bg-emerald-50 font-black text-emerald-700">{fallbackInitial}</AvatarFallback>
+                </Avatar>
+                <span className="max-w-24 truncate">{user.username}</span>
+              </Link>
+            </div>
+          ) : null}
+
           <button
             type="button"
             onClick={() => setOpen((prev) => !prev)}
-            className="md:hidden p-2 rounded-lg border border-slate-200 text-slate-700"
-            aria-label="Menu"
+            className="rounded-2xl border border-slate-200 bg-white/85 p-2 text-slate-700 shadow-sm transition hover:bg-slate-50 md:hidden"
+            aria-label={t.nav.menu}
+            aria-expanded={open}
           >
-            {open ? <X size={18} /> : <Menu size={18} />}
+            {open ? <X size={19} /> : <Menu size={19} />}
           </button>
         </div>
       </div>
 
       {open && (
-        <div className="md:hidden border-t border-slate-100 bg-white shadow-inner">
-          <div className="container-balanced py-3 space-y-2">
-            <div className="flex items-center gap-2 text-sm font-semibold text-slate-600">
-              <Languages size={16} />
-              <button
-                type="button"
-                onClick={() => switchLanguage('ar')}
-                className={`px-3 py-1 rounded-full ${
-                  language === 'ar' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100'
-                }`}
-              >
-                العربية
-              </button>
-              <button
-                type="button"
-                onClick={() => switchLanguage('fr')}
-                className={`px-3 py-1 rounded-full ${
-                  language === 'fr' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100'
-                }`}
-              >
-                Français
-              </button>
-            </div>
+        <div className="border-t border-slate-100 bg-white/95 shadow-card md:hidden">
+          <div className="container-balanced space-y-4 py-4">
             <div className="grid grid-cols-2 gap-2">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.path}
-                  to={link.path}
-                  onClick={() => setOpen(false)}
-                  className={`px-3 py-2 rounded-xl text-sm font-semibold border transition ${
-                    location.pathname === link.path
-                      ? 'border-emerald-100 bg-emerald-50 text-emerald-700'
-                      : 'border-slate-100 bg-slate-50 text-slate-700'
-                  }`}
-                >
-                  <span className="relative inline-flex items-center">
-                    {link.label}
-                    {link.path === '/notifications' && unreadNotifications > 0 && (
-                      <span className="ms-1 rounded-full bg-rose-500 px-1.5 text-[10px] text-white">{unreadNotifications}</span>
-                    )}
-                  </span>
-                </Link>
-              ))}
-            </div>
-            {user && (
-              <div className="flex items-center gap-3">
-                <Avatar className="h-10 w-10 border border-slate-200">
-                  <AvatarImage src={avatarUrl} alt="Avatar" />
-                  <AvatarFallback className="bg-emerald-50 text-emerald-700 font-semibold">
-                    {fallbackInitial}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1">
-                  <p className="font-semibold text-slate-800">{user.username}</p>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      void logout();
-                      setOpen(false);
-                    }}
-                    className="text-sm text-slate-600 font-semibold"
+              {navLinks.map((link) => {
+                const Icon = link.icon;
+                const active = location.pathname === link.path || (link.path !== '/' && location.pathname.startsWith(link.path));
+                return (
+                  <Link
+                    key={link.path}
+                    to={link.path}
+                    onClick={() => setOpen(false)}
+                    className={`flex items-center gap-2 rounded-2xl px-3 py-3 text-sm font-bold transition ${
+                      active ? 'bg-slate-950 text-white' : 'bg-slate-50 text-slate-700 hover:bg-emerald-50 hover:text-emerald-800'
+                    }`}
                   >
-                    Se déconnecter
-                  </button>
-                </div>
+                    <Icon size={17} />
+                    <span className="relative">
+                      {link.label}
+                      {link.path === '/notifications' && unreadNotifications > 0 && (
+                        <span className="ms-1 rounded-full bg-rose-500 px-1.5 text-[10px] text-white">{unreadNotifications}</span>
+                      )}
+                    </span>
+                  </Link>
+                );
+              })}
+            </div>
+            <div className="flex items-center justify-between gap-3 rounded-3xl bg-slate-50 p-3">
+              <div className="flex items-center gap-2 text-sm font-bold text-slate-600">
+                <Languages size={16} />
+                <button type="button" onClick={() => switchLanguage('ar')} className={`rounded-full px-3 py-1 ${language === 'ar' ? 'bg-white text-emerald-700 shadow-sm' : ''}`}>العربية</button>
+                <button type="button" onClick={() => switchLanguage('fr')} className={`rounded-full px-3 py-1 ${language === 'fr' ? 'bg-white text-emerald-700 shadow-sm' : ''}`}>Français</button>
               </div>
-            )}
+            </div>
+            {user ? (
+              <div className="flex items-center gap-3 rounded-3xl bg-slate-950 p-3 text-white">
+                <Avatar className="h-11 w-11 border border-white/20">
+                  <AvatarImage src={avatarUrl} alt={`${user.username} avatar`} />
+                  <AvatarFallback className="bg-emerald-500 font-bold text-white">{fallbackInitial}</AvatarFallback>
+                </Avatar>
+                <p className="flex-1 font-bold">{user.username}</p>
+                <button type="button" onClick={() => { void logout(); setOpen(false); }} className="rounded-full bg-white/10 px-3 py-1.5 text-sm font-bold">
+                  {t.nav.signOut}
+                </button>
+              </div>
+            ) : null}
           </div>
         </div>
       )}
