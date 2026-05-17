@@ -15,7 +15,7 @@ import { containsProfanity, maskProfanity } from '../utils/profanityFilter.js';
 import { getMajorAvailability } from '../services/academicSettingsService.js';
 import { incrementMatch, incrementPost } from '../services/majorStatsService.js';
 import { computePostCompatibilityForUser } from '../services/postCompatibilityService.js';
-import { buildAppLink, createNotification, createNotificationsForUsers, notificationText } from '../services/notificationService.js';
+import { createNotification, createNotificationsForUsers, formatTelegramMessage, notificationText, resolveTelegramLanguage } from '../services/notificationService.js';
 import { sendTelegramNotificationForEvent } from '../utils/telegram.js';
 
 const notifyMatchingUsersAboutPost = async (post, actorId) => {
@@ -973,9 +973,7 @@ export const acceptJoinRequest = async (req, res) => {
       await sendTelegramNotificationForEvent({
         eventName: 'join_request_accepted',
         recipientUserId: telegramRecipientId,
-        message: `${notificationText.joinRequestAccepted.ar}
-${notificationText.joinRequestAccepted.fr}
-🔗 ${buildAppLink(`/messages/${responsePayload?.conversationId}`)}`
+        message: formatTelegramMessage({ ar: notificationText.joinRequestAccepted.ar, fr: notificationText.joinRequestAccepted.fr, link: `/messages/${responsePayload?.conversationId}`, language: await resolveTelegramLanguage(telegramRecipientId) })
       });
     }
 

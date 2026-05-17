@@ -1,13 +1,15 @@
 import Notification from '../models/Notification.js';
+import Profile from '../models/Profile.js';
 import redis from '../config/redis.js';
 import { sendTelegramNotificationForEvent } from '../utils/telegram.js';
 
-const APP_BASE_URL = (process.env.APP_BASE_URL || process.env.FRONTEND_URL || process.env.PUBLIC_APP_URL || '').replace(/\/+$/, '');
+const APP_BASE_URL = (process.env.APP_BASE_URL || process.env.PUBLIC_APP_URL || process.env.FRONTEND_URL || 'https://multaqa.space').replace(/\/+$/, '');
 
 export const buildAppLink = (path) => {
   if (!path || typeof path !== 'string') return '';
+  if (/^https:\/\//i.test(path)) return path;
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-  return APP_BASE_URL ? `${APP_BASE_URL}${normalizedPath}` : normalizedPath;
+  return `${APP_BASE_URL}${normalizedPath}`;
 };
 
 export const notificationText = {
@@ -45,9 +47,16 @@ export const notificationText = {
   }
 };
 
-const formatTelegramMessage = ({ ar, fr, link }) => {
-  const lines = [ar, fr].filter(Boolean);
-  if (link) lines.push(`🔗 ${buildAppLink(link)}`);
+export const resolveTelegramLanguage = async (userId) => {
+  const profile = await Profile.findOne({ userId }).select('languages').lean();
+  return profile?.languages?.[0] === 'French' ? 'fr' : 'ar';
+};
+
+export const formatTelegramMessage = ({ ar, fr, link, language = 'ar' }) => {
+  const text = language === 'fr' ? (fr || ar) : (ar || fr);
+  const cta = language === 'fr' ? '🔗 Ouvrir dans Multaqa:' : '🔗 افتح في ملتقى:';
+  const lines = [text].filter(Boolean);
+  if (link) lines.push(`${cta} ${buildAppLink(link)}`);
   return lines.join('\n');
 };
 
@@ -97,7 +106,7 @@ export const createNotification = async ({ userId, actorId, type, payload = {}, 
     await sendTelegramNotificationForEvent({
       eventName: telegram.eventName ?? type,
       recipientUserId: userId,
-      message: formatTelegramMessage({ ...telegram, link: payload.link })
+      message: formatTelegramMessage({ ...telegram, link: payload.link, language: await resolveTelegramLanguage(userId) })
     });
   }
 

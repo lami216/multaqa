@@ -6,6 +6,7 @@ import Profile from '../models/Profile.js';
 import redis from '../config/redis.js';
 import { containsProfanity, maskProfanity } from '../utils/profanityFilter.js';
 import { sendTelegramNotificationForEvent } from '../utils/telegram.js';
+import { formatTelegramMessage, notificationText, resolveTelegramLanguage } from '../services/notificationService.js';
 
 export const getChats = async (req, res) => {
   try {
@@ -89,7 +90,7 @@ export const createOrGetChat = async (req, res) => {
       await sendTelegramNotificationForEvent({
         eventName: 'new_conversation_created',
         recipientUserId: otherUserId,
-        message: `لديك محادثة جديدة من ${req.user.username}`
+        message: formatTelegramMessage({ ar: notificationText.chatInitiated.ar, fr: notificationText.chatInitiated.fr, link: `/messages/${chat._id}`, language: await resolveTelegramLanguage(otherUserId) })
       });
     }
 
@@ -190,7 +191,7 @@ export const sendMessage = async (req, res) => {
     await sendTelegramNotificationForEvent({
       eventName: 'new_message_sent',
       recipientUserId: recipientId,
-      message: `رسالة جديدة من ${req.user.username}`
+      message: formatTelegramMessage({ ar: notificationText.newMessage.ar, fr: notificationText.newMessage.fr, link: `/messages/${chat._id}`, language: await resolveTelegramLanguage(recipientId) })
     });
 
     res.status(201).json({ message });

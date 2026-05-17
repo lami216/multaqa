@@ -1,45 +1,61 @@
-import { CheckCircle2, PenSquare } from 'lucide-react';
+import { CheckCircle2, Loader2, PenSquare, Sparkles } from 'lucide-react';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import SubjectChipsSelector from '../components/subjects/SubjectChipsSelector';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { getSubjectNameByCode } from '../lib/catalog';
 import { createPost, type PostActivityKey, type PostPayload, type PostRoleKey, type StudyTeamRoleKey } from '../lib/http';
-import { PRIORITY_ROLE_OPTIONS } from '../lib/priorities';
 import { getProfileSelectableSubjectCodes } from '../lib/profileSubjects';
 
-const requestTypes: { value: PostPayload['category']; label: string }[] = [
-  { value: 'study_partner', label: 'Study partner' },
-  { value: 'project_team', label: 'Study team' },
-  { value: 'tutor_offer', label: 'Tutor offer' },
-];
+const roleCopy: Record<PostRoleKey, { fr: { label: string; helper: string }; ar: { label: string; helper: string } }> = {
+  need_help: {
+    fr: { label: 'Besoin d’aide', helper: 'Je cherche un étudiant qui peut m’expliquer la matière.' },
+    ar: { label: 'أحتاج مساعدة', helper: 'أبحث عن طالب يستطيع شرح المادة ومساعدتي.' }
+  },
+  can_help: {
+    fr: { label: 'Je peux aider', helper: 'Je peux expliquer la matière et accompagner d’autres étudiants.' },
+    ar: { label: 'أستطيع المساعدة', helper: 'أستطيع شرح المادة ومساعدة طلاب آخرين.' }
+  }
+};
 
-const STUDY_TEAM_ROLE_OPTIONS: { key: StudyTeamRoleKey; label: string; helper: string }[] = [
-  { key: 'general_review', label: 'مراجعة عامة', helper: 'طلب تعاون عام مناسب لمحتاج مساعدة وأقدر أساعد.' },
-  { key: 'td', label: 'حل TD', helper: 'أركز على حل وتمرينات TD.' },
-  { key: 'archive', label: 'حل الأرشيف', helper: 'أركز على الأسئلة والأرشيف.' },
-];
+const activityCopy: Record<PostActivityKey, { fr: { label: string; helper: string }; ar: { label: string; helper: string } }> = {
+  td: {
+    fr: { label: 'Travaux dirigés', helper: 'La session sera centrée sur les exercices de TD.' },
+    ar: { label: 'حل TD', helper: 'ستركز الجلسة على التمارين والأعمال الموجهة.' }
+  },
+  archive: {
+    fr: { label: 'Archives', helper: 'La session sera centrée sur les anciens sujets et corrigés.' },
+    ar: { label: 'حل الأرشيف', helper: 'ستركز الجلسة على المواضيع القديمة والتصحيحات.' }
+  }
+};
 
-const STUDY_PARTNER_ROLE_OPTIONS: { key: PostRoleKey; label: string; helper: string }[] = [
-  { key: 'need_help', label: PRIORITY_ROLE_OPTIONS[0].label, helper: PRIORITY_ROLE_OPTIONS[0].helper },
-  { key: 'can_help', label: PRIORITY_ROLE_OPTIONS[1].label, helper: PRIORITY_ROLE_OPTIONS[1].helper },
-];
+const teamRoleCopy: Record<StudyTeamRoleKey, { fr: { label: string; helper: string }; ar: { label: string; helper: string } }> = {
+  general_review: {
+    fr: { label: 'Révision générale', helper: 'Groupe ouvert pour réviser les notions principales.' },
+    ar: { label: 'مراجعة عامة', helper: 'فريق مفتوح لمراجعة أهم محاور المادة.' }
+  },
+  td: activityCopy.td,
+  archive: activityCopy.archive
+};
 
-const STUDY_PARTNER_ACTIVITY_OPTIONS: { key: PostActivityKey; label: string; helper: string }[] = [
-  { key: 'td', label: PRIORITY_ROLE_OPTIONS[2].label, helper: PRIORITY_ROLE_OPTIONS[2].helper },
-  { key: 'archive', label: PRIORITY_ROLE_OPTIONS[3].label, helper: PRIORITY_ROLE_OPTIONS[3].helper },
+const categoryOptions: { value: PostPayload['category']; label: { fr: string; ar: string }; helper: { fr: string; ar: string } }[] = [
+  { value: 'study_partner', label: { fr: 'Partenaire d’étude', ar: 'شريك دراسة' }, helper: { fr: 'Demander ou proposer une aide ciblée.', ar: 'اطلب أو اعرض مساعدة في مادة محددة.' } },
+  { value: 'project_team', label: { fr: 'Groupe de travail', ar: 'فريق دراسة' }, helper: { fr: 'Former un petit groupe avec des rôles clairs.', ar: 'كوّن فريقاً صغيراً بأدوار واضحة.' } },
+  { value: 'tutor_offer', label: { fr: 'Offre libre', ar: 'عرض حر' }, helper: { fr: 'Publier une annonce plus générale.', ar: 'انشر إعلاناً عاماً بتفاصيلك.' } },
 ];
 
 const CreatePostPage: React.FC = () => {
   const navigate = useNavigate();
   const { profile } = useAuth();
+  const { language, t, isRtl } = useLanguage();
   const [form, setForm] = useState<PostPayload>({
     category: 'study_partner',
     title: '',
     description: '',
     faculty: '',
     level: undefined,
-    languagePref: 'French',
+    languagePref: language === 'ar' ? 'Arabic' : 'French',
     location: 'campus',
     tags: [],
   });
@@ -57,27 +73,14 @@ const CreatePostPage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const subjectsLimitTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const copy = t.createPost;
   const subjectOptions = useMemo(() => getProfileSelectableSubjectCodes(profile), [profile]);
   const isStudyPartner = form.category === 'study_partner';
-
   const isStudyTeam = form.category === 'project_team';
-  const roleSelectionValid = Boolean(selectedRole);
-  const activitySelectionValid = Boolean(selectedActivity);
-  const studyPartnerValid =
-    selectedSubjects.length >= 1 &&
-    selectedSubjects.length <= 2 &&
-    roleSelectionValid &&
-    activitySelectionValid &&
-    Boolean(availabilityDate);
-
-  const studyTeamValid =
-    selectedSubjects.length >= 1 &&
-    selectedSubjects.length <= 2 &&
-    selectedTeamRoles.length >= 1 &&
-    Boolean(availabilityDate) &&
-    participantTargetCount >= 3;
-
+  const studyPartnerValid = selectedSubjects.length >= 1 && selectedSubjects.length <= 2 && Boolean(selectedRole) && Boolean(selectedActivity) && Boolean(availabilityDate);
+  const studyTeamValid = selectedSubjects.length >= 1 && selectedSubjects.length <= 2 && selectedTeamRoles.length >= 1 && Boolean(availabilityDate) && participantTargetCount >= 3;
   const standardPostValid = Boolean(form.title?.trim() && form.description?.trim());
+  const canSubmit = isStudyPartner ? studyPartnerValid : isStudyTeam ? studyTeamValid : standardPostValid;
 
   const selectedSubjectFullNames = useMemo(
     () => selectedSubjects.map((subjectCode) => ({ code: subjectCode, fullName: getSubjectNameByCode(subjectCode) || subjectCode })),
@@ -92,15 +95,11 @@ const CreatePostPage: React.FC = () => {
     setError('');
     setSubjectsLimitWarning('');
     setSelectedSubjects((prev) => {
-      if (prev.includes(subject)) {
-        return prev.filter((item) => item !== subject);
-      }
+      if (prev.includes(subject)) return prev.filter((item) => item !== subject);
       if (prev.length >= 2) {
-        setSubjectsLimitWarning('Vous pouvez sélectionner deux matières maximum.');
+        setSubjectsLimitWarning(copy.subjectLimit);
         setSubjectsLimitHighlight(false);
-        if (subjectsLimitTimeoutRef.current) {
-          clearTimeout(subjectsLimitTimeoutRef.current);
-        }
+        if (subjectsLimitTimeoutRef.current) clearTimeout(subjectsLimitTimeoutRef.current);
         requestAnimationFrame(() => {
           setSubjectsLimitHighlight(true);
           subjectsLimitTimeoutRef.current = setTimeout(() => setSubjectsLimitHighlight(false), 650);
@@ -111,37 +110,12 @@ const CreatePostPage: React.FC = () => {
     });
   };
 
-  const toggleRole = (role: PostPayload['postRole']) => {
-    if (!role) return;
-    setSelectedRole((prev) => (prev === role ? undefined : role));
-  };
-
-  const toggleActivity = (activity: PostPayload['postActivity']) => {
-    if (!activity) return;
-    setSelectedActivity((prev) => (prev === activity ? undefined : activity));
-  };
-
-  const toggleTeamRole = (role: StudyTeamRoleKey) => {
-    setSelectedTeamRoles((prev) => {
-      if (prev.includes(role)) {
-        return prev.filter((item) => item !== role);
-      }
-      return [...prev, role];
-    });
-  };
-
-  const incrementParticipants = () => {
-    setParticipantTargetCount((prev) => prev + 1);
-  };
-
-  const decrementParticipants = () => {
-    setParticipantTargetCount((prev) => Math.max(3, prev - 1));
-  };
+  const toggleRole = (role: PostPayload['postRole']) => role && setSelectedRole((prev) => (prev === role ? undefined : role));
+  const toggleActivity = (activity: PostPayload['postActivity']) => activity && setSelectedActivity((prev) => (prev === activity ? undefined : activity));
+  const toggleTeamRole = (role: StudyTeamRoleKey) => setSelectedTeamRoles((prev) => prev.includes(role) ? prev.filter((item) => item !== role) : [...prev, role]);
 
   useEffect(() => () => {
-    if (subjectsLimitTimeoutRef.current) {
-      clearTimeout(subjectsLimitTimeoutRef.current);
-    }
+    if (subjectsLimitTimeoutRef.current) clearTimeout(subjectsLimitTimeoutRef.current);
   }, []);
 
   const handleSubmit = (event: React.FormEvent) => {
@@ -150,272 +124,193 @@ const CreatePostPage: React.FC = () => {
     setError('');
 
     if (isStudyPartner && !studyPartnerValid) {
-      setError('Sélectionnez vos matières, votre rôle, votre activité et une date de disponibilité.');
+      setError(copy.studyPartnerValidation);
       setSaving(false);
       return;
     }
 
     if (isStudyTeam && !studyTeamValid) {
-      setError('Sélectionnez vos matières, les rôles, une date de disponibilité et le nombre de participants.');
+      setError(copy.studyTeamValidation);
       setSaving(false);
       return;
     }
 
     const payload: PostPayload = isStudyPartner
-      ? {
-        category: 'study_partner',
-        subjectCodes: selectedSubjects,
-        postRole: selectedRole,
-        postActivity: selectedActivity,
-        availabilityDate,
-        description: shortDescription.trim() ? shortDescription.trim() : undefined,
-      }
+      ? { category: 'study_partner', subjectCodes: selectedSubjects, postRole: selectedRole, postActivity: selectedActivity, availabilityDate, description: shortDescription.trim() || undefined }
       : isStudyTeam
-      ? {
-        category: 'project_team',
-        subjectCodes: selectedSubjects,
-        availabilityDate,
-        teamRoles: selectedTeamRoles,
-        participantTargetCount,
-        description: shortDescription.trim() ? shortDescription.trim() : undefined,
-      }
-      : {
-        ...form,
-        availabilityDate: availabilityDate || undefined,
-        participantTargetCount: undefined,
-        tags: tagsInput
-          .split(',')
-          .map((tag) => tag.trim())
-          .filter(Boolean),
-      };
+        ? { category: 'project_team', subjectCodes: selectedSubjects, availabilityDate, teamRoles: selectedTeamRoles, participantTargetCount, description: shortDescription.trim() || undefined }
+        : { ...form, availabilityDate: availabilityDate || undefined, participantTargetCount: undefined, tags: tagsInput.split(',').map((tag) => tag.trim()).filter(Boolean) };
 
     createPost(payload)
       .then(() => navigate('/posts'))
-      .catch((err) => setError(err?.response?.data?.error ?? 'Impossible de publier cette annonce pour le moment.'))
+      .catch((err) => setError(err?.response?.data?.error ?? copy.submitError))
       .finally(() => setSaving(false));
   };
 
   return (
-    <div className="card-surface p-5 space-y-4">
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-xs uppercase font-semibold text-emerald-600">Nouvelle annonce</p>
-          <h1 className="section-title">Publier une demande ou offre</h1>
-          <p className="helper-text">Sélectionnez le type de post et ajoutez quelques détails pour attirer les bons étudiants.</p>
-        </div>
-        <PenSquare className="text-emerald-600" />
-      </div>
-
-      <form className="space-y-3" onSubmit={handleSubmit}>
-        <div className="grid md:grid-cols-2 gap-3">
-          <div>
-            <label className="text-sm font-semibold text-slate-700">Type de demande</label>
-            <div className="grid grid-cols-2 gap-2 mt-1">
-              {requestTypes.map((type) => (
-                <button
-                  key={type.value}
-                  type="button"
-                  onClick={() => handleChange('category', type.value)}
-                  className={`tab-btn ${form.category === type.value ? 'active' : 'bg-white border border-slate-200'}`}
-                >
-                  {type.label}
-                </button>
-              ))}
+    <div className="space-y-5" dir={isRtl ? 'rtl' : 'ltr'}>
+      <section className="premium-panel overflow-hidden">
+        <div className="border-b border-slate-100 bg-white/70 p-5 sm:p-7">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="space-y-2">
+              <p className="badge-soft w-fit"><Sparkles size={14} /> {copy.eyebrow}</p>
+              <h1 className="text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">{copy.title}</h1>
+              <p className="max-w-2xl text-sm leading-7 text-slate-600">{copy.subtitle}</p>
             </div>
+            <Link to="/posts" className="secondary-btn">{copy.exploreCta}</Link>
           </div>
+        </div>
 
-          {isStudyPartner || isStudyTeam ? (
+        <form className="space-y-6 p-5 sm:p-7" onSubmit={handleSubmit}>
+          <section className="space-y-3">
+            <div>
+              <h2 className="section-title">{copy.typeTitle}</h2>
+              <p className="helper-text">{copy.typeHelp}</p>
+            </div>
+            <div className="grid gap-3 md:grid-cols-3">
+              {categoryOptions.map((type) => {
+                const selected = form.category === type.value;
+                return (
+                  <button
+                    key={type.value}
+                    type="button"
+                    onClick={() => handleChange('category', type.value)}
+                    className={`rounded-[1.4rem] border p-4 text-start transition ${selected ? 'border-emerald-400 bg-emerald-50 text-emerald-950 ring-4 ring-emerald-100' : 'border-slate-200 bg-white hover:border-emerald-200 hover:bg-emerald-50/40'}`}
+                  >
+                    <p className="font-black">{type.label[language]}</p>
+                    <p className="mt-1 text-xs leading-5 text-slate-500">{type.helper[language]}</p>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+
+          {(isStudyPartner || isStudyTeam) ? (
             <>
-              <div className="md:col-span-2 space-y-2">
-                <label className="text-sm font-semibold text-slate-700">Matières (1-2)</label>
-                <p className="helper-text">Sélectionnez les matières déjà présentes dans votre profil.</p>
+              <section className="space-y-3 rounded-[1.5rem] border border-slate-100 bg-slate-50/70 p-4">
+                <div>
+                  <h2 className="section-title">{copy.subjectsTitle}</h2>
+                  <p className="helper-text">{copy.subjectsHelp}</p>
+                </div>
                 <SubjectChipsSelector
                   options={subjectOptions}
                   selectedCodes={selectedSubjects}
                   selectedSubjects={selectedSubjectFullNames}
                   warning={subjectsLimitWarning}
                   highlight={subjectsLimitHighlight}
+                  emptyMessage={copy.emptySubjects}
+                  selectedLabel={copy.selectedSubjects}
                   onToggle={toggleSubject}
                 />
-              </div>
+              </section>
 
-              {isStudyPartner && (
-                <div className="md:col-span-2 space-y-2">
-                  <label className="text-sm font-semibold text-slate-700">الدور</label>
-                  <div className="grid sm:grid-cols-2 gap-2">
-                    {STUDY_PARTNER_ROLE_OPTIONS.map((role) => (
-                      <button
-                        key={role.key}
-                        type="button"
-                        onClick={() => toggleRole(role.key)}
-                        className={`rounded-xl border px-3 py-2 text-left transition ${
-                          selectedRole === role.key ? 'border-emerald-400 bg-emerald-50 shadow-sm' : 'border-slate-200 bg-white'
-                        }`}
-                      >
-                        <p className="text-sm font-semibold text-slate-800">{role.label}</p>
-                        <p className="text-xs text-slate-500">{role.helper}</p>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {isStudyPartner && (
-                <div className="md:col-span-2 space-y-2">
-                  <label className="text-sm font-semibold text-slate-700">النشاط</label>
-                  <div className="grid sm:grid-cols-2 gap-2">
-                    {STUDY_PARTNER_ACTIVITY_OPTIONS.map((activity) => (
-                      <button
-                        key={activity.key}
-                        type="button"
-                        onClick={() => toggleActivity(activity.key)}
-                        className={`rounded-xl border px-3 py-2 text-left transition ${
-                          selectedActivity === activity.key ? 'border-emerald-400 bg-emerald-50 shadow-sm' : 'border-slate-200 bg-white'
-                        }`}
-                      >
-                        <p className="text-sm font-semibold text-slate-800">{activity.label}</p>
-                        <p className="text-xs text-slate-500">{activity.helper}</p>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-
-              {isStudyTeam && (
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold text-slate-700">الأدوار</label>
-                  <div className="grid sm:grid-cols-2 gap-2">
-                    {STUDY_TEAM_ROLE_OPTIONS.map((role) => (
-                      <button
-                        key={role.key}
-                        type="button"
-                        onClick={() => toggleTeamRole(role.key)}
-                        className={`rounded-xl border px-3 py-2 text-left transition ${
-                          selectedTeamRoles.includes(role.key) ? 'border-emerald-400 bg-emerald-50 shadow-sm' : 'border-slate-200 bg-white'
-                        }`}
-                      >
-                        <p className="text-sm font-semibold text-slate-800">{role.label}</p>
-                        <p className="text-xs text-slate-500">{role.helper}</p>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {isStudyTeam && (
-                <div className="space-y-2">
-                  <label className="text-sm font-semibold text-slate-700">Nombre cible de participants</label>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      className="tab-btn bg-white border border-slate-200 px-3"
-                      onClick={decrementParticipants}
-                      disabled={participantTargetCount <= 3}
-                    >
-                      -
-                    </button>
-                    <div className="min-w-12 text-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700">
-                      {participantTargetCount}
+              {isStudyPartner ? (
+                <section className="grid gap-4 lg:grid-cols-2">
+                  <div className="space-y-3 rounded-[1.5rem] border border-slate-100 bg-white p-4">
+                    <h2 className="section-title">{copy.roleTitle}</h2>
+                    <div className="grid gap-2">
+                      {(Object.keys(roleCopy) as PostRoleKey[]).map((role) => (
+                        <button key={role} type="button" onClick={() => toggleRole(role)} className={`rounded-2xl border p-4 text-start transition ${selectedRole === role ? 'border-emerald-400 bg-emerald-50 ring-4 ring-emerald-100' : 'border-slate-200 bg-white hover:bg-slate-50'}`}>
+                          <p className="font-black text-slate-900">{roleCopy[role][language].label}</p>
+                          <p className="text-xs leading-5 text-slate-500">{roleCopy[role][language].helper}</p>
+                        </button>
+                      ))}
                     </div>
-                    <button
-                      type="button"
-                      className="tab-btn bg-white border border-slate-200 px-3"
-                      onClick={incrementParticipants}
-                    >
-                      +
-                    </button>
                   </div>
-                </div>
+                  <div className="space-y-3 rounded-[1.5rem] border border-slate-100 bg-white p-4">
+                    <h2 className="section-title">{copy.activityTitle}</h2>
+                    <div className="grid gap-2">
+                      {(Object.keys(activityCopy) as PostActivityKey[]).map((activity) => (
+                        <button key={activity} type="button" onClick={() => toggleActivity(activity)} className={`rounded-2xl border p-4 text-start transition ${selectedActivity === activity ? 'border-emerald-400 bg-emerald-50 ring-4 ring-emerald-100' : 'border-slate-200 bg-white hover:bg-slate-50'}`}>
+                          <p className="font-black text-slate-900">{activityCopy[activity][language].label}</p>
+                          <p className="text-xs leading-5 text-slate-500">{activityCopy[activity][language].helper}</p>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </section>
+              ) : (
+                <section className="space-y-3 rounded-[1.5rem] border border-slate-100 bg-white p-4">
+                  <h2 className="section-title">{copy.teamRolesTitle}</h2>
+                  <div className="grid gap-2 md:grid-cols-3">
+                    {(Object.keys(teamRoleCopy) as StudyTeamRoleKey[]).map((role) => (
+                      <button key={role} type="button" onClick={() => toggleTeamRole(role)} className={`rounded-2xl border p-4 text-start transition ${selectedTeamRoles.includes(role) ? 'border-emerald-400 bg-emerald-50 ring-4 ring-emerald-100' : 'border-slate-200 bg-white hover:bg-slate-50'}`}>
+                        <p className="font-black text-slate-900">{teamRoleCopy[role][language].label}</p>
+                        <p className="text-xs leading-5 text-slate-500">{teamRoleCopy[role][language].helper}</p>
+                      </button>
+                    ))}
+                  </div>
+                </section>
               )}
 
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-slate-700">Date de disponibilité</label>
-                <input type="date" value={availabilityDate} onChange={(e) => setAvailabilityDate(e.target.value)} className="w-full" />
-              </div>
-
-              <div className="md:col-span-2 space-y-2">
-                <label className="text-sm font-semibold text-slate-700">Description courte (optionnelle)</label>
-                <textarea
-                  rows={3}
-                  value={shortDescription}
-                  onChange={(e) => setShortDescription(e.target.value)}
-                  className="w-full"
-                  placeholder="Ajoutez un contexte en restant bref."
-                />
-              </div>
+              <section className="grid gap-4 md:grid-cols-2">
+                {isStudyTeam ? (
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-slate-700">{copy.participants}</label>
+                    <div className="flex items-center gap-2">
+                      <button type="button" className="secondary-btn px-4" onClick={() => setParticipantTargetCount((prev) => Math.max(3, prev - 1))} disabled={participantTargetCount <= 3}>−</button>
+                      <div className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-center font-black text-slate-900">{participantTargetCount}</div>
+                      <button type="button" className="secondary-btn px-4" onClick={() => setParticipantTargetCount((prev) => prev + 1)}>+</button>
+                    </div>
+                  </div>
+                ) : null}
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-slate-700">{copy.availability}</label>
+                  <input type="date" value={availabilityDate} onChange={(e) => setAvailabilityDate(e.target.value)} className="w-full" />
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <label className="text-sm font-bold text-slate-700">{copy.shortDescription}</label>
+                  <textarea rows={4} value={shortDescription} onChange={(e) => setShortDescription(e.target.value)} className="w-full" placeholder={copy.shortDescriptionPlaceholder} />
+                </div>
+              </section>
             </>
           ) : (
-            <>
-              <div>
-                <label className="text-sm font-semibold text-slate-700">Titre</label>
-                <input className="w-full mt-1" value={form.title ?? ''} onChange={(e) => handleChange('title', e.target.value)} />
+            <section className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-slate-700">{copy.titleLabel}</label>
+                <input className="w-full" value={form.title ?? ''} onChange={(e) => handleChange('title', e.target.value)} placeholder={copy.titlePlaceholder} />
               </div>
-              <div>
-                <label className="text-sm font-semibold text-slate-700">Tags (séparés par des virgules)</label>
-                <input className="w-full mt-1" value={tagsInput} onChange={(e) => setTagsInput(e.target.value)} />
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-slate-700">{copy.tags}</label>
+                <input className="w-full" value={tagsInput} onChange={(e) => setTagsInput(e.target.value)} placeholder={copy.tagsPlaceholder} />
               </div>
-              <div className="md:col-span-2">
-                <label className="text-sm font-semibold text-slate-700">Description</label>
-                <textarea
-                  rows={5}
-                  className="w-full mt-1"
-                  value={form.description ?? ''}
-                  onChange={(e) => handleChange('description', e.target.value)}
-                />
+              <div className="space-y-2 md:col-span-2">
+                <label className="text-sm font-bold text-slate-700">{copy.description}</label>
+                <textarea rows={5} className="w-full" value={form.description ?? ''} onChange={(e) => handleChange('description', e.target.value)} placeholder={copy.descriptionPlaceholder} />
               </div>
-              <div>
-                <label className="text-sm font-semibold text-slate-700">Langue</label>
-                <div className="flex gap-2 mt-1">
-                  {['French', 'Arabic'].map((lng) => (
-                    <button
-                      key={lng}
-                      type="button"
-                      onClick={() => handleChange('languagePref', lng as PostPayload['languagePref'])}
-                      className={`tab-btn ${form.languagePref === lng ? 'active' : 'bg-white border border-slate-200'}`}
-                    >
-                      {lng}
-                    </button>
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-slate-700">{copy.language}</label>
+                <div className="flex flex-wrap gap-2">
+                  {(['French', 'Arabic'] as const).map((lng) => (
+                    <button key={lng} type="button" onClick={() => handleChange('languagePref', lng)} className={`tab-btn ${form.languagePref === lng ? 'active' : 'border border-slate-200 bg-white'}`}>{lng === 'French' ? copy.french : copy.arabic}</button>
                   ))}
                 </div>
               </div>
-              <div>
-                <label className="text-sm font-semibold text-slate-700">Date de disponibilité</label>
-                <input type="date" value={availabilityDate} onChange={(e) => setAvailabilityDate(e.target.value)} className="w-full mt-1" />
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-slate-700">{copy.availability}</label>
+                <input type="date" value={availabilityDate} onChange={(e) => setAvailabilityDate(e.target.value)} className="w-full" />
               </div>
-              <div>
-                <label className="text-sm font-semibold text-slate-700">Lieu</label>
-                <div className="flex gap-2 mt-1">
-                  {['campus', 'online'].map((loc) => (
-                    <button
-                      key={loc}
-                      type="button"
-                      onClick={() => handleChange('location', loc as PostPayload['location'])}
-                      className={`tab-btn ${form.location === loc ? 'active' : 'bg-white border border-slate-200'}`}
-                    >
-                      {loc}
-                    </button>
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-slate-700">{copy.location}</label>
+                <div className="flex flex-wrap gap-2">
+                  {(['campus', 'online'] as const).map((loc) => (
+                    <button key={loc} type="button" onClick={() => handleChange('location', loc)} className={`tab-btn ${form.location === loc ? 'active' : 'border border-slate-200 bg-white'}`}>{loc === 'campus' ? copy.campus : copy.online}</button>
                   ))}
                 </div>
               </div>
-            </>
+            </section>
           )}
-        </div>
 
-        {error && <div className="text-sm text-red-700 bg-red-50 border border-red-100 rounded-lg p-2">{error}</div>}
+          {error ? <div className="rounded-2xl border border-rose-100 bg-rose-50 p-3 text-sm font-semibold text-rose-700">{error}</div> : null}
 
-        <button
-          type="submit"
-          className="primary-btn w-full sm:w-auto"
-          disabled={saving || (isStudyPartner ? !studyPartnerValid : isStudyTeam ? !studyTeamValid : !standardPostValid)}
-        >
-          {saving ? 'Publication...' : 'Publier'}
-        </button>
-
-        <div className="flex flex-wrap gap-2 text-xs text-slate-500">
-          <span className="inline-flex items-center gap-1"><CheckCircle2 size={14} /> Les annonces respectent vos matières sélectionnées.</span>
-        </div>
-      </form>
+          <div className="flex flex-col gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:items-center sm:justify-between">
+            <p className="inline-flex items-center gap-2 text-xs font-semibold text-slate-500"><CheckCircle2 size={14} /> {copy.footerNote}</p>
+            <button type="submit" className="primary-btn min-w-48" disabled={saving || !canSubmit}>
+              {saving ? <><Loader2 size={16} className="animate-spin" /> {copy.publishing}</> : <><PenSquare size={16} /> {copy.publish}</>}
+            </button>
+          </div>
+        </form>
+      </section>
     </div>
   );
 };

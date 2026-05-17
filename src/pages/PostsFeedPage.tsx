@@ -1,13 +1,30 @@
-import { Filter } from 'lucide-react';
+import { Compass, Filter, Loader2, Search, SlidersHorizontal } from 'lucide-react';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import PostCard from '../components/PostCard';
 import SubjectChipsSelector from '../components/subjects/SubjectChipsSelector';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import { getSubjectNameByCode } from '../lib/catalog';
 import { fetchPosts, type PostPayload, type PostResponse, type PostRoleKey } from '../lib/http';
-import { PRIORITY_ROLE_OPTIONS } from '../lib/priorities';
 import { getProfileSelectableSubjectCodes } from '../lib/profileSubjects';
+
+const roleCopy: Record<PostRoleKey, { fr: { label: string; helper: string }; ar: { label: string; helper: string } }> = {
+  need_help: {
+    fr: { label: 'Besoin d’aide', helper: 'Afficher les posts de personnes qui cherchent un accompagnement.' },
+    ar: { label: 'أحتاج مساعدة', helper: 'عرض منشورات الطلاب الذين يبحثون عن مساعدة.' }
+  },
+  can_help: {
+    fr: { label: 'Peut aider', helper: 'Afficher les posts de personnes disponibles pour aider.' },
+    ar: { label: 'أستطيع المساعدة', helper: 'عرض منشورات الطلاب المتاحين للمساعدة.' }
+  }
+};
+
+const categoryLabels: Record<string, { fr: string; ar: string }> = {
+  study_partner: { fr: 'Partenaire d’étude', ar: 'شريك دراسة' },
+  project_team: { fr: 'Groupe de travail', ar: 'فريق دراسة' },
+  tutor_offer: { fr: 'Offre libre', ar: 'عرض حر' }
+};
 
 const toRole = (post: PostResponse): PostPayload['postRole'] | undefined => {
   if (post.postRole === 'need_help' || post.postRole === 'can_help') return post.postRole;
@@ -17,12 +34,9 @@ const toRole = (post: PostResponse): PostPayload['postRole'] | undefined => {
   return undefined;
 };
 
-const STUDY_PARTNER_ROLE_OPTIONS: { key: PostRoleKey; label: string; helper: string }[] = [
-  { key: 'need_help', label: PRIORITY_ROLE_OPTIONS[0].label, helper: PRIORITY_ROLE_OPTIONS[0].helper },
-  { key: 'can_help', label: PRIORITY_ROLE_OPTIONS[1].label, helper: PRIORITY_ROLE_OPTIONS[1].helper },
-];
-
 const PostsFeedPage: React.FC = () => {
+  const { language, t, isRtl } = useLanguage();
+  const copy = t.explore;
   const [category, setCategory] = useState('');
   const [posts, setPosts] = useState<PostResponse[]>([]);
   const [hiddenMatchedIds, setHiddenMatchedIds] = useState<string[]>([]);
@@ -50,7 +64,6 @@ const PostsFeedPage: React.FC = () => {
   }, []);
 
   const subjectOptions = useMemo(() => getProfileSelectableSubjectCodes(profile), [profile]);
-
   const selectedSubjectFullNames = useMemo(
     () => selectedSubjects.map((subjectCode) => ({ code: subjectCode, fullName: getSubjectNameByCode(subjectCode) || subjectCode })),
     [selectedSubjects]
@@ -72,8 +85,7 @@ const PostsFeedPage: React.FC = () => {
   }, [subjectOptions, selectedSubjects.length]);
 
   useEffect(() => {
-    if (authLoading) return;
-    if (!filtersReady) return;
+    if (authLoading || !filtersReady) return;
     if (!user) {
       setPosts([]);
       setLoading(false);
@@ -87,36 +99,28 @@ const PostsFeedPage: React.FC = () => {
         if (selectedSubjects.length) params.selectedSubjects = selectedSubjects.join(',');
         params.broader = broaderResults ? 'true' : 'false';
         const { data } = await fetchPosts(params);
-        const nextPosts = Array.isArray(data?.posts) ? data.posts : [];
-        setPosts(nextPosts);
-      } catch (error) {
+        setPosts(Array.isArray(data?.posts) ? data.posts : []);
+      } catch {
         setPosts([]);
       } finally {
         setLoading(false);
       }
     };
-
     void load();
   }, [category, selectedSubjects, broaderResults, user, authLoading, filtersReady]);
 
   useEffect(() => () => {
-    if (subjectsLimitTimeoutRef.current) {
-      clearTimeout(subjectsLimitTimeoutRef.current);
-    }
+    if (subjectsLimitTimeoutRef.current) clearTimeout(subjectsLimitTimeoutRef.current);
   }, []);
 
   const toggleSubject = (subject: string) => {
     setSubjectsLimitWarning('');
     setSelectedSubjects((prev) => {
-      if (prev.includes(subject)) {
-        return prev.filter((item) => item !== subject);
-      }
+      if (prev.includes(subject)) return prev.filter((item) => item !== subject);
       if (prev.length >= 2) {
-        setSubjectsLimitWarning('Vous pouvez sélectionner deux matières maximum.');
+        setSubjectsLimitWarning(copy.subjectLimit);
         setSubjectsLimitHighlight(false);
-        if (subjectsLimitTimeoutRef.current) {
-          clearTimeout(subjectsLimitTimeoutRef.current);
-        }
+        if (subjectsLimitTimeoutRef.current) clearTimeout(subjectsLimitTimeoutRef.current);
         requestAnimationFrame(() => {
           setSubjectsLimitHighlight(true);
           subjectsLimitTimeoutRef.current = setTimeout(() => setSubjectsLimitHighlight(false), 650);
@@ -131,150 +135,130 @@ const PostsFeedPage: React.FC = () => {
     if (!role) return;
     setRolesLimitWarning('');
     setSelectedRoles((prev) => {
-      if (prev.includes(role)) {
-        return prev.filter((item) => item !== role);
-      }
-
-      if (prev.length >= 2) {
-        return prev;
-      }
-
-      const isConflict =
-        (role === 'need_help' && prev.includes('can_help')) ||
-        (role === 'can_help' && prev.includes('need_help'));
-
+      if (prev.includes(role)) return prev.filter((item) => item !== role);
+      if (prev.length >= 2) return prev;
+      const isConflict = (role === 'need_help' && prev.includes('can_help')) || (role === 'can_help' && prev.includes('need_help'));
       if (isConflict) {
-        setRolesLimitWarning('لا يمكن الجمع بين محتاج مساعدة وأقدر أساعد');
+        setRolesLimitWarning(copy.roleConflict);
         return prev;
       }
-
       return [...prev, role];
     });
   };
 
-  const filtered = useMemo(() => {
-    return (posts ?? [])
-      .filter((post) => !hiddenMatchedIds.includes(post._id))
-      .filter((post) => {
-        if (!selectedRoles.length) return true;
-        const postRole = toRole(post);
-        return Boolean(postRole && selectedRoles.includes(postRole));
-      });
-  }, [posts, hiddenMatchedIds, selectedRoles]);
+  const filtered = useMemo(() => (posts ?? [])
+    .filter((post) => !hiddenMatchedIds.includes(post._id))
+    .filter((post) => !selectedRoles.length || Boolean(toRole(post) && selectedRoles.includes(toRole(post)))),
+    [posts, hiddenMatchedIds, selectedRoles]
+  );
 
   if (authLoading) {
-    return <div className="card-surface p-6 text-sm text-slate-600">Chargement...</div>;
+    return <div className="card-surface p-6 text-sm text-slate-600"><Loader2 className="me-2 inline animate-spin" size={16} />{copy.loading}</div>;
   }
 
   if (!user) {
     return (
-      <div className="card-surface p-6 space-y-3">
-        <h2 className="section-title">Connectez-vous pour voir les annonces</h2>
-        <p className="text-sm text-slate-600">
-          Veuillez vous connecter ou créer un compte pour accéder au fil des posts.
-        </p>
+      <div className="premium-panel p-6 space-y-4" dir={isRtl ? 'rtl' : 'ltr'}>
+        <h2 className="section-title">{copy.loginTitle}</h2>
+        <p className="text-sm text-slate-600">{copy.loginDescription}</p>
         <div className="flex flex-wrap gap-2">
-          <Link to="/login" className="primary-btn">Connexion</Link>
-          <Link to="/signup" className="secondary-btn">Créer un compte</Link>
+          <Link to="/login" className="primary-btn">{copy.login}</Link>
+          <Link to="/signup" className="secondary-btn">{copy.signup}</Link>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      <div className="card-surface p-4 sm:p-5 space-y-3">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase text-emerald-600">Filtrer les posts</p>
-            <h2 className="section-title">Fil d'opportunités</h2>
+    <div className="space-y-5" dir={isRtl ? 'rtl' : 'ltr'}>
+      <section className="premium-panel overflow-hidden">
+        <div className="border-b border-slate-100 bg-white/75 p-5 sm:p-7">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div className="space-y-2">
+              <p className="badge-soft w-fit"><Compass size={14} /> {copy.eyebrow}</p>
+              <h1 className="text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">{copy.title}</h1>
+              <p className="max-w-2xl text-sm leading-7 text-slate-600">{copy.subtitle}</p>
+            </div>
+            <Link to="/posts/new" className="secondary-btn">{copy.createCta}</Link>
           </div>
-          <Filter className="text-emerald-600" />
         </div>
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <label className="text-sm font-semibold text-slate-700">Vos matières (max 2)</label>
-            <p className="helper-text">Sélectionnez des matières présentes dans votre profil.</p>
-            <SubjectChipsSelector
-              options={subjectOptions}
-              selectedCodes={selectedSubjects}
-              selectedSubjects={selectedSubjectFullNames}
-              warning={subjectsLimitWarning}
-              highlight={subjectsLimitHighlight}
-              emptyMessage="Ajoutez des matières dans votre profil pour affiner les résultats."
-              onToggle={toggleSubject}
-            />
-          </div>
 
-          <div className="space-y-2">
-            <div>
-              <p className="text-sm font-semibold text-slate-700">الدور</p>
-              <p className="helper-text">اختر حتى دورين.</p>
-            </div>
-            {rolesLimitWarning && <p className="text-xs text-amber-700">{rolesLimitWarning}</p>}
-            <div className="grid sm:grid-cols-2 gap-2">
-              {STUDY_PARTNER_ROLE_OPTIONS.map((role) => (
-                <button
-                  key={role.key}
-                  type="button"
-                  onClick={() => toggleRole(role.key)}
-                  className={`card-surface text-left p-3 border transition ${
-                    selectedRoles.includes(role.key)
-                      ? 'border-emerald-500 bg-emerald-50 ring-2 ring-emerald-200 shadow-sm'
-                      : 'border-slate-200'
-                  }`}
-                >
-                  <p className="text-sm font-semibold text-slate-800">{role.label}</p>
-                  <p className="text-xs text-slate-500">{role.helper}</p>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
-            <div>
-              <label className="text-sm font-semibold text-slate-700">Catégorie</label>
-              <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full mt-1">
-                <option value="">Toutes</option>
-                <option value="study_partner">Study partner</option>
-                <option value="project_team">Study team</option>
-                <option value="tutor_offer">Tutor offer</option>
-              </select>
-            </div>
-          </div>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <label className="flex items-start gap-2 text-sm text-slate-600">
-              <input
-                type="checkbox"
-                className="mt-1 h-4 w-4 accent-emerald-600"
-                checked={broaderResults}
-                onChange={(e) => setBroaderResults(e.target.checked)}
+        <div className="grid gap-4 p-5 sm:p-7 lg:grid-cols-[minmax(0,1fr)_17rem]">
+          <div className="space-y-5">
+            <div className="rounded-[1.5rem] border border-slate-100 bg-slate-50/80 p-4">
+              <div className="mb-3 flex items-center gap-2">
+                <Search size={18} className="text-emerald-700" />
+                <div>
+                  <h2 className="section-title">{copy.subjectsTitle}</h2>
+                  <p className="helper-text">{copy.subjectsHelp}</p>
+                </div>
+              </div>
+              <SubjectChipsSelector
+                options={subjectOptions}
+                selectedCodes={selectedSubjects}
+                selectedSubjects={selectedSubjectFullNames}
+                warning={subjectsLimitWarning}
+                highlight={subjectsLimitHighlight}
+                emptyMessage={copy.emptySubjects}
+                selectedLabel={copy.selectedSubjects}
+                onToggle={toggleSubject}
               />
-              <span>
-                <span className="font-semibold text-slate-700">Résultats élargis</span>
-                <span className="block text-xs text-slate-500">
-                  Peut inclure des annonces d&apos;autres facultés ou sans matières communes.
-                </span>
-              </span>
-            </label>
-            <Link to="/posts/new" className="primary-btn w-full sm:w-auto text-center">Nouvelle annonce</Link>
-          </div>
-        </div>
-      </div>
+            </div>
 
-      <div className="space-y-3">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-3 rounded-[1.5rem] border border-slate-100 bg-white p-4">
+                <h2 className="section-title">{copy.roleTitle}</h2>
+                {rolesLimitWarning ? <p className="rounded-2xl bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800">{rolesLimitWarning}</p> : null}
+                {(Object.keys(roleCopy) as PostRoleKey[]).map((role) => (
+                  <button key={role} type="button" onClick={() => toggleRole(role)} className={`w-full rounded-2xl border p-4 text-start transition ${selectedRoles.includes(role) ? 'border-emerald-400 bg-emerald-50 ring-4 ring-emerald-100' : 'border-slate-200 bg-white hover:bg-slate-50'}`}>
+                    <p className="font-black text-slate-900">{roleCopy[role][language].label}</p>
+                    <p className="text-xs leading-5 text-slate-500">{roleCopy[role][language].helper}</p>
+                  </button>
+                ))}
+              </div>
+
+              <div className="space-y-3 rounded-[1.5rem] border border-slate-100 bg-white p-4">
+                <div className="flex items-center gap-2">
+                  <SlidersHorizontal size={18} className="text-emerald-700" />
+                  <h2 className="section-title">{copy.filtersTitle}</h2>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-slate-700">{copy.category}</label>
+                  <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full">
+                    <option value="">{copy.allCategories}</option>
+                    {Object.entries(categoryLabels).map(([value, label]) => <option key={value} value={value}>{label[language]}</option>)}
+                  </select>
+                </div>
+                <label className="flex items-start gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-3 text-sm text-slate-600">
+                  <input type="checkbox" className="mt-1 h-4 w-4 accent-emerald-600" checked={broaderResults} onChange={(e) => setBroaderResults(e.target.checked)} />
+                  <span><span className="block font-bold text-slate-800">{copy.broader}</span><span className="text-xs leading-5 text-slate-500">{copy.broaderHelp}</span></span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <aside className="rounded-[1.5rem] border border-emerald-100 bg-emerald-50/70 p-5 text-emerald-950">
+            <p className="text-sm font-bold text-emerald-700">{copy.resultsLabel}</p>
+            <p className="mt-2 text-4xl font-black">{filtered.length}</p>
+            <p className="mt-2 text-sm leading-6 text-emerald-900/80">{copy.resultsHelp}</p>
+          </aside>
+        </div>
+      </section>
+
+      <section className="space-y-3">
         {loading ? (
-          <div className="card-surface p-6 text-sm text-slate-600">Chargement des annonces...</div>
+          <div className="card-surface p-6 text-sm text-slate-600"><Loader2 className="me-2 inline animate-spin" size={16} />{copy.loading}</div>
         ) : filtered.length === 0 ? (
-          <div className="card-surface p-6 text-sm text-slate-600">
-            Aucun résultat pour ces filtres. Publiez une annonce ou ajustez vos critères.
+          <div className="premium-panel p-8 text-center">
+            <Filter className="mx-auto mb-3 text-emerald-600" />
+            <h2 className="section-title">{copy.emptyTitle}</h2>
+            <p className="mx-auto mt-2 max-w-lg text-sm leading-7 text-slate-600">{copy.emptyDescription}</p>
+            <Link to="/posts/new" className="primary-btn mt-4">{copy.createCta}</Link>
           </div>
         ) : (
-          filtered.map((post) => (
-            <PostCard key={post._id} post={post} currentUserId={currentUserId} />
-          ))
+          filtered.map((post) => <PostCard key={post._id} post={post} currentUserId={currentUserId} />)
         )}
-      </div>
+      </section>
     </div>
   );
 };
