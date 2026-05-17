@@ -1,5 +1,16 @@
+import crypto from 'crypto';
 import User from '../models/User.js';
+import redis from '../config/redis.js';
 import { verifyTelegramLinkToken } from './jwt.js';
+
+const TELEGRAM_LINK_TOKEN_TTL_SECONDS = 10 * 60;
+const telegramLinkKey = (token) => `telegram:link:${token}`;
+
+export const createTelegramLinkToken = async (userId) => {
+  const token = crypto.randomBytes(24).toString('base64url');
+  const saved = await redis.set(telegramLinkKey(token), userId.toString(), TELEGRAM_LINK_TOKEN_TTL_SECONDS);
+  return saved ? token : null;
+};
 
 export const sendTelegramMessageToChat = async (chatId, message) => {
   try {
@@ -69,7 +80,15 @@ export const sendTelegramNotificationForEvent = async ({ eventName, recipientUse
   return sent;
 };
 
-export const getUserIdFromTelegramLinkToken = (token) => {
+export const getUserIdFromTelegramLinkToken = async (token) => {
+  if (!token) return null;
+
+  const linkedUserId = await redis.get(telegramLinkKey(token));
+  if (linkedUserId) {
+    await redis.del(telegramLinkKey(token));
+    return linkedUserId;
+  }
+
   const decoded = verifyTelegramLinkToken(token);
   if (!decoded || decoded.purpose !== 'telegram_link' || !decoded.userId) {
     return null;

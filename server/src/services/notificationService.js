@@ -51,8 +51,40 @@ const formatTelegramMessage = ({ ar, fr, link }) => {
   return lines.join('\n');
 };
 
-export const createNotification = async ({ userId, type, payload = {}, telegram }) => {
+const normalizeId = (value) => value?.toString?.() ?? String(value ?? '');
+
+const getNotificationActorId = (payload = {}) => (
+  payload.actorId ?? payload.senderId ?? payload.initiatorId ?? payload.requesterId ?? payload.receiverId
+);
+
+const getDuplicatePayloadFilter = (payload = {}) => {
+  const keys = ['messageId', 'requestId', 'sessionId', 'conversationId', 'postId', 'senderId', 'initiatorId', 'score'];
+  return keys.reduce((filter, key) => {
+    if (payload[key] !== undefined && payload[key] !== null) {
+      filter[`payload.${key}`] = payload[key];
+    }
+    return filter;
+  }, {});
+};
+
+export const createNotification = async ({ userId, actorId, type, payload = {}, telegram }) => {
   if (!userId || !type) return null;
+
+  const recipientKey = normalizeId(userId);
+  const actorKey = normalizeId(actorId ?? getNotificationActorId(payload));
+  if (actorKey && actorKey === recipientKey) return null;
+
+  const duplicateFilter = getDuplicatePayloadFilter(payload);
+  const existingNotification = Object.keys(duplicateFilter).length
+    ? await Notification.findOne({
+      userId,
+      type,
+      read: false,
+      ...duplicateFilter
+    })
+    : null;
+
+  if (existingNotification) return existingNotification;
 
   const notification = await Notification.create({
     userId,
@@ -73,9 +105,9 @@ export const createNotification = async ({ userId, type, payload = {}, telegram 
 };
 
 export const createNotificationsForUsers = async ({ userIds, actorId, type, payload, telegram }) => {
-  const actorKey = actorId?.toString?.() ?? String(actorId ?? '');
-  const uniqueRecipientIds = [...new Set((userIds ?? []).map((id) => id?.toString?.() ?? String(id)).filter(Boolean))]
+  const actorKey = normalizeId(actorId);
+  const uniqueRecipientIds = [...new Set((userIds ?? []).map((id) => normalizeId(id)).filter(Boolean))]
     .filter((id) => id !== actorKey);
 
-  await Promise.all(uniqueRecipientIds.map((userId) => createNotification({ userId, type, payload, telegram })));
+  await Promise.all(uniqueRecipientIds.map((userId) => createNotification({ userId, actorId, type, payload, telegram })));
 };
