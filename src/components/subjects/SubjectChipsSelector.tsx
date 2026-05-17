@@ -14,6 +14,7 @@ interface SubjectChipsSelectorProps {
   warning?: string;
   highlight?: boolean;
   emptyMessage?: string;
+  selectedLabel?: string;
   onToggle: (subjectCode: string) => void;
 }
 
@@ -24,6 +25,7 @@ const SubjectChipsSelector: React.FC<SubjectChipsSelectorProps> = ({
   warning,
   highlight,
   emptyMessage,
+  selectedLabel = 'Selected subjects:',
   onToggle
 }) => {
   return (
@@ -32,7 +34,7 @@ const SubjectChipsSelector: React.FC<SubjectChipsSelectorProps> = ({
         <p className="text-xs text-red-700 bg-red-50 border border-red-100 rounded-md px-2 py-1">{warning}</p>
       ) : null}
       <div
-        className={`flex flex-wrap gap-2 rounded-lg border p-2 transition ${highlight ? 'border-red-300 bg-red-50/70' : 'border-transparent'}`}
+        className={`flex flex-wrap gap-2 rounded-2xl border p-2 transition ${highlight ? 'border-red-300 bg-red-50/70' : 'border-transparent'}`}
       >
         {options.length === 0 && emptyMessage ? (
           <span className="text-xs text-rose-600">{emptyMessage}</span>
@@ -45,7 +47,7 @@ const SubjectChipsSelector: React.FC<SubjectChipsSelectorProps> = ({
                 key={subject}
                 onClick={() => onToggle(subject)}
                 className={`rounded-full border px-3 py-1 text-sm transition ${
-                  selected ? 'border-emerald-400 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-white text-slate-600'
+                  selected ? 'border-emerald-400 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-white text-slate-600 hover:border-emerald-200 hover:bg-emerald-50'
                 }`}
               >
                 {getSubjectShortNameByCode(subject) || 'M'}
@@ -57,7 +59,7 @@ const SubjectChipsSelector: React.FC<SubjectChipsSelectorProps> = ({
 
       {selectedSubjects.length > 0 ? (
         <div className="space-y-2">
-          <p className="text-sm font-semibold text-slate-700">Selected subjects:</p>
+          <p className="text-sm font-semibold text-slate-700">{selectedLabel}</p>
           <div className="flex flex-wrap gap-2">
             {selectedSubjects.map((subject) => (
               <SelectedSubjectPill
