@@ -1,10 +1,12 @@
-import { Check, CheckCheck, ChevronLeft, RefreshCw, SendHorizonal } from 'lucide-react';
+import { Check, CheckCheck, ChevronLeft, MessageCircle, RefreshCw, SendHorizonal } from 'lucide-react';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import EmptyState from '../components/common/EmptyState';
 import RatingModal from '../components/RatingModal';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { useAuth } from '../context/AuthContext';
 import { useConversations } from '../context/ConversationsContext';
+import { useLanguage } from '../context/LanguageContext';
 import { useSmartPolling } from '../hooks/useSmartPolling';
 import {
   type ConversationMessageItem,
@@ -24,6 +26,7 @@ import {
 const ConversationPage: React.FC = () => {
   const { conversationId } = useParams();
   const { currentUserId } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const [conversation, setConversation] = useState<ConversationSummary | null>(null);
   const [messages, setMessages] = useState<ConversationMessageItem[]>([]);
@@ -332,149 +335,109 @@ const ConversationPage: React.FC = () => {
   if (!conversationId) {
     return (
       <div className="card-surface p-5 space-y-3">
-        <h1 className="section-title">Conversation introuvable</h1>
-        <p className="helper-text">Sélectionnez une conversation depuis la liste.</p>
-        <Link to="/messages" className="primary-btn w-fit">Retour</Link>
+        <h1 className="text-xl font-black text-slate-950">{t.conversation.notFound}</h1>
+        <Link to="/messages" className="primary-btn w-fit">{t.conversation.back}</Link>
       </div>
     );
   }
 
   return (
-    <div className="card-surface p-4 space-y-4 min-h-[70vh]">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            className="secondary-btn"
-            onClick={() => navigate('/messages')}
-          >
-            <ChevronLeft size={16} className="me-1" /> Retour
+    <>
+      <section className="premium-panel flex min-h-[75vh] flex-col overflow-hidden p-0">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 bg-white/85 p-4">
+          <div className="flex items-center gap-3">
+            <button type="button" className="secondary-btn px-3" onClick={() => navigate('/messages')}>
+              <ChevronLeft size={16} /> {t.conversation.back}
+            </button>
+            <div>
+              <p className="text-sm font-semibold text-emerald-700">{t.messages.title}</p>
+              <h1 className="text-xl font-black tracking-tight text-slate-950">{conversationTitle}</h1>
+            </div>
+          </div>
+          <button type="button" className="secondary-btn" onClick={handleManualRefresh} disabled={refreshing}>
+            <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} /> {t.conversation.refresh}
           </button>
-          <div>
-            <p className="text-sm text-slate-500">Discussion</p>
-            <h2 className="text-lg font-semibold text-slate-900">{conversationTitle}</h2>
-          </div>
         </div>
-        <div className="flex gap-2">
-        <button
-          type="button"
-          className="secondary-btn"
-          onClick={handleManualRefresh}
-          disabled={refreshing}
-        >
-          <RefreshCw size={16} className={refreshing ? 'animate-spin me-1' : 'me-1'} />
-          Rafraîchir
-        </button>
-        </div>
-      </div>
 
-      {isSessionCompleted ? (
-        <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
-          تم إغلاق الجلسة.
-        </div>
-      ) : isPendingConfirmation ? (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 flex items-center justify-between gap-2">
-          <div>
-            {canConfirmEnd ? 'تم طلب إنهاء هذه الجلسة من الطرف الآخر. يرجى التأكيد لإتمام الإغلاق النهائي.' : 'تم إرسال طلب إنهاء الجلسة. في انتظار تأكيد الطرف الآخر.'}
-            {sessionData?.completionDeadlineAt ? ` مهلة التأكيد خلال 48 ساعة (${Math.max(0, Math.floor((new Date(sessionData.completionDeadlineAt).getTime() - now) / 3600000))}h).` : ''}
+        {isSessionCompleted ? (
+          <div className="mx-4 mt-4 rounded-3xl border border-slate-200 bg-slate-50 p-4 text-sm font-semibold text-slate-700">
+            تم إغلاق الجلسة.
           </div>
-          {canConfirmEnd ? (
-            <button
-              type="button"
-              className="secondary-btn"
-              onClick={() => setOpenPendingEndModal(true)}
-            >
-              End Session
-            </button>
-          ) : null}
-        </div>
-      ) : isSessionActive && remainingTotalSeconds !== null ? (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-          {isExpired ? (
-            <div className="font-semibold">Conversation expired</div>
-          ) : (
-            <div>⏳ Conversation expires in {remainingDays}d {remainingHours}h {remainingMinutes}m {remainingSeconds}s</div>
-          )}
-          {remainingDays !== null && remainingDays <= 2 && !isExpired ? <div className="mt-1">⚠️ This conversation will be deleted soon.</div> : null}
-          {canExtend ? (
-            <button type="button" className="secondary-btn mt-2" onClick={handleExtend}>Extend 7 days</button>
-          ) : null}
-          {showEndSessionButton ? (
-            <button
-              type="button"
-              className="secondary-btn mt-2 ms-2"
-              onClick={() => {
-                if (canConfirmEnd) {
-                  setOpenPendingEndModal(true);
-                  return;
-                }
-                setOpenEndSessionModal(true);
-              }}
-            >
-              End Session
-            </button>
-          ) : null}
-        </div>
-      ) : null}
-
-      {loading ? (
-        <p className="text-sm text-slate-500">Chargement des messages...</p>
-      ) : (
-        <div className="space-y-3">
-          {messages.map((message) => {
-            const isOwn = message.senderId === currentUserId;
-            const isFailed = message.text.includes('(échec)');
-            return (
-              <div
-                key={message._id}
-                className={`flex ${isOwn ? 'justify-end' : 'justify-start'} text-sm`}
+        ) : isPendingConfirmation ? (
+          <div className="mx-4 mt-4 flex items-center justify-between gap-2 rounded-3xl border border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-amber-900">
+            <div>
+              {canConfirmEnd ? 'تم طلب إنهاء هذه الجلسة من الطرف الآخر. يرجى التأكيد لإتمام الإغلاق النهائي.' : 'تم إرسال طلب إنهاء الجلسة. في انتظار تأكيد الطرف الآخر.'}
+              {sessionData?.completionDeadlineAt ? ` مهلة التأكيد خلال 48 ساعة (${Math.max(0, Math.floor((new Date(sessionData.completionDeadlineAt).getTime() - now) / 3600000))}h).` : ''}
+            </div>
+            {canConfirmEnd ? <button type="button" className="secondary-btn" onClick={() => setOpenPendingEndModal(true)}>{t.conversation.endSession}</button> : null}
+          </div>
+        ) : isSessionActive && remainingTotalSeconds !== null ? (
+          <div className="mx-4 mt-4 rounded-3xl border border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-amber-900">
+            {isExpired ? <div>{t.conversation.expired}</div> : <div>{t.conversation.expiresIn} {remainingDays}d {remainingHours}h {remainingMinutes}m {remainingSeconds}s</div>}
+            {canExtend ? <button type="button" className="secondary-btn mt-2" onClick={handleExtend}>{t.conversation.extend}</button> : null}
+            {showEndSessionButton ? (
+              <button
+                type="button"
+                className="secondary-btn mt-2 ms-2"
+                onClick={() => {
+                  if (canConfirmEnd) {
+                    setOpenPendingEndModal(true);
+                    return;
+                  }
+                  setOpenEndSessionModal(true);
+                }}
               >
-                <div
-                  className={`max-w-[75%] rounded-2xl px-4 py-3 shadow-sm ${
-                    isOwn ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-800'
-                  }`}
-                >
-                  <p>{message.text}</p>
-                  <div className={`flex items-center justify-between gap-2 mt-1 text-[11px] ${isOwn ? 'text-emerald-50' : 'text-slate-500'}`}>
-                    <span>{new Date(message.createdAt).toLocaleString()}</span>
-                    {renderTicks(message)}
+                {t.conversation.endSession}
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+
+        {loading ? (
+          <div className="flex-1 p-5 text-sm font-semibold text-slate-500">{t.conversation.loading}</div>
+        ) : (
+          <div className="flex-1 space-y-4 overflow-y-auto bg-slate-50/50 p-4 sm:p-6">
+            {messages.map((message) => {
+              const isOwn = message.senderId === currentUserId;
+              const isFailed = message.text.includes('(échec)');
+              return (
+                <div key={message._id} className={`flex ${isOwn ? 'justify-end' : 'justify-start'} text-sm`}>
+                  <div className={`max-w-[82%] rounded-[1.35rem] px-4 py-3 shadow-sm sm:max-w-[70%] ${isOwn ? 'rounded-ee-md bg-slate-950 text-white' : 'rounded-es-md bg-white text-slate-800 ring-1 ring-slate-200/70'}`}>
+                    <p className="whitespace-pre-wrap leading-6">{message.text}</p>
+                    <div className={`mt-1 flex items-center justify-between gap-2 text-[11px] ${isOwn ? 'text-slate-300' : 'text-slate-500'}`}>
+                      <span>{new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                      {renderTicks(message)}
+                    </div>
+                    {isOwn && isFailed ? <button type="button" className="mt-2 text-[11px] underline" onClick={() => handleRetry(message)}>{t.common.retry}</button> : null}
                   </div>
-                  {isOwn && isFailed && (
-                    <button
-                      type="button"
-                      className="text-[11px] underline mt-2"
-                      onClick={() => handleRetry(message)}
-                    >
-                      Réessayer
-                    </button>
-                  )}
                 </div>
-              </div>
-            );
-          })}
-          {!messages.length && <p className="text-sm text-slate-500">Aucun message pour le moment.</p>}
-        </div>
-      )}
+              );
+            })}
+            {!messages.length ? <EmptyState icon={MessageCircle} title={t.conversation.emptyTitle} description={t.conversation.emptyDescription} /> : null}
+          </div>
+        )}
 
-      {error && <p className="text-sm text-rose-600">{error}</p>}
+        {error ? <p className="mx-4 text-sm font-semibold text-rose-600">{error}</p> : null}
 
-      <div className="flex gap-2">
-        <input
-          className="flex-1"
-          placeholder="Envoyer un message..."
-          value={body}
-          onChange={(event) => setBody(event.target.value)}
-          disabled={isExpired}
-        />
-        <button
-          type="button"
-          className="primary-btn"
-          onClick={handleSend}
-          disabled={sending || isExpired}
-        >
-          <SendHorizonal size={16} className="me-1" /> Envoyer
-        </button>
+        <div className="sticky bottom-0 flex gap-2 border-t border-slate-100 bg-white/95 p-3 backdrop-blur">
+          <input
+            className="min-w-0 flex-1"
+            placeholder={t.conversation.placeholder}
+            value={body}
+            onChange={(event) => setBody(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                void handleSend();
+              }
+            }}
+            disabled={isExpired}
+          />
+          <button type="button" className="primary-btn" onClick={handleSend} disabled={sending || isExpired}>
+            <SendHorizonal size={16} /> <span className="hidden sm:inline">{t.conversation.send}</span>
+          </button>
         </div>
+      </section>
 
       {sessionData?._id && conversation?.otherParticipant?.id ? (
         <RatingModal
@@ -540,7 +503,7 @@ const ConversationPage: React.FC = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 };
 

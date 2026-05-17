@@ -1,4 +1,4 @@
-import axios, { type AxiosError, type AxiosRequestConfig } from 'axios';
+import axios, { AxiosHeaders, type AxiosError, type AxiosRequestConfig } from 'axios';
 
 const rawBase = ((import.meta as unknown as { env?: Record<string, string | undefined> }).env?.VITE_API_BASE_URL ?? '')
   .replace(/\/+$/, '') ?? '';
@@ -52,8 +52,8 @@ http.interceptors.request.use((config) => {
   (config as RetriableConfig).metadata = metadata;
   const token = getStoredAccessToken();
   if (token) {
-    config.headers = config.headers ?? {};
-    config.headers.Authorization = `Bearer ${token}`;
+    config.headers = AxiosHeaders.from(config.headers);
+    config.headers.set('Authorization', `Bearer ${token}`);
   }
   logEndpoint(config, ` (id=${metadata.id}, start=${new Date(metadata.start).toISOString()})`);
   return config;

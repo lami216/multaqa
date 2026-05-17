@@ -1,0 +1,207 @@
+export type Language = 'ar' | 'fr';
+
+export const translations = {
+  fr: {
+    nav: {
+      home: 'Accueil',
+      posts: 'Posts',
+      messages: 'Messages',
+      notifications: 'Notifications',
+      profile: 'Profil',
+      admin: 'Admin',
+      signOut: 'Déconnexion',
+      menu: 'Menu principal'
+    },
+    home: {
+      eyebrow: 'Campus social',
+      title: 'Trouvez le bon partenaire d’étude',
+      subtitle: 'Découvrez les demandes actives, les groupes de travail et les opportunités publiées par votre communauté.',
+      searchLabel: 'Recherche',
+      searchPlaceholder: 'Rechercher un titre, une matière ou un tag',
+      filters: 'Explorer tous les posts',
+      create: 'Publier une annonce',
+      latest: 'Annonces récentes',
+      results: 'résultat(s)',
+      loading: 'Chargement des annonces…',
+      emptyTitle: 'Aucune annonce trouvée',
+      emptyDescription: 'Essayez une autre recherche ou publiez une nouvelle demande pour lancer la collaboration.',
+      statsPartners: 'partenaires potentiels',
+      statsFast: 'réponses rapides',
+      statsSafe: 'messagerie sécurisée'
+    },
+    common: {
+      language: 'Langue',
+      arabic: 'العربية',
+      french: 'Français',
+      online: 'En ligne',
+      pinned: 'Épinglé',
+      archived: 'Archivé',
+      retry: 'Réessayer'
+    },
+    messages: {
+      title: 'Messages',
+      subtitleEmpty: 'Aucune conversation active',
+      subtitleCount: 'conversation(s)',
+      refresh: 'Actualiser',
+      active: 'Boîte de réception',
+      archived: 'Archivées',
+      loading: 'Chargement des conversations…',
+      emptyTitle: 'Aucun échange pour le moment',
+      emptyDescription: 'Quand un étudiant accepte une demande, la conversation apparaîtra ici.',
+      secure: 'Discussions privées et optimisées pour mobile.',
+      newConversation: 'Nouvelle conversation',
+      noMessage: 'Aucun message',
+      unread: 'non lu(s)',
+      selected: 'sélectionnée(s)',
+      pin: 'Épingler',
+      unpin: 'Désépingler',
+      archive: 'Archiver',
+      restore: 'Restaurer',
+      delete: 'Supprimer',
+      cancel: 'Annuler'
+    },
+    conversation: {
+      notFound: 'Conversation introuvable',
+      back: 'Retour aux messages',
+      loading: 'Chargement des messages…',
+      emptyTitle: 'Commencez la discussion',
+      emptyDescription: 'Envoyez un premier message clair pour organiser votre session.',
+      placeholder: 'Écrire un message…',
+      send: 'Envoyer',
+      refresh: 'Synchroniser',
+      expired: 'Conversation expirée',
+      expiresIn: 'Expire dans',
+      extend: 'Prolonger 7 jours',
+      endSession: 'Terminer la session'
+    },
+    post: {
+      role: 'Rôle',
+      activity: 'Activité',
+      approved: 'Confirmés',
+      until: 'Disponible jusqu’au',
+      notSpecified: 'Non précisé',
+      facultyMissing: 'Faculté à compléter',
+      openLanguage: 'Langue flexible',
+      view: 'Voir le détail',
+      match: 'compatibilité'
+    },
+    profile: {
+      edit: 'Modifier le profil',
+      settings: 'Paramètres',
+      message: 'Message',
+      telegram: 'Lier Telegram',
+      reviews: 'Avis',
+      sessions: 'Sessions',
+      rating: 'Note',
+      defaultBio: 'Ajoutez une bio courte pour présenter votre parcours et vos disponibilités.',
+      posts: 'Profil',
+      resources: 'Ressources',
+      reviewsTab: 'Avis',
+      resourcesEmpty: 'Les ressources partagées apparaîtront ici.',
+      reviewsEmpty: 'Les avis privés seront visibles ici.'
+    }
+  },
+  ar: {
+    nav: {
+      home: 'الرئيسية',
+      posts: 'المنشورات',
+      messages: 'الرسائل',
+      notifications: 'التنبيهات',
+      profile: 'الملف',
+      admin: 'الإدارة',
+      signOut: 'تسجيل الخروج',
+      menu: 'القائمة'
+    },
+    home: {
+      eyebrow: 'مجتمع الجامعة',
+      title: 'اعثر على شريك الدراسة المناسب',
+      subtitle: 'تابع طلبات الدراسة والفرق والفرص المنشورة من طلاب مجتمعك.',
+      searchLabel: 'بحث',
+      searchPlaceholder: 'ابحث بعنوان أو مادة أو وسم',
+      filters: 'استكشاف كل المنشورات',
+      create: 'نشر طلب جديد',
+      latest: 'أحدث الإعلانات',
+      results: 'نتيجة',
+      loading: 'جاري تحميل الإعلانات…',
+      emptyTitle: 'لا توجد إعلانات مطابقة',
+      emptyDescription: 'جرّب بحثاً آخر أو انشر طلباً جديداً لبدء التعاون.',
+      statsPartners: 'شركاء محتملون',
+      statsFast: 'ردود أسرع',
+      statsSafe: 'مراسلة آمنة'
+    },
+    common: {
+      language: 'اللغة',
+      arabic: 'العربية',
+      french: 'Français',
+      online: 'متصل',
+      pinned: 'مثبت',
+      archived: 'مؤرشف',
+      retry: 'إعادة المحاولة'
+    },
+    messages: {
+      title: 'الرسائل',
+      subtitleEmpty: 'لا توجد محادثات نشطة',
+      subtitleCount: 'محادثة',
+      refresh: 'تحديث',
+      active: 'الوارد',
+      archived: 'المؤرشفة',
+      loading: 'جاري تحميل المحادثات…',
+      emptyTitle: 'لا توجد محادثات بعد',
+      emptyDescription: 'عندما يقبل طالب طلبك ستظهر المحادثة هنا.',
+      secure: 'محادثات خاصة ومهيأة للجوال.',
+      newConversation: 'محادثة جديدة',
+      noMessage: 'لا توجد رسائل',
+      unread: 'غير مقروءة',
+      selected: 'محددة',
+      pin: 'تثبيت',
+      unpin: 'إلغاء التثبيت',
+      archive: 'أرشفة',
+      restore: 'استعادة',
+      delete: 'حذف',
+      cancel: 'إلغاء'
+    },
+    conversation: {
+      notFound: 'المحادثة غير موجودة',
+      back: 'العودة للرسائل',
+      loading: 'جاري تحميل الرسائل…',
+      emptyTitle: 'ابدأ المحادثة',
+      emptyDescription: 'أرسل رسالة واضحة لتنظيم جلسة الدراسة.',
+      placeholder: 'اكتب رسالة…',
+      send: 'إرسال',
+      refresh: 'مزامنة',
+      expired: 'انتهت المحادثة',
+      expiresIn: 'تنتهي خلال',
+      extend: 'تمديد 7 أيام',
+      endSession: 'إنهاء الجلسة'
+    },
+    post: {
+      role: 'الدور',
+      activity: 'النشاط',
+      approved: 'المؤكدون',
+      until: 'متاح إلى',
+      notSpecified: 'غير محدد',
+      facultyMissing: 'الكلية غير محددة',
+      openLanguage: 'لغة مرنة',
+      view: 'عرض التفاصيل',
+      match: 'توافق'
+    },
+    profile: {
+      edit: 'تعديل الملف',
+      settings: 'الإعدادات',
+      message: 'مراسلة',
+      telegram: 'ربط تيليغرام',
+      reviews: 'التقييمات',
+      sessions: 'الجلسات',
+      rating: 'المعدل',
+      defaultBio: 'أضف نبذة قصيرة تعرف بمسارك وتوفرّك.',
+      posts: 'الملف',
+      resources: 'الموارد',
+      reviewsTab: 'التقييمات',
+      resourcesEmpty: 'ستظهر الموارد المشتركة هنا.',
+      reviewsEmpty: 'ستظهر التقييمات الخاصة هنا.'
+    }
+  }
+} as const;
+
+export type TranslationDictionary = typeof translations[Language];
+export type TranslationKey = keyof typeof translations.fr;

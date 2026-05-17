@@ -3,6 +3,7 @@ import {
   Archive,
   Check,
   CheckCheck,
+  Inbox,
   MessageCircle,
   Pin,
   PinOff,
@@ -23,7 +24,10 @@ import {
 } from '../lib/http';
 import { useConversations } from '../context/ConversationsContext';
 import { useSmartPolling } from '../hooks/useSmartPolling';
+import EmptyState from '../components/common/EmptyState';
+import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { useAuth } from '../context/AuthContext';
+import { useLanguage } from '../context/LanguageContext';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -83,6 +87,7 @@ const ConversationRow: React.FC<ConversationRowProps> = ({
   onSelectShortcut,
   renderLastMessageStatus
 }) => {
+  const { t } = useLanguage();
   const pointerStart = useRef<{ x: number; y: number } | null>(null);
   const longPressTimeout = useRef<number | null>(null);
   const suppressClickRef = useRef(false);
@@ -148,23 +153,23 @@ const ConversationRow: React.FC<ConversationRowProps> = ({
   };
 
   const translateX = isOpen && !selectionMode ? (openDirection === 'left' ? -96 : 96) : 0;
-  const actionLabel = isArchivedTab ? 'Restaurer' : 'Archiver';
+  const actionLabel = isArchivedTab ? t.messages.restore : t.messages.archive;
   const actionIcon = isArchivedTab ? <RotateCcw size={16} /> : <Archive size={16} />;
-  const handleCardClick = (event: React.MouseEvent<HTMLDivElement>) => {
+  const handleCardClick = (event?: React.MouseEvent<HTMLDivElement>) => {
     if (suppressClickRef.current) {
-      event.preventDefault();
-      event.stopPropagation();
+      event?.preventDefault();
+      event?.stopPropagation();
       return;
     }
     if (isOpen) {
-      event.preventDefault();
-      event.stopPropagation();
+      event?.preventDefault();
+      event?.stopPropagation();
       onClose();
       return;
     }
     if (selectionMode) {
-      event.preventDefault();
-      event.stopPropagation();
+      event?.preventDefault();
+      event?.stopPropagation();
       onToggleSelect(conversation._id);
       return;
     }
@@ -172,11 +177,11 @@ const ConversationRow: React.FC<ConversationRowProps> = ({
   };
 
   return (
-    <div className="relative overflow-hidden rounded-2xl">
+    <div className="relative overflow-hidden rounded-[1.5rem]">
       <div className="absolute inset-0 flex items-center justify-between">
         <button
           type="button"
-          className="h-full w-24 px-3 text-sm font-semibold text-slate-700 bg-slate-100 flex items-center justify-center gap-2"
+          className="flex h-full w-24 items-center justify-center gap-2 bg-slate-100 px-3 text-sm font-bold text-slate-700"
           onClick={() => onArchiveToggle(conversation)}
         >
           {actionIcon}
@@ -184,11 +189,11 @@ const ConversationRow: React.FC<ConversationRowProps> = ({
         </button>
         <button
           type="button"
-          className="h-full w-24 px-3 text-sm font-semibold text-white bg-rose-500 flex items-center justify-center gap-2"
+          className="flex h-full w-24 items-center justify-center gap-2 bg-rose-500 px-3 text-sm font-bold text-white"
           onClick={() => onDelete(conversation)}
         >
           <Trash2 size={16} />
-          Supprimer
+          {t.messages.delete}
         </button>
       </div>
       <div
@@ -219,45 +224,54 @@ const ConversationRow: React.FC<ConversationRowProps> = ({
           event.preventDefault();
           onSelectShortcut(conversation._id);
         }}
-        className={`relative w-full text-start card-surface rounded-2xl p-4 transition ${
-          selectionMode ? 'cursor-pointer' : 'hover:shadow'
-        } ${isSelected ? 'bg-emerald-50 ring-2 ring-emerald-300 ring-inset' : ''} hover:bg-slate-50 active:bg-slate-100`}
+        className={`relative w-full rounded-[1.5rem] border border-white/70 bg-white/95 p-4 text-start shadow-sm transition-all ${
+          selectionMode ? 'cursor-pointer' : 'hover:-translate-y-0.5 hover:shadow-card'
+        } ${isSelected ? 'bg-emerald-50 ring-2 ring-emerald-300 ring-inset' : ''} active:bg-slate-100`}
         style={{ transform: `translateX(${translateX}px)` }}
       >
         {isSelected && (
-          <span className="absolute left-3 top-3 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-600 text-white shadow">
+          <span className="absolute start-3 top-3 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-600 text-white shadow">
             <Check size={12} />
           </span>
         )}
         <div
           data-allow-text-select="true"
           style={{ userSelect: 'text' }}
-          className={`relative z-10 space-y-2 ${isSelected ? 'ps-7' : ''}`}
+          className={`relative z-10 flex items-center gap-3 ${isSelected ? 'ps-7' : ''}`}
         >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <p className="font-semibold text-slate-900">
-                {conversation.otherParticipant?.username ?? 'Contact'}
-              </p>
-              {isPinned && <Pin size={14} className="text-amber-500" />}
-            </div>
-            {conversation.unreadCount > 0 && !isArchivedTab && (
-              <span className="badge-soft bg-emerald-50 text-emerald-700">
-                {conversation.unreadCount} non lu(s)
-              </span>
-            )}
+          <div className="relative shrink-0">
+            <Avatar className="h-12 w-12 border border-white shadow-sm">
+              <AvatarImage src={conversation.otherParticipant?.profile?.avatarUrl} alt={conversation.otherParticipant?.username ?? 'Contact'} />
+              <AvatarFallback className="bg-emerald-50 font-black text-emerald-700">
+                {(conversation.otherParticipant?.username ?? 'C')[0]?.toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <span className="absolute bottom-0 end-0 h-3.5 w-3.5 rounded-full border-2 border-white bg-emerald-500" aria-label={t.common.online} />
           </div>
-          <div className="flex items-center gap-2">
-            {renderLastMessageStatus(conversation)}
-            <p className="text-sm text-slate-600 line-clamp-1">
-              {conversation.lastMessage?.text ?? 'Nouvelle conversation'}
+          <div className="min-w-0 flex-1 space-y-1">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex min-w-0 items-center gap-2">
+                <p className="truncate font-black text-slate-950">{conversation.otherParticipant?.username ?? 'Contact'}</p>
+                {isPinned && <Pin size={14} className="shrink-0 text-amber-500" aria-label={t.common.pinned} />}
+              </div>
+              {conversation.unreadCount > 0 && !isArchivedTab && (
+                <span className="rounded-full bg-emerald-600 px-2 py-0.5 text-xs font-black text-white">
+                  {conversation.unreadCount}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              {renderLastMessageStatus(conversation)}
+              <p className="line-clamp-1 text-sm font-medium text-slate-600">
+                {conversation.lastMessage?.text ?? t.messages.newConversation}
+              </p>
+            </div>
+            <p className="text-xs font-medium text-slate-400">
+              {conversation.lastMessage?.createdAt
+                ? new Date(conversation.lastMessage.createdAt).toLocaleString()
+                : t.messages.noMessage}
             </p>
           </div>
-          <p className="text-xs text-slate-400">
-            {conversation.lastMessage?.createdAt
-              ? new Date(conversation.lastMessage.createdAt).toLocaleString()
-              : 'Aucun message'}
-          </p>
         </div>
       </div>
     </div>
@@ -276,6 +290,7 @@ const MessagesPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { syncUnreadCounts } = useConversations();
   const { currentUserId } = useAuth();
+  const { t } = useLanguage();
   const tab = searchParams.get('tab') === 'archived' ? 'archived' : 'active';
   const isArchivedTab = tab === 'archived';
   const lastKnownTimestampRef = useRef<string | undefined>(undefined);
@@ -352,9 +367,9 @@ const MessagesPage: React.FC = () => {
   };
 
   const headerSubtitle = useMemo(() => {
-    if (!conversations.length) return 'Aucune conversation pour le moment';
-    return `${conversations.length} conversation(s)`;
-  }, [conversations.length]);
+    if (!conversations.length) return t.messages.subtitleEmpty;
+    return `${conversations.length} ${t.messages.subtitleCount}`;
+  }, [conversations.length, t.messages.subtitleCount, t.messages.subtitleEmpty]);
 
   const handleChangeTab = (nextTab: 'active' | 'archived') => {
     setSearchParams(nextTab === 'archived' ? { tab: 'archived' } : {});
@@ -458,11 +473,11 @@ const MessagesPage: React.FC = () => {
     selectedConversations.length > 0 && selectedConversations.every(isConversationPinned);
 
   return (
-    <div className="card-surface p-4 space-y-4 min-h-[60vh]">
+    <section className="premium-panel min-h-[70vh] space-y-5 p-4 sm:p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-sm text-slate-500">{headerSubtitle}</p>
-          <h2 className="section-title">Messages</h2>
+          <h1 className="text-2xl font-black tracking-tight text-slate-950">{t.messages.title}</h1>
         </div>
         <button
           type="button"
@@ -471,7 +486,7 @@ const MessagesPage: React.FC = () => {
           disabled={refreshing}
         >
           <RefreshCw size={16} className={refreshing ? 'animate-spin me-1' : 'me-1'} />
-          Actualiser
+          {t.messages.refresh}
         </button>
       </div>
       <div className="flex flex-wrap gap-2">
@@ -480,21 +495,21 @@ const MessagesPage: React.FC = () => {
           className={tab === 'active' ? 'primary-btn' : 'secondary-btn'}
           onClick={() => handleChangeTab('active')}
         >
-          Conversations
+          {t.messages.active}
         </button>
         <button
           type="button"
           className={tab === 'archived' ? 'primary-btn' : 'secondary-btn'}
           onClick={() => handleChangeTab('archived')}
         >
-          Archivées
+          {t.messages.archived}
         </button>
       </div>
       {selectedCount > 0 && (
         <div className="sticky top-0 z-20 -mx-4 px-4">
           <div className="card-surface p-3 shadow-sm flex flex-wrap items-center justify-between gap-3">
             <p className="text-sm font-semibold text-slate-700">
-              {selectedCount} sélectionnée{selectedCount > 1 ? 's' : ''}
+              {selectedCount} {t.messages.selected}
             </p>
             <div className="flex flex-wrap items-center gap-2">
               <button
@@ -503,7 +518,7 @@ const MessagesPage: React.FC = () => {
                 onClick={() => void handleBulkPinToggle(allSelectedPinned)}
               >
                 {allSelectedPinned ? <PinOff size={16} /> : <Pin size={16} />}
-                {allSelectedPinned ? 'Désépingler' : 'Épingler'}
+                {allSelectedPinned ? t.messages.unpin : t.messages.pin}
               </button>
               <button
                 type="button"
@@ -511,7 +526,7 @@ const MessagesPage: React.FC = () => {
                 onClick={() => void handleBulkArchiveToggle()}
               >
                 {isArchivedTab ? <RotateCcw size={16} /> : <Archive size={16} />}
-                {isArchivedTab ? 'Restaurer' : 'Archiver'}
+                {isArchivedTab ? t.messages.restore : t.messages.archive}
               </button>
               <button
                 type="button"
@@ -519,7 +534,7 @@ const MessagesPage: React.FC = () => {
                 onClick={() => setDeleteTargetIds(Array.from(selectedIds))}
               >
                 <Trash2 size={16} />
-                Supprimer
+                {t.messages.delete}
               </button>
               <button
                 type="button"
@@ -527,16 +542,16 @@ const MessagesPage: React.FC = () => {
                 onClick={clearSelection}
               >
                 <X size={16} />
-                Annuler
+                {t.messages.cancel}
               </button>
             </div>
           </div>
         </div>
       )}
       <div className="space-y-2">
-        {loading && <p className="text-sm text-slate-500">Chargement des conversations...</p>}
+        {loading && <div className="rounded-3xl bg-white/70 p-5 text-sm font-semibold text-slate-500">{t.messages.loading}</div>}
         {!loading && !conversations.length && (
-          <p className="text-sm text-slate-500">Aucun échange pour le moment.</p>
+          <EmptyState icon={Inbox} title={t.messages.emptyTitle} description={t.messages.emptyDescription} />
         )}
         {conversations.map((conversation) => (
           <ConversationRow
@@ -567,7 +582,7 @@ const MessagesPage: React.FC = () => {
       </div>
       <div className="text-sm text-slate-500 flex items-center gap-2">
         <MessageCircle className="text-emerald-600" size={18} />
-        Discussions sécurisées et accessibles sur mobile.
+        {t.messages.secure}
       </div>
       <AlertDialog open={Boolean(deleteTargetIds.length)} onOpenChange={(open) => !open && setDeleteTargetIds([])}>
         <AlertDialogContent>
@@ -589,7 +604,7 @@ const MessagesPage: React.FC = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </section>
   );
 };
 

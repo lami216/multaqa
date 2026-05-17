@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
-
-type Language = 'ar' | 'fr';
+import { translations, type Language, type TranslationDictionary } from '../i18n/translations';
 
 const STORAGE_KEY = 'multaqa-language';
 
@@ -12,7 +11,6 @@ const applyLanguageSettings = (language: Language) => {
 
   html.dir = dir;
   html.lang = language;
-  document.body.classList.toggle('font-[Tajawal]', language === 'ar');
   document.body.classList.toggle('rtl-mode', language === 'ar');
   localStorage.setItem(STORAGE_KEY, language);
 };
@@ -20,6 +18,8 @@ const applyLanguageSettings = (language: Language) => {
 interface LanguageContextValue {
   language: Language;
   setLanguage: (lang: Language) => void;
+  isRtl: boolean;
+  t: TranslationDictionary;
 }
 
 const LanguageContext = createContext<LanguageContextValue | undefined>(undefined);
@@ -37,7 +37,12 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     applyLanguageSettings(language);
   }, [language]);
 
-  const value = useMemo(() => ({ language, setLanguage }), [language]);
+  const value = useMemo(() => ({
+    language,
+    setLanguage,
+    isRtl: language === 'ar',
+    t: translations[language]
+  }), [language]);
 
   return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>;
 };
