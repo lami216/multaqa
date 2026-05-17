@@ -1,6 +1,6 @@
 import User from '../models/User.js';
-import { generateTelegramLinkToken } from '../utils/jwt.js';
 import {
+  createTelegramLinkToken,
   getUserIdFromTelegramLinkToken,
   sendTelegramMessageToChat
 } from '../utils/telegram.js';
@@ -15,7 +15,10 @@ export const generateLinkToken = async (req, res) => {
       return res.status(500).json({ error: 'TELEGRAM_BOT_TOKEN is not configured' });
     }
 
-    const token = generateTelegramLinkToken(req.user._id.toString());
+    const token = await createTelegramLinkToken(req.user._id.toString());
+    if (!token) {
+      return res.status(500).json({ error: 'Failed to create Telegram link token' });
+    }
 
     let telegramResponse;
     try {
@@ -57,7 +60,7 @@ export const webhook = async (req, res) => {
         if (!token) {
           await sendTelegramMessageToChat(chatId, 'يرجى ربط حسابك من داخل المنصة.');
         } else {
-          const userId = getUserIdFromTelegramLinkToken(token);
+          const userId = await getUserIdFromTelegramLinkToken(token);
 
           if (!userId) {
             await sendTelegramMessageToChat(chatId, 'يرجى ربط حسابك من داخل المنصة.');

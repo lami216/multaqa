@@ -1,501 +1,301 @@
-# Welcome to Your Miaoda Project
-Miaoda Application Link URL
-    URL:https://medo.dev/projects/app-87ib2pxmh5hd
-
 # Multaqa | ملتقى
 
-A bilingual (Arabic/French) full-stack web platform for University of Nouakchott students to connect and find study partners, graduation project teammates, and tutoring opportunities.
+Multaqa is a bilingual Arabic/French academic collaboration platform for University of Nouakchott students. It helps students complete their profiles, find compatible study partners, form project teams, offer tutoring, continue private conversations, receive in-app/Telegram notifications, and manage academic availability from an admin console.
 
-## 🧭 Local setup quick guide
+## Current platform state
 
-Follow these steps to spin up the project locally without digging through the entire document:
+The app is a full-stack React + Express platform with the main student workflows implemented:
 
-1. **Environment variables**
-   - Create a `server/.env` file with your backend secrets (Mongo connection string, JWT secrets, Redis/ImageKit keys, admin seed credentials). Use the variable names listed in the **Server Environment Variables** section below.
-   - Create a root `.env` file for the frontend with at least:
-     ```env
-     VITE_API_URL=http://localhost:5000
-     VITE_IMAGEKIT_PUBLIC_KEY=your_imagekit_public_key
-     VITE_IMAGEKIT_URL_ENDPOINT=https://ik.imagekit.io/your_id
-     ``
+- Student authentication with access/refresh JWT cookies and token refresh.
+- Guided academic profile setup with faculty, level, major, semester, subjects, priorities, remaining subjects, avatar upload, and profile settings.
+- Bilingual UI with Arabic RTL and French LTR layouts.
+- Study partner, project team, and tutor-offer posts with search, filters, compatibility data, and join requests.
+- Private one-to-one conversations created from direct messages or accepted join requests.
+- Session lifecycle tools for active conversations, end-session requests, and ratings.
+- In-app notifications with unread counts, navigation links, read state, duplicate prevention, and self-notification guards.
+- Telegram account linking, disconnecting, deep links, manual `/start` fallback commands, and Telegram delivery for important notifications.
+- Admin tools for academic settings, catalog visibility, faculties/majors/subjects, moderation, and platform stats.
+- Responsive SaaS-style UI with mobile bottom navigation, desktop header navigation, settings modal, loading/error states, and polished cards/panels.
 
-2. **Install dependencies**
-   ```bash
-   pnpm install           # install root/frontend packages
-   cd server && pnpm install  # install backend packages
-   ```
-
-3. **Run the apps**
-   ```bash
-   # backend (from /server)
-   pnpm dev
-
-   # frontend (from project root, in a second terminal)
-   pnpm dev -- --host 0.0.0.0
-   ```
-
-4. **Access the stack**
-   - Frontend: http://localhost:5173
-   - Backend API: http://localhost:5000
-
-### Quick verification after profile edits
-- After saving your profile, the next `GET /api/auth/me` should return **200** (not **304**) and reflect the updated data.
-- Reloading `/profile` should still show the saved profile information without requiring a hard refresh.
-
-## 🚀 Production deployment (PM2 + Nginx on a VPS)
-
-### What gets built
-- **Frontend**: Vite (`pnpm build`) outputs static assets to `dist/`.
-- **Backend**: Express entry file is `server/src/server.js` (port `5000` by default via `PORT`).
-- In production, the backend can serve the compiled frontend (it mounts `dist/` when `NODE_ENV=production`), and Nginx can handle TLS/static delivery while proxying `/api` to the Node server.
-
-### One-time server setup
-```bash
-sudo apt update && sudo apt install -y nginx
-corepack enable                    # ensures pnpm is available
-npm install -g pm2                 # process manager for Node
-```
-
-### Deploy the code
-```bash
-sudo mkdir -p /opt/multaqa
-cd /opt/multaqa
-git clone <repo-url> .
-
-# Frontend
-pnpm install --frozen-lockfile
-pnpm build                         # creates /opt/multaqa/dist
-
-# Backend
-cd server
-pnpm install --prod
-cp .env.example .env               # then edit with production secrets (CORS_ORIGIN should be your domain)
-NODE_ENV=production PORT=5000 pm2 start src/server.js \
-  --name multaqa-api \
-  --cwd /opt/multaqa/server
-pm2 save                           # persist across restarts
-```
-
-### Configure Nginx
-```bash
-sudo cp /opt/multaqa/docs/nginx.conf.example /etc/nginx/sites-available/multaqa
-sudo nano /etc/nginx/sites-available/multaqa
-# - set server_name to your domain
-# - ensure root points to /opt/multaqa/dist (or your chosen path)
-
-sudo ln -sf /etc/nginx/sites-available/multaqa /etc/nginx/sites-enabled/multaqa
-sudo nginx -t && sudo systemctl reload nginx
-```
-
-### How it serves traffic
-- Nginx serves the Vite build from `/opt/multaqa/dist` and proxies `/api/*` to `http://127.0.0.1:5000` where PM2 keeps the Express server alive.
-- The Express server also serves `dist/` as a fallback when `NODE_ENV=production`, so direct access via `http://server:5000` will still render the frontend.
-
-### Updating an existing deployment
-```bash
-cd /opt/multaqa
-git pull
-pnpm install --frozen-lockfile
-pnpm build
-cd server && pnpm install --prod
-pm2 restart multaqa-api
-sudo systemctl reload nginx
-```
-
-## 🎯 Project Overview
-
-Multaqa is a comprehensive academic collaboration platform that facilitates connections between students through:
-- **Profile Matching**: Detailed student profiles with skills, courses, and availability
-- **Post Creation**: Three categories (Study Partner, Project Team, Tutor Offer)
-- **In-App Messaging**: Private 1-to-1 conversations
-- **Notifications**: Real-time updates for messages and interactions
-- **Admin Moderation**: Content moderation, user management, and reporting system
-
-## 🛠 Technology Stack
-
-### Backend
-- **Runtime**: Node.js with Express
-- **Database**: MongoDB with Mongoose ODM
-- **Authentication**: JWT (access + refresh tokens) with httpOnly cookies
-- **Caching & Rate Limiting**: Upstash Redis
-- **Image Storage**: ImageKit for profile avatars
-- **Security**: Helmet, CORS, bcrypt password hashing
+## Tech stack
 
 ### Frontend
-- **Framework**: React 18 with TypeScript
-- **Build Tool**: Vite
-- **Routing**: React Router v7
-- **Styling**: Tailwind CSS
-- **UI Components**: shadcn/ui
-- **Internationalization**: react-i18next (Arabic RTL + French LTR)
-- **HTTP Client**: Axios with interceptors
 
-### DevOps
-- **Containerization**: Docker & Docker Compose
-- **Environment Management**: dotenv
+- React 18 + TypeScript
+- Vite
+- React Router v7
+- Tailwind CSS + shadcn/Radix-style UI primitives
+- Axios HTTP client with refresh-token retry handling
+- React contexts for auth, conversations, notifications, and language
+- Arabic/French translations in `src/i18n/translations.ts`
 
-## 📁 Project Structure
+### Backend
 
-```
+- Node.js + Express
+- MongoDB + Mongoose
+- JWT access/refresh authentication with httpOnly cookies
+- Upstash Redis for caching, rate limiting, unread count cache, and short Telegram link tokens
+- ImageKit for avatar uploads
+- Zod validation
+- Helmet, CORS, bcrypt, and content masking/profanity filtering
+
+## Repository structure
+
+```text
 /multaqa
-├── server/                    # Backend Node.js application
-│   ├── src/
-│   │   ├── config/           # Database, Redis, ImageKit configuration
-│   │   ├── controllers/      # Request handlers
-│   │   ├── middleware/       # Auth, rate limiting, validation
-│   │   ├── models/           # Mongoose schemas
-│   │   ├── routes/           # API route definitions
-│   │   ├── utils/            # Helper functions (JWT, profanity filter, etc.)
-│   │   └── server.js         # Express app entry point
-│   ├── .env.example          # Environment variables template
-│   ├── package.json
-│   └── Dockerfile
-├── src/                       # Frontend React application
-│   ├── components/           # React components
-│   ├── contexts/             # React contexts (Auth)
-│   ├── locales/              # i18n translation files (ar/fr)
-│   ├── pages/                # Page components
-│   ├── services/             # API service layer
-│   ├── types/                # TypeScript type definitions
-│   ├── i18n.ts               # i18n configuration
-│   └── App.tsx               # Main app component
-├── docker-compose.yml        # Multi-container orchestration
-├── Dockerfile                # Frontend container
+├── src/                         # React/Vite frontend
+│   ├── components/              # Shared UI, layout, posts, subjects, admin shell
+│   ├── context/                 # Auth, conversations, language, notifications
+│   ├── hooks/                   # Smart polling and upload helpers
+│   ├── i18n/                    # Arabic/French translation dictionary
+│   ├── lib/                     # HTTP client, catalog helpers, utilities
+│   └── pages/                   # App pages and route screens
+├── server/                      # Express backend
+│   ├── src/config/              # Database, Redis, ImageKit
+│   ├── src/controllers/         # API handlers
+│   ├── src/middleware/          # Auth, validation, rate limits
+│   ├── src/models/              # Mongoose schemas
+│   ├── src/routes/              # API routes
+│   ├── src/services/            # Notifications, lifecycle, stats, matching
+│   └── src/utils/               # JWT, Telegram, moderation helpers
+├── public/                      # Static frontend assets
+├── docs/                        # Deployment helpers, Nginx sample
+├── docker-compose.yml           # Local container orchestration
+├── Dockerfile                   # Frontend container
 └── README.md
 ```
 
-## ✅ Completed Backend Features
+## Feature overview
 
-### Core Infrastructure
-- ✅ Express server with security middleware (Helmet, CORS)
-- ✅ MongoDB connection with Mongoose
-- ✅ Upstash Redis client for caching and rate limiting
-- ✅ ImageKit configuration for image uploads
-- ✅ JWT authentication middleware
-- ✅ Rate limiting middleware (login, register, post creation, messaging)
-- ✅ Input validation with Zod schemas
+### Profiles and settings
 
-### Database Models
-- ✅ User model (email, password, username, role, banned status)
-- ✅ Profile model (faculty, major, level, skills, courses, bio, avatar)
-- ✅ Post model with text indexes for search
-- ✅ Chat model (1-to-1 conversations)
-- ✅ Message model
-- ✅ Report model (for content moderation)
-- ✅ Notification model
-- ✅ Faculty model (bilingual faculty names)
+- Students can edit profile basics such as display name, bio, availability, and language preference from the profile settings modal.
+- Academic identity fields are intentionally read-only in settings because they are managed by the full profile flow and academic catalog.
+- Avatar uploads use ImageKit and cache-busted avatar URLs after changes.
+- Remaining subjects can be saved for cross-level matching and profile completeness.
 
-### API Endpoints
+### Posts and matching
 
-#### Authentication (`/api/auth`)
-- ✅ POST `/register` - User registration
-- ✅ POST `/login` - User login with JWT
-- ✅ POST `/refresh` - Refresh access token
-- ✅ POST `/logout` - User logout
-- ✅ POST `/forgot-password` - Password reset request
-- ✅ POST `/reset-password` - Password reset with token
-- ✅ GET `/me` - Get current user info
+- Supported post categories:
+  - Study partner
+  - Project team
+  - Tutor offer
+- Posts support subject codes, academic metadata, availability dates, roles/activities, participant targets, and language/location preferences depending on category.
+- Matching uses profile subjects, academic context, intent, and compatibility scoring.
+- Join requests create notifications and, once accepted, open a conversation/session.
 
-#### User Profile (`/api/users`)
-- ✅ GET `/:username` - Get public profile
-- ✅ PATCH `/me` - Update own profile
-- ✅ POST `/avatar` - Upload avatar image
+### Messaging and sessions
 
-#### Posts (`/api/posts`)
-- ✅ GET `/` - List posts with filters and pagination
-- ✅ GET `/:id` - Get post details
-- ✅ POST `/` - Create new post
-- ✅ PATCH `/:id` - Update own post
-- ✅ DELETE `/:id` - Delete own post
-- ✅ POST `/:id/report` - Report post
+- Conversations can be direct or post-based.
+- Messages track delivered/read status.
+- Conversations have lifecycle expiry/extension controls.
+- Accepted join requests initialize sessions.
+- Session participants can request/confirm session end and submit ratings.
 
-#### Chat (`/api/chats`)
-- ✅ GET `/` - List user's conversations
-- ✅ POST `/` - Create or retrieve chat
-- ✅ GET `/:chatId/messages` - Get message history
-- ✅ POST `/:chatId/messages` - Send message
-- ✅ POST `/:chatId/report` - Report chat
+### Notification system
 
-#### Notifications (`/api/notifications`)
-- ✅ GET `/` - List notifications
-- ✅ POST `/read` - Mark notifications as read
-- ✅ GET `/unread-count` - Get unread count
+- Notifications are stored in MongoDB and surfaced in the notifications page, desktop header badge, and mobile bottom-nav badge.
+- Unread counts are cached in Redis and invalidated when notifications are created or marked read.
+- Read actions preserve notification history by updating `read`/`readAt` instead of deleting notification rows.
+- Duplicate prevention checks existing unread notifications for the same recipient/type/relevant payload IDs.
+- Self-notifications are guarded by actor/recipient checks.
+- Notification links route users to conversations, posts, or profiles depending on notification payload.
 
-#### Admin (`/api/admin`)
-- ✅ GET `/reports` - List all reports
-- ✅ PATCH `/reports/:id/resolve` - Resolve report
-- ✅ DELETE `/posts/:id` - Delete any post
-- ✅ PATCH `/users/:id/ban` - Ban/unban user
-- ✅ GET `/faculties` - List faculties
-- ✅ POST `/faculties` - Add faculty
-- ✅ DELETE `/faculties/:id` - Remove faculty
+### Telegram integration
 
-### Security Features
-- ✅ Profanity filter for Arabic and French
-- ✅ Auto-masking of phone numbers and emails in posts
-- ✅ Rate limiting on critical endpoints
-- ✅ Redis caching for posts, profiles, and notification counts
-- ✅ JWT token rotation
-- ✅ Password hashing with bcrypt
+- Users can connect Telegram from the profile settings modal.
+- The backend creates short, single-use, Redis-backed Telegram link tokens that are safe for Telegram deep-link `start` parameters.
+- The modal shows both a deep link and a manual `/start <token>` command fallback.
+- Users can disconnect Telegram from the same settings modal.
+- Important events can be sent to linked Telegram chats in Arabic and French with an app link when configured.
 
-### Utilities
-- ✅ Admin seed script with default faculties
-- ✅ Docker Compose configuration
-- ✅ Environment variable templates
-
-## ✅ Completed Frontend Features
-
-### Core Setup
-- ✅ i18n configuration with Arabic (RTL) and French (LTR)
-- ✅ Translation files for both languages
-- ✅ API service layer with Axios
-- ✅ TypeScript type definitions
-- ✅ Auth context with React hooks
-- ✅ Automatic token refresh interceptor
-
-## 🚧 Remaining Frontend Work
-
-### Pages to Implement
-- ⏳ Home page with hero section and category cards
-- ⏳ Login page
-- ⏳ Registration page
-- ⏳ Forgot/Reset password pages
-- ⏳ Post listing page with filters
-- ⏳ Post detail page
-- ⏳ Create/Edit post page
-- ⏳ Profile view page
-- ⏳ Profile edit page
-- ⏳ Messages inbox page
-- ⏳ Chat view page
-- ⏳ Notifications page
-- ⏳ Admin dashboard page
-
-### Components to Implement
-- ⏳ Navigation bar with language switcher
-- ⏳ Post card component
-- ⏳ Post filter sidebar
-- ⏳ Avatar upload component
-- ⏳ Tag input component
-- ⏳ Message bubble component
-- ⏳ Notification dropdown
-- ⏳ Protected route wrapper
-- ⏳ Admin route wrapper
-
-### Features to Implement
-- ⏳ RTL layout switching for Arabic
-- ⏳ Message polling for real-time updates
-- ⏳ Notification polling
-- ⏳ Image upload with ImageKit
-- ⏳ Form validation
-- ⏳ Error handling with toast notifications
-
-## 🚀 Getting Started
-
-### Prerequisites
-- Node.js 20+
-- MongoDB instance (local or cloud)
-- Upstash Redis account
-- ImageKit account
-
-### Environment Setup
-
-#### Server Environment Variables
-Create `server/.env` based on `server/.env.example`:
+Required Telegram backend variable:
 
 ```env
+TELEGRAM_BOT_TOKEN=123456:your_bot_token
+```
+
+Recommended public URL variable for Telegram notification links:
+
+```env
+APP_BASE_URL=https://your-domain.example
+```
+
+`FRONTEND_URL` or `PUBLIC_APP_URL` can also be used as a fallback for link generation.
+
+### Multilingual and RTL/LTR support
+
+- Arabic (`ar`) uses RTL layout behavior.
+- French (`fr`) uses LTR layout behavior.
+- Navigation, profile settings, notifications, Telegram linking, messages, home, posts, and common controls are translated.
+- Language can be switched from the desktop header or mobile menu.
+
+### UI/UX and responsiveness
+
+- Desktop uses sticky glass-style header navigation.
+- Mobile uses a fixed bottom navigation bar with unread message/notification badges.
+- Core pages use responsive cards, panels, grids, and mobile-first spacing.
+- Loading and error states are present for key async flows including notifications and profile/Telegram settings actions.
+
+## Setup
+
+### Prerequisites
+
+- Node.js 20+
+- pnpm 9+ or npm 10+
+- MongoDB database
+- Upstash Redis REST database
+- ImageKit account
+- Telegram bot token if Telegram linking/notifications are enabled
+
+### Environment variables
+
+Create `server/.env`:
+
+```env
+NODE_ENV=development
+PORT=5000
 MONGODB_URI=mongodb://localhost:27017/multaqa
-JWT_ACCESS_SECRET=your_access_secret_here
-JWT_REFRESH_SECRET=your_refresh_secret_here
-COOKIE_DOMAIN=localhost
 CORS_ORIGIN=http://localhost:5173
-UPSTASH_REDIS_REST_URL=https://your-redis-url.upstash.io
-UPSTASH_REDIS_REST_TOKEN=your_redis_token
+
+JWT_ACCESS_SECRET=replace_me_access
+JWT_REFRESH_SECRET=replace_me_refresh
+JWT_TELEGRAM_SECRET=replace_me_telegram_optional
+JWT_ACCESS_EXPIRY=15m
+JWT_REFRESH_EXPIRY=7d
+
+UPSTASH_REDIS_REST_URL=https://your-upstash-url.upstash.io
+UPSTASH_REDIS_REST_TOKEN=your_upstash_token
+
 IMAGEKIT_PUBLIC_KEY=your_imagekit_public_key
 IMAGEKIT_PRIVATE_KEY=your_imagekit_private_key
 IMAGEKIT_URL_ENDPOINT=https://ik.imagekit.io/your_id
+
+TELEGRAM_BOT_TOKEN=your_telegram_bot_token
+APP_BASE_URL=http://localhost:5173
+
 ADMIN_SEED_EMAIL=admin@multaqa.mr
 ADMIN_SEED_PASSWORD=securepassword
 ADMIN_SEED_USERNAME=admin
 ```
 
-#### Client Environment Variables
-Create `.env` based on `.env.example`:
+Create root `.env`:
 
 ```env
 VITE_API_URL=http://localhost:5000
+VITE_API_BASE_URL=http://localhost:5000
 VITE_IMAGEKIT_PUBLIC_KEY=your_imagekit_public_key
 VITE_IMAGEKIT_URL_ENDPOINT=https://ik.imagekit.io/your_id
 ```
 
-### Installation
+The frontend normalizes API base URLs so either `VITE_API_BASE_URL` or `VITE_API_URL` can point at the Express server.
 
-#### Option 1: Docker Compose (Recommended)
+### Install dependencies
+
+Using pnpm:
 
 ```bash
-# Start all services
-docker-compose up
-
-# The application will be available at:
-# Frontend: http://localhost:5173
-# Backend: http://localhost:5000
-# MongoDB: mongodb://localhost:27017
+pnpm install
+cd server && pnpm install
 ```
 
-#### Option 2: Manual Setup
+Using npm:
 
 ```bash
-# Install backend dependencies
+npm install
+cd server && npm install
+```
+
+### Run locally
+
+Terminal 1, backend:
+
+```bash
 cd server
-npm install
-
-# Seed database with admin user and faculties
-npm run seed
-
-# Start backend server
-npm start
-
-# In a new terminal, install frontend dependencies
-cd ..
-npm install
-
-# Start frontend development server
 npm run dev
 ```
 
-### Default Admin Credentials
-After running the seed script:
-- **Email**: admin@multaqa.mr
-- **Password**: securepassword (or value from ADMIN_SEED_PASSWORD)
-- **Username**: admin
+Terminal 2, frontend:
 
-## 📚 API Documentation
+```bash
+npm run dev -- --host 0.0.0.0
+```
 
-### Authentication Flow
-1. User registers with email, password, and username
-2. Server returns access token (short-lived) and sets refresh token in httpOnly cookie
-3. Client stores access token in localStorage
-4. On API requests, access token is sent in Authorization header
-5. When access token expires, client automatically requests new token using refresh endpoint
-6. Refresh token is rotated on each refresh request
+Open:
 
-### Rate Limits
-- **Login**: 5 attempts per 15 minutes per IP
-- **Registration**: 3 attempts per hour per IP
-- **Post Creation**: 10 posts per hour per user
-- **Message Sending**: 60 messages per minute per user
+- Frontend: <http://localhost:5173>
+- Backend API: <http://localhost:5000/api>
 
-### Caching Strategy
-- **Post Listings**: 30-60 seconds TTL, invalidated on create/update/delete
-- **User Profiles**: 60 seconds TTL, invalidated on profile update
-- **Unread Notification Count**: 30 seconds TTL, invalidated on new notification or mark as read
+### Docker Compose
 
-## 🎨 Design System
+```bash
+docker-compose up --build
+```
 
-### Color Scheme
-- **Primary**: Deep Blue (#1E40AF) - Trust and academia
-- **Secondary**: Warm Orange (#F59E0B) - Energy and collaboration
-- **Neutral**: Gray scale for backgrounds and text
+Then open the frontend at <http://localhost:5173> and the API at <http://localhost:5000/api>.
 
-### Typography
-- Clean sans-serif font (Inter or Tajawal for Arabic support)
-- Clear hierarchy with bold headings
+## Useful commands
 
-### Layout
-- Card-based design for posts and profiles
-- Grid layout for post listings
-- Single-column for chat and forms
-- Rounded corners (8px border-radius)
-- Subtle shadows for depth
+```bash
+npm run build                 # Vite production build
+npx tsgo -p tsconfig.check.json
+npx biome lint
+npm run lint                  # Typecheck, Biome, rules checks, Tailwind syntax, build script
+```
 
-## 🔒 Security Features
+Backend scripts:
 
-### Input Validation
-- All endpoints validate input using Zod schemas
-- Sanitization of user-generated content
-- Auto-masking of phone numbers and emails in posts
-
-### Content Moderation
-- Profanity filter with configurable blacklist (Arabic & French)
-- User reporting system for posts, users, and chats
-- Admin dashboard for content moderation
-
-### Authentication Security
-- Refresh tokens in httpOnly cookies (CSRF protection)
-- Access tokens with short expiration
-- Password hashing with bcrypt (10+ salt rounds)
-- Token rotation on refresh
-
-## 🌍 Internationalization
-
-### Supported Languages
-- **Arabic (ar)**: Right-to-left (RTL) layout
-- **French (fr)**: Left-to-right (LTR) layout
-
-### Language Switching
-- Language preference stored in localStorage
-- Automatic layout direction switching
-- All UI text translated in both languages
-
-## 📝 Development Notes
-
-### Backend Best Practices
-- All database queries include error handling
-- Consistent error response format
-- Proper HTTP status codes
-- Logging for errors and important events
-- Input validation on all endpoints
-
-### Frontend Best Practices
-- TypeScript for type safety
-- Component-based architecture
-- Centralized API service layer
-- Context API for global state
-- Responsive design with Tailwind CSS
-
-### Avatar upload quick test (Android Chrome)
-- Ouvrir Profil > Modifier puis appuyer sur « Choisir une photo » pour voir l'option Caméra ou Galerie.
-- Prendre une photo et choisir une image existante : l'aperçu doit se mettre à jour immédiatement dans l'avatar.
-- Enregistrer puis actualiser / se reconnecter pour vérifier que l'avatar persiste sur toutes les vues (en-tête, profil).
-
-## 🧪 Testing.
-
-### Backend Testing
 ```bash
 cd server
-npm test  # (Tests to be implemented)
+npm start
+npm run dev
 ```
 
-### Frontend Testing
+## API areas
+
+- `/api/auth` — register, login, refresh, logout, password reset, current user
+- `/api/users` — profiles, settings, avatar, remaining subjects
+- `/api/posts` — post CRUD, search/filtering, join requests, lifecycle actions
+- `/api/conversations` — inbox, messages, read state, archive/pin/delete, extension
+- `/api/sessions` — session lookup, end request/confirmation, ratings
+- `/api/notifications` — list notifications, unread counts, mark one/all read
+- `/api/telegram` — link token generation, webhook, disconnect
+- `/api/admin` — moderation, academic catalog, settings, war dashboard stats
+- `/api/faculties`, `/api/majors`, `/api/subjects`, `/api/academic-settings` — public catalog lookups
+
+## Security and moderation
+
+- Passwords are hashed with bcrypt.
+- Access tokens are short-lived and refresh tokens rotate.
+- Refresh/access cookies are httpOnly.
+- Zod schemas validate request bodies.
+- Helmet and CORS protect the Express surface.
+- Rate limits protect auth, posts, and messaging endpoints.
+- Contact information in posts is masked.
+- Arabic/French profanity filters are applied to user-generated content.
+- Admin moderation supports reports, post deletion, and user ban/unban.
+
+## Deployment notes
+
+1. Build the frontend with `npm run build` or `pnpm build`.
+2. Start `server/src/server.js` with `NODE_ENV=production` and a process manager such as PM2.
+3. Serve `dist/` with Nginx and proxy `/api/*` to the Express server.
+4. Set production `CORS_ORIGIN`, strong JWT secrets, production Redis/Mongo/ImageKit credentials, and HTTPS cookie settings.
+5. Configure the Telegram webhook to point to `/api/telegram/webhook` if Telegram linking is enabled.
+
+Example PM2 start:
+
 ```bash
-npm test  # (Tests to be implemented)
+NODE_ENV=production PORT=5000 pm2 start server/src/server.js --name multaqa-api
 ```
 
-## 📦 Deployment
+## QA checklist for releases
 
-### Production Checklist
-- [ ] Set strong JWT secrets
-- [ ] Configure production MongoDB instance
-- [ ] Set up Upstash Redis production instance
-- [ ] Configure ImageKit production account
-- [ ] Set CORS_ORIGIN to production domain
-- [ ] Enable HTTPS
-- [ ] Set secure cookie flags
-- [ ] Configure environment variables
-- [ ] Run database seed script
-- [ ] Test all critical flows
-
-## 🤝 Contributing
-
-This is a university project for Université de Nouakchott students. Contributions are welcome!
-
-## 📄 License
-
-This project is licensed under the MIT License.
-
-## 👥 Contact
-
-For questions or support, please contact the development team.
-
----
-
-**Note**: This project is currently in active development. The backend is fully implemented and functional. Frontend implementation is in progress.
+- Typecheck and production build pass.
+- Profile settings modal saves editable fields and shows failures.
+- Telegram connect, manual command, deep link, webhook, and disconnect are verified.
+- Notification read actions preserve history and update unread counts.
+- Notification links navigate to the expected post, message, or profile.
+- Arabic and French UI text remains translated.
+- Mobile header/menu and bottom navigation remain usable at narrow widths.
+- Users do not receive notifications for their own actions.

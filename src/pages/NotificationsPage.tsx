@@ -39,20 +39,30 @@ const NotificationsPage: React.FC = () => {
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [unread, setUnread] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [loadingReadId, setLoadingReadId] = useState<string | null>(null);
   const [markingAll, setMarkingAll] = useState(false);
   const { refreshUnreadCount } = useNotifications();
 
   const getNotificationMessage = (notification: NotificationItem) => {
-    if (typeof notification.payload?.message === 'string') return notification.payload.message;
     const key = notification.type as keyof typeof t.notifications;
-    return typeof t.notifications[key] === 'string' ? t.notifications[key] : t.notifications.fallback;
+    if (typeof t.notifications[key] === 'string') return t.notifications[key];
+    if (typeof notification.payload?.message === 'string') return notification.payload.message;
+    return t.notifications.fallback;
   };
 
   const load = async () => {
-    const { data } = await fetchNotifications();
-    setNotifications(data.notifications);
-    setUnread(data.unread);
+    try {
+      const { data } = await fetchNotifications();
+      setNotifications(data.notifications);
+      setUnread(data.unread);
+      setError('');
+    } catch {
+      setError(t.notifications.error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -129,7 +139,17 @@ const NotificationsPage: React.FC = () => {
           {t.notifications.markAll}
         </button>
       </div>
+      {error && (
+        <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700" role="alert">
+          {error}
+        </div>
+      )}
       <div className="space-y-3">
+        {loading && !notifications.length && (
+          <div className="rounded-3xl border border-slate-200 bg-white/80 p-6 text-center text-sm font-semibold text-slate-500">
+            {t.notifications.loading}
+          </div>
+        )}
         {notifications.map((notification) => {
           const Icon = iconMap[notification.type] ?? Bell;
           const link = getNotificationLink(notification);
@@ -156,7 +176,7 @@ const NotificationsPage: React.FC = () => {
             </div>
           );
         })}
-        {!notifications.length && (
+        {!loading && !notifications.length && (
           <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center text-sm text-slate-500">
             {t.notifications.empty}
           </div>

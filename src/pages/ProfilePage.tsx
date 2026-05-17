@@ -41,6 +41,7 @@ const ProfilePage: React.FC = () => {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [settingsMessage, setSettingsMessage] = useState('');
+  const [settingsError, setSettingsError] = useState('');
   const [settingsDraft, setSettingsDraft] = useState({ displayName: '', bio: '', availability: '', language: 'Arabic' as 'Arabic' | 'French' });
   const [linkingTelegram, setLinkingTelegram] = useState(false);
   const [telegramLinkModalOpen, setTelegramLinkModalOpen] = useState(false);
@@ -62,12 +63,14 @@ const ProfilePage: React.FC = () => {
       const { data } = await generateTelegramLinkTokenRequest();
       const { token, botUsername } = data;
       if (!botUsername) {
-        console.error('Telegram bot username is missing in link token response');
+        setSettingsError(t.profile.telegramLinkError);
         return;
       }
       setTelegramLinkData({ token, botUsername });
       setTelegramLinkModalOpen(true);
       setCopySuccess(false);
+    } catch {
+      setSettingsError(t.profile.telegramLinkError);
     } finally {
       setLinkingTelegram(false);
     }
@@ -97,12 +100,14 @@ const ProfilePage: React.FC = () => {
       language: (profile?.languages?.[0] === 'French' ? 'French' : 'Arabic')
     });
     setSettingsMessage('');
+    setSettingsError('');
     setSettingsOpen(true);
   };
 
   const saveSettings = async () => {
     setSettingsSaving(true);
     setSettingsMessage('');
+    setSettingsError('');
     try {
       const { data } = await updateProfileSettingsRequest({
         displayName: settingsDraft.displayName.trim(),
@@ -114,6 +119,8 @@ const ProfilePage: React.FC = () => {
       setAuthProfile(data.profile);
       setSettingsMessage(t.profile.saved);
       await refresh();
+    } catch {
+      setSettingsError(t.profile.settingsError);
     } finally {
       setSettingsSaving(false);
     }
@@ -122,8 +129,11 @@ const ProfilePage: React.FC = () => {
   const disconnectTelegram = async () => {
     setDisconnectingTelegram(true);
     try {
+      setSettingsError('');
       await disconnectTelegramRequest();
       await refresh();
+    } catch {
+      setSettingsError(t.profile.telegramDisconnectError);
     } finally {
       setDisconnectingTelegram(false);
     }
@@ -329,21 +339,21 @@ const ProfilePage: React.FC = () => {
     <div className="space-y-6">
       <Dialog open={telegramLinkModalOpen} onOpenChange={setTelegramLinkModalOpen}>
         <DialogContent className="sm:max-w-md">
-          <DialogHeader className="space-y-2 text-right">
-            <DialogTitle className="text-slate-900">ربط تيليغرام</DialogTitle>
+          <DialogHeader className="space-y-2 text-start">
+            <DialogTitle className="text-slate-900">{t.profile.telegramModalTitle}</DialogTitle>
             <DialogDescription className="text-sm leading-relaxed text-slate-600">
-              إذا فتح البوت بدون ربط تلقائي، انسخ هذا الأمر وأرسله يدويًا داخل البوت
+              {t.profile.telegramModalDescription}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 text-right">
+          <div className="space-y-4 text-start">
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm">
-              <p className="font-semibold text-slate-700">اسم البوت</p>
+              <p className="font-semibold text-slate-700">{t.profile.telegramBotName}</p>
               <p className="mt-1 font-mono text-slate-900" dir="ltr">
                 @{telegramLinkData?.botUsername}
               </p>
             </div>
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm">
-              <p className="font-semibold text-slate-700">الأمر</p>
+              <p className="font-semibold text-slate-700">{t.profile.telegramCommand}</p>
               <p className="mt-1 break-all font-mono text-slate-900" dir="ltr">
                 {telegramStartCommand}
               </p>
@@ -351,10 +361,10 @@ const ProfilePage: React.FC = () => {
             <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
               <button type="button" className="secondary-btn" onClick={() => void handleCopyTelegramCommand()}>
                 <Copy size={16} className="me-1" />
-                {copySuccess ? 'تم النسخ' : 'نسخ الأمر'}
+                {copySuccess ? t.profile.telegramCopied : t.profile.telegramCopy}
               </button>
               <a href={telegramDeepLink} className="primary-btn text-center" target="_blank" rel="noreferrer">
-                <Send size={16} className="me-1" /> فتح تيليغرام
+                <Send size={16} className="me-1" /> {t.profile.telegramOpen}
               </a>
             </div>
           </div>
@@ -457,6 +467,7 @@ const ProfilePage: React.FC = () => {
             </div>
 
             {settingsMessage && <p className="text-sm font-semibold text-emerald-700">{settingsMessage}</p>}
+            {settingsError && <p className="text-sm font-semibold text-red-600">{settingsError}</p>}
 
             <div className="flex flex-col-reverse gap-2 border-t border-slate-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
               <button type="button" className="secondary-btn text-red-600 hover:bg-red-50 hover:text-red-700" onClick={() => void logout()}>
