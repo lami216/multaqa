@@ -21,6 +21,7 @@ import { useAuth } from '../context/AuthContext';
 import { resolveAuthorId } from '../lib/postUtils';
 import { getCatalogSubjectByCode, getSubjectFullName, getSubjectShortNameByCode } from '../lib/catalog';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
+import CompatibilityDetailsDialog from '../components/CompatibilityDetailsDialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { useSmartPolling } from '../hooks/useSmartPolling';
 
@@ -60,7 +61,7 @@ const areConversationsEqual = (prev: ConversationSummary[], next: ConversationSu
 
 const PostDetailsPage: React.FC = () => {
   const { id } = useParams();
-  const { currentUserId } = useAuth();
+  const { currentUserId, profile } = useAuth();
   const navigate = useNavigate();
   const [post, setPost] = useState<PostResponse | null>(null);
   const [notFound, setNotFound] = useState(false);
@@ -76,6 +77,7 @@ const PostDetailsPage: React.FC = () => {
   const [hasLoadedRequestsSection, setHasLoadedRequestsSection] = useState(false);
   const [joinRequestStatus, setJoinRequestStatus] = useState<'none' | 'pending' | 'accepted' | 'rejected'>('none');
   const [selectedSubjectName, setSelectedSubjectName] = useState('');
+  const [isCompatibilityOpen, setIsCompatibilityOpen] = useState(false);
   const lastKnownTimestampRef = useRef<string | undefined>(undefined);
   const authorId = useMemo(() => resolveAuthorId(post), [post]);
   const isAuthor = useMemo(() => (authorId ? authorId === currentUserId : false), [authorId, currentUserId]);
@@ -367,10 +369,14 @@ setPost({ ...(data.post as PostResponse), userId: (data.post as PostResponse).us
                 Activité {activityLabels[normalizedActivity] ?? normalizedActivity}
               </span>
             ) : null}
-            {typeof post.matchPercent === 'number' ? (
-              <span className="badge-soft bg-slate-100 text-slate-700">
-                Match {post.matchPercent}%
-              </span>
+            {typeof (post.compatibilityPercentage ?? post.matchPercent) === 'number' ? (
+              <button
+                type="button"
+                className="badge-soft bg-emerald-50 text-emerald-700 ring-emerald-100 transition hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-300"
+                onClick={() => setIsCompatibilityOpen(true)}
+              >
+                Match {post.compatibilityPercentage ?? post.matchPercent}%
+              </button>
             ) : null}
           </div>
           {isStudyPartner ? (
@@ -675,6 +681,14 @@ setPost({ ...(data.post as PostResponse), userId: (data.post as PostResponse).us
           <p className="text-slate-700">{selectedSubjectName}</p>
         </DialogContent>
       </Dialog>
+      {post ? (
+        <CompatibilityDetailsDialog
+          open={isCompatibilityOpen}
+          onOpenChange={setIsCompatibilityOpen}
+          post={post}
+          profile={profile}
+        />
+      ) : null}
     </div>
   );
 };

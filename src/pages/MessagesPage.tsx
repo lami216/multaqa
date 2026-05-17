@@ -64,7 +64,6 @@ interface ConversationRowProps {
   onClose: () => void;
   onNavigate: (id: string) => void;
   onArchiveToggle: (conversation: ConversationSummary) => void;
-  onDelete: (conversation: ConversationSummary) => void;
   onToggleSelect: (id: string) => void;
   onSelectShortcut: (id: string) => void;
   renderLastMessageStatus: (conversation: ConversationSummary) => React.ReactNode;
@@ -82,7 +81,6 @@ const ConversationRow: React.FC<ConversationRowProps> = ({
   onClose,
   onNavigate,
   onArchiveToggle,
-  onDelete,
   onToggleSelect,
   onSelectShortcut,
   renderLastMessageStatus
@@ -152,7 +150,7 @@ const ConversationRow: React.FC<ConversationRowProps> = ({
     onOpen(conversation._id, deltaX < 0 ? 'left' : 'right');
   };
 
-  const translateX = isOpen && !selectionMode ? (openDirection === 'left' ? -96 : 96) : 0;
+  const translateX = isOpen && !selectionMode ? (openDirection === 'left' ? -112 : 112) : 0;
   const actionLabel = isArchivedTab ? t.messages.restore : t.messages.archive;
   const actionIcon = isArchivedTab ? <RotateCcw size={16} /> : <Archive size={16} />;
   const handleCardClick = (event?: React.MouseEvent<HTMLDivElement>) => {
@@ -178,22 +176,15 @@ const ConversationRow: React.FC<ConversationRowProps> = ({
 
   return (
     <div className="relative overflow-hidden rounded-[1.5rem]">
-      <div className="absolute inset-0 flex items-center justify-between">
+      <div className={`absolute inset-0 flex items-center ${openDirection === 'left' ? 'justify-end' : 'justify-start'}`}>
         <button
           type="button"
-          className="flex h-full w-24 items-center justify-center gap-2 bg-slate-100 px-3 text-sm font-bold text-slate-700"
+          className="flex h-full w-28 items-center justify-center gap-2 bg-slate-100 px-3 text-sm font-bold text-slate-700 transition hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-300"
           onClick={() => onArchiveToggle(conversation)}
+          aria-label={actionLabel}
         >
           {actionIcon}
           {actionLabel}
-        </button>
-        <button
-          type="button"
-          className="flex h-full w-24 items-center justify-center gap-2 bg-rose-500 px-3 text-sm font-bold text-white"
-          onClick={() => onDelete(conversation)}
-        >
-          <Trash2 size={16} />
-          {t.messages.delete}
         </button>
       </div>
       <div
@@ -224,7 +215,7 @@ const ConversationRow: React.FC<ConversationRowProps> = ({
           event.preventDefault();
           onSelectShortcut(conversation._id);
         }}
-        className={`relative w-full rounded-[1.5rem] border border-white/70 bg-white/95 p-4 text-start shadow-sm transition-all ${
+        className={`relative w-full rounded-[1.5rem] border border-white/70 bg-white/95 p-4 text-start shadow-sm transition-all duration-200 ${
           selectionMode ? 'cursor-pointer' : 'hover:-translate-y-0.5 hover:shadow-card'
         } ${isSelected ? 'bg-emerald-50 ring-2 ring-emerald-300 ring-inset' : ''} active:bg-slate-100`}
         style={{ transform: `translateX(${translateX}px)` }}
@@ -570,10 +561,6 @@ const MessagesPage: React.FC = () => {
               navigate(`/messages/${id}`);
             }}
             onArchiveToggle={(item) => void handleArchiveToggle(item)}
-            onDelete={(item) => {
-              setDeleteTargetIds([item._id]);
-              setOpenRow(null);
-            }}
             onToggleSelect={(id) => toggleSelection(id)}
             onSelectShortcut={(id) => handleSelectShortcut(id)}
             renderLastMessageStatus={renderLastMessageStatus}
