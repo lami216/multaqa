@@ -180,6 +180,10 @@ export interface PostResponse extends PostPayload {
   compatibilityPercentage?: number;
   compatibilityBreakdown?: {
     subjectScore: number;
+    subjectMatchedCount?: number;
+    subjectTotalCount?: number;
+    subjectMatchedCodes?: string[];
+    subjectMissingCodes?: string[];
     roleScore: number;
     activityScore: number;
   };
