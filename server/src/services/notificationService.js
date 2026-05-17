@@ -12,6 +12,31 @@ export const buildAppLink = (path) => {
   return `${APP_BASE_URL}${normalizedPath}`;
 };
 
+const escapeTelegramHtml = (value = '') => String(value)
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;');
+
+const isSafeHttpsUrl = (url) => {
+  try {
+    return new URL(url).protocol === 'https:';
+  } catch {
+    return false;
+  }
+};
+
+const getTelegramCtaLabel = (link, language) => {
+  const normalizedLink = link.toLowerCase();
+  if (normalizedLink.includes('/messages/')) {
+    return language === 'fr' ? 'Voir le message' : 'تفقد رسالتك هنا';
+  }
+  if (normalizedLink.includes('/posts/')) {
+    return language === 'fr' ? 'Voir le post' : 'افتح المنشور هنا';
+  }
+  return language === 'fr' ? 'Ouvrir dans Multaqa' : 'افتح في ملتقى';
+};
+
 export const notificationText = {
   newMessage: {
     fr: 'Vous avez reçu un nouveau message.',
@@ -54,9 +79,14 @@ export const resolveTelegramLanguage = async (userId) => {
 
 export const formatTelegramMessage = ({ ar, fr, link, language = 'ar' }) => {
   const text = language === 'fr' ? (fr || ar) : (ar || fr);
-  const cta = language === 'fr' ? '🔗 Ouvrir dans Multaqa:' : '🔗 افتح في ملتقى:';
-  const lines = [text].filter(Boolean);
-  if (link) lines.push(`${cta} ${buildAppLink(link)}`);
+  const lines = [escapeTelegramHtml(text)].filter(Boolean);
+  const appLink = buildAppLink(link);
+
+  if (appLink && isSafeHttpsUrl(appLink)) {
+    const ctaLabel = escapeTelegramHtml(getTelegramCtaLabel(appLink, language));
+    lines.push(`🔗 <a href="${escapeTelegramHtml(appLink)}">${ctaLabel}</a>`);
+  }
+
   return lines.join('\n');
 };
 

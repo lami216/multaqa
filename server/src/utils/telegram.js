@@ -12,11 +12,20 @@ export const createTelegramLinkToken = async (userId) => {
   return saved ? token : null;
 };
 
-export const sendTelegramMessageToChat = async (chatId, message) => {
+export const sendTelegramMessageToChat = async (chatId, message, options = {}) => {
   try {
     const botToken = process.env.TELEGRAM_BOT_TOKEN;
     if (!botToken || !chatId || !message) {
       return false;
+    }
+
+    const telegramPayload = {
+      chat_id: chatId,
+      text: message,
+      disable_web_page_preview: true
+    };
+    if (options.parseMode) {
+      telegramPayload.parse_mode = options.parseMode;
     }
 
     const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
@@ -24,10 +33,7 @@ export const sendTelegramMessageToChat = async (chatId, message) => {
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text: message
-      })
+      body: JSON.stringify(telegramPayload)
     });
 
     if (!response.ok) {
@@ -55,7 +61,7 @@ export const sendTelegramNotification = async (userId, message) => {
       return false;
     }
 
-    const sent = await sendTelegramMessageToChat(user.telegramChatId, message);
+    const sent = await sendTelegramMessageToChat(user.telegramChatId, message, { parseMode: 'HTML' });
     if (sent) {
       console.info(`[telegram] sent user=${userId}`);
       return true;

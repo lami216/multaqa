@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { ArrowUpRight, CalendarDays, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { getCatalogSubjectByCode, getSubjectFullName, getSubjectShortNameByCode } from '../lib/catalog';
 import type { PostResponse } from '../lib/http';
 import { resolveAuthorId } from '../lib/postUtils';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
+import CompatibilityDetailsDialog from './CompatibilityDetailsDialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 
 const roleLabels: Record<string, { fr: string; ar: string }> = {
@@ -41,6 +43,7 @@ const PostCard: React.FC<PostCardProps> = ({
   clampDescription = false,
 }) => {
   const { language, t } = useLanguage();
+  const { profile } = useAuth();
   const isAuthor = currentUserId ? resolveAuthorId(post) === currentUserId : false;
   const legacyPostRole = (post as { postRole?: string }).postRole;
   const normalizedRole = post.postRole === 'need_help' || post.postRole === 'can_help' ? post.postRole : undefined;
@@ -49,6 +52,7 @@ const PostCard: React.FC<PostCardProps> = ({
   const activityLabel = normalizedActivity ? activityLabels[normalizedActivity]?.[language] ?? normalizedActivity : t.post.notSpecified;
   const descriptionClassName = `text-sm leading-7 text-slate-600${clampDescription ? ' line-clamp-3' : ''}`;
   const [selectedSubjectName, setSelectedSubjectName] = useState('');
+  const [isCompatibilityOpen, setIsCompatibilityOpen] = useState(false);
   const title = post.category === 'study_partner'
     ? (post.subjectCodes ?? []).map((subjectCode) => getSubjectFullName(subjectCode) || subjectCode).join(' · ') || post.title
     : post.title;
@@ -145,14 +149,24 @@ const PostCard: React.FC<PostCardProps> = ({
 
           {typeof post.compatibilityPercentage === 'number' ? (
             <div className="text-end">
-              <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-black shadow-sm ring-4 ${getCompatibilityBadgeClass(post.compatibilityPercentage)}`}>
+              <button
+                type="button"
+                className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-black shadow-sm ring-4 transition hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-emerald-200 ${getCompatibilityBadgeClass(post.compatibilityPercentage)}`}
+                onClick={() => setIsCompatibilityOpen(true)}
+                aria-label={`${post.compatibilityPercentage}% ${t.post.match}`}
+              >
                 {post.compatibilityPercentage}% {t.post.match}
-              </span>
+              </button>
             </div>
           ) : typeof post.matchPercent === 'number' ? (
-            <span className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-3 py-1.5 text-sm font-black text-white shadow-sm ring-4 ring-emerald-100">
+            <button
+              type="button"
+              className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-3 py-1.5 text-sm font-black text-white shadow-sm ring-4 ring-emerald-100 transition hover:-translate-y-0.5 focus:outline-none focus:ring-4 focus:ring-emerald-200"
+              onClick={() => setIsCompatibilityOpen(true)}
+              aria-label={`${post.matchPercent}% ${t.post.match}`}
+            >
               {post.matchPercent}% {t.post.match}
-            </span>
+            </button>
           ) : null}
         </aside>
       </div>
@@ -177,6 +191,13 @@ const PostCard: React.FC<PostCardProps> = ({
           <p className="text-slate-700">{selectedSubjectName}</p>
         </DialogContent>
       </Dialog>
+
+      <CompatibilityDetailsDialog
+        open={isCompatibilityOpen}
+        onOpenChange={setIsCompatibilityOpen}
+        post={post}
+        profile={profile}
+      />
     </article>
   );
 };
