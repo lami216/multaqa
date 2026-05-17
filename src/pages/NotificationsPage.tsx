@@ -1,41 +1,53 @@
+import { Bell, Check, ExternalLink, MessageCircle, Star } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
-import { Bell, Check, MessageCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useLanguage } from '../context/LanguageContext';
+import { useNotifications } from '../context/NotificationsContext';
+import { useSmartPolling } from '../hooks/useSmartPolling';
 import {
   fetchNotifications,
   markAllNotificationsRead,
   markNotificationRead,
   type NotificationItem
 } from '../lib/http';
-import { useNotifications } from '../context/NotificationsContext';
-import { useSmartPolling } from '../hooks/useSmartPolling';
 
 const iconMap: Record<string, typeof MessageCircle> = {
   new_message: MessageCircle,
-  chat_initiated: Check,
+  chat_initiated: MessageCircle,
   join_request_received: Bell,
   join_request_accepted: Check,
-  join_request_rejected: Bell
+  join_request_rejected: Bell,
+  session_end_requested: Check,
+  new_rating: Star,
+  suitable_post: Bell
 };
 
-const notificationMessageMap: Record<string, string> = {
-  join_request_received: 'You received a join request.',
-  join_request_accepted: 'Your join request has been accepted.',
-  join_request_rejected: 'Your join request has been rejected.',
-  new_message: 'You received a new message.',
-  chat_initiated: 'You received a new message.'
-};
-
-const getNotificationMessage = (notification: NotificationItem) => {
-  if (typeof notification.payload?.message === 'string') return notification.payload.message;
-  return notificationMessageMap[notification.type] ?? 'You have a new notification.';
+const getNotificationLink = (notification: NotificationItem) => {
+  const link = notification.payload?.link;
+  if (typeof link === 'string' && link.startsWith('/')) return link;
+  const conversationId = notification.payload?.conversationId;
+  if (typeof conversationId === 'string') return `/messages/${conversationId}`;
+  const postId = notification.payload?.postId;
+  if (typeof postId === 'string') return `/posts/${postId}`;
+  const senderId = notification.payload?.senderId;
+  if (notification.type === 'new_rating' && typeof senderId === 'string') return `/profile/${senderId}`;
+  return '';
 };
 
 const NotificationsPage: React.FC = () => {
+  const { t } = useLanguage();
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [unread, setUnread] = useState(0);
   const [loadingReadId, setLoadingReadId] = useState<string | null>(null);
   const [markingAll, setMarkingAll] = useState(false);
   const { refreshUnreadCount } = useNotifications();
+
+  const getNotificationMessage = (notification: NotificationItem) => {
+    if (typeof notification.payload?.message === 'string') return notification.payload.message;
+    const key = notification.type as keyof typeof t.notifications;
+    return typeof t.notifications[key] === 'string' ? t.notifications[key] : t.notifications.fallback;
+  };
 
   const load = async () => {
     const { data } = await fetchNotifications();
@@ -63,20 +75,24 @@ const NotificationsPage: React.FC = () => {
   };
 
   const handleNotificationClick = async (notification: NotificationItem) => {
-    if (notification.read || loadingReadId) return;
-    setLoadingReadId(notification._id);
-    applyMarkReadLocally(notification._id);
-    try {
-      await markNotificationRead(notification._id);
-      await refreshUnreadCount();
-    } catch {
-      setNotifications((prev) => prev.map((item) => (
-        item._id === notification._id ? { ...item, read: false, readAt: null } : item
-      )));
-      setUnread((prev) => prev + 1);
-    } finally {
-      setLoadingReadId(null);
+    if (loadingReadId) return;
+    const link = getNotificationLink(notification);
+    if (!notification.read) {
+      setLoadingReadId(notification._id);
+      applyMarkReadLocally(notification._id);
+      try {
+        await markNotificationRead(notification._id);
+        await refreshUnreadCount();
+      } catch {
+        setNotifications((prev) => prev.map((item) => (
+          item._id === notification._id ? { ...item, read: false, readAt: null } : item
+        )));
+        setUnread((prev) => prev + 1);
+      } finally {
+        setLoadingReadId(null);
+      }
     }
+    if (link) navigate(link);
   };
 
   const handleMarkAllRead = async () => {
@@ -98,57 +114,53 @@ const NotificationsPage: React.FC = () => {
   };
 
   return (
-    <div className="card-surface p-5 space-y-4">
-      <div className="flex items-center gap-2 justify-between">
+    <div className="premium-panel p-5 space-y-4 sm:p-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
-          <Bell className="text-emerald-600" />
-          <h1 className="section-title">Notifications</h1>
+          <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700">
+            <Bell />
+          </span>
+          <div>
+            <h1 className="section-title">{t.notifications.title}</h1>
+            <p className="helper-text">{unread} {t.notifications.unread}</p>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button type="button" className="secondary-btn" onClick={handleMarkAllRead} disabled={!unread || markingAll}>
-            Mark all as read
-          </button>
-          <span className="badge-soft">{unread} non lues</span>
-        </div>
+        <button type="button" className="secondary-btn" onClick={handleMarkAllRead} disabled={!unread || markingAll}>
+          {t.notifications.markAll}
+        </button>
       </div>
       <div className="space-y-3">
         {notifications.map((notification) => {
           const Icon = iconMap[notification.type] ?? Bell;
+          const link = getNotificationLink(notification);
           return (
             <div
               key={notification._id}
-              className={`card-surface p-4 flex items-start gap-3 transition-opacity ${notification.read ? 'opacity-80' : 'bg-amber-50/60'}`}
+              className={`rounded-3xl border p-4 transition ${notification.read ? 'border-slate-200 bg-white/80' : 'border-emerald-100 bg-emerald-50/60 shadow-sm'}`}
             >
               <button
                 type="button"
-                className="h-10 w-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center"
-                onClick={() => handleNotificationClick(notification)}
+                className="flex w-full items-start gap-3 text-start"
+                onClick={() => void handleNotificationClick(notification)}
               >
-                <Icon size={18} />
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white text-emerald-700 shadow-sm">
+                  <Icon size={18} />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block font-semibold text-slate-900">{t.notifications.itemTitle}</span>
+                  <span className="mt-1 block text-sm leading-relaxed text-slate-600">{getNotificationMessage(notification)}</span>
+                  <span className="mt-2 block text-xs text-slate-400">{new Date(notification.createdAt).toLocaleString()}</span>
+                </span>
+                {link ? <ExternalLink size={16} className="mt-1 text-slate-400" /> : null}
               </button>
-              <button
-                type="button"
-                className="flex-1 text-left"
-                onClick={() => handleNotificationClick(notification)}
-              >
-                <p className="font-semibold text-slate-900">Notification</p>
-                <p className="text-sm text-slate-600">{getNotificationMessage(notification)}</p>
-                <p className="text-xs text-slate-400 mt-1">{new Date(notification.createdAt).toLocaleString()}</p>
-              </button>
-              {!notification.read ? (
-                <button
-                  type="button"
-                  className="badge-soft bg-amber-50 text-amber-700"
-                  onClick={() => handleNotificationClick(notification)}
-                  disabled={loadingReadId === notification._id}
-                >
-                  Mark as read
-                </button>
-              ) : null}
             </div>
           );
         })}
-        {!notifications.length && <div className="text-sm text-slate-500">Aucune notification pour le moment.</div>}
+        {!notifications.length && (
+          <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center text-sm text-slate-500">
+            {t.notifications.empty}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 import Session from '../models/Session.js';
 import Message from '../models/Message.js';
 import { cleanupSessionLifecycle, transitionSessionToEnded, transitionSessionToEndingRequested } from '../services/lifecycleService.js';
+import { createNotificationsForUsers, notificationText } from '../services/notificationService.js';
 
 const ensureParticipant = (session, userId) => session.participants.some((p) => p.toString() === userId.toString());
 
@@ -47,6 +48,24 @@ export const requestSessionEnd = async (req, res) => {
 
     transitionSessionToEndingRequested(session, req.user._id, new Date());
     await session.save();
+
+    await createNotificationsForUsers({
+      userIds: session.participants,
+      actorId: req.user._id,
+      type: 'session_end_requested',
+      payload: {
+        sessionId: session._id,
+        conversationId: session.conversationId,
+        senderId: req.user._id,
+        link: `/messages/${session.conversationId}`,
+        message: notificationText.sessionEndRequested.ar
+      },
+      telegram: {
+        eventName: 'session_end_requested',
+        ar: notificationText.sessionEndRequested.ar,
+        fr: notificationText.sessionEndRequested.fr
+      }
+    });
 
     res.json({ session });
   } catch (error) {
@@ -144,6 +163,25 @@ export const submitSessionRating = async (req, res) => {
     }
 
     await markSessionRatedByUser(session, req.user._id);
+
+    await createNotificationsForUsers({
+      userIds: [targetUserId],
+      actorId: req.user._id,
+      type: 'new_rating',
+      payload: {
+        sessionId: session._id,
+        conversationId: session.conversationId,
+        senderId: req.user._id,
+        score: normalizedScore,
+        link: `/profile/${targetUserId}`,
+        message: notificationText.newRating.ar
+      },
+      telegram: {
+        eventName: 'new_rating_created',
+        ar: notificationText.newRating.ar,
+        fr: notificationText.newRating.fr
+      }
+    });
 
     res.json({ session });
   } catch (error) {

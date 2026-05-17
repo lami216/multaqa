@@ -240,7 +240,8 @@ export const getMe = async (req, res) => {
         role: user?.role,
         emailVerified: user?.emailVerified,
         remainingSubjects: user?.remainingSubjects ?? [],
-        remainingSubjectsConfirmed: user?.remainingSubjectsConfirmed === true
+        remainingSubjectsConfirmed: user?.remainingSubjectsConfirmed === true,
+        telegramLinked: user?.telegramLinked === true
       },
       profile
     });
