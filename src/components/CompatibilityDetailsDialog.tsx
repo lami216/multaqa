@@ -36,11 +36,19 @@ interface ReasonItem {
 
 const normalizeValue = (value?: string | null) => value?.trim().toLowerCase() ?? '';
 
-const getProfileSubjectCodes = (profile?: Profile | null) => [
+const uniqueCodes = (codes: string[] = []) => (
+  [...new Set(codes.map((code) => code.trim()).filter(Boolean))]
+);
+
+const getProfileSubjectCodes = (profile?: Profile | null) => uniqueCodes([
   ...(profile?.subjectCodes ?? []),
   ...(profile?.subjects ?? []),
-  ...((profile?.remainingSubjects ?? []).map((item) => item.subjectCode))
-].filter(Boolean);
+  ...((profile?.remainingSubjects ?? []).map((item) => (typeof item === 'string' ? item : item.subjectCode)))
+]);
+
+const getSubjectLabel = (subjectCode: string) => (
+  getSubjectFullName(subjectCode) || getSubjectShortNameByCode(subjectCode) || subjectCode
+);
 
 const getRolePreference = (profile?: Profile | null) => (
   profile?.prioritiesOrder?.find((item) => item === 'need_help' || item === 'can_help')
@@ -75,12 +83,16 @@ const CompatibilityDetailsDialog: React.FC<CompatibilityDetailsDialogProps> = ({
   const { language, t, isRtl } = useLanguage();
   const score = post.compatibilityPercentage ?? post.matchPercent ?? 0;
   const breakdown = post.compatibilityBreakdown;
-  const postSubjectCode = post.subjectCodes?.[0];
-  const subjectName = postSubjectCode
-    ? getSubjectFullName(postSubjectCode) || getSubjectShortNameByCode(postSubjectCode) || postSubjectCode
-    : undefined;
-  const profileSubjects = getProfileSubjectCodes(profile).map(normalizeValue);
-  const hasSubjectContext = Boolean(postSubjectCode && profileSubjects.includes(normalizeValue(postSubjectCode)));
+  const postSubjectCodes = uniqueCodes(post.subjectCodes ?? []);
+  const profileSubjectCodes = getProfileSubjectCodes(profile);
+  const profileSubjectSet = new Set(profileSubjectCodes.map(normalizeValue));
+  const derivedMatchedSubjectCodes = postSubjectCodes.filter((subjectCode) => profileSubjectSet.has(normalizeValue(subjectCode)));
+  const matchedSubjectCodes = breakdown?.subjectMatchedCodes ?? derivedMatchedSubjectCodes;
+  const missingSubjectCodes = breakdown?.subjectMissingCodes
+    ?? postSubjectCodes.filter((subjectCode) => !profileSubjectSet.has(normalizeValue(subjectCode)));
+  const subjectTotalCount = breakdown?.subjectTotalCount ?? postSubjectCodes.length;
+  const subjectMatchedCount = breakdown?.subjectMatchedCount ?? matchedSubjectCodes.length;
+  const subjectCategoryPercent = subjectTotalCount > 0 ? Math.round((subjectMatchedCount / subjectTotalCount) * 100) : 0;
   const rolePreference = getRolePreference(profile);
   const activityPreference = getActivityPreference(profile);
   const postRole = post.postRole === 'need_help' || post.postRole === 'can_help' ? post.postRole : undefined;
@@ -100,14 +112,16 @@ const CompatibilityDetailsDialog: React.FC<CompatibilityDetailsDialogProps> = ({
       ? 'لا توجد تفاصيل كافية لهذا النوع من التوافق حالياً.'
       : 'Les détails de ce score ne sont pas disponibles pour ce type de compatibilité.',
     subjectMatch: language === 'ar'
-      ? `المنشور مرتبط بمادة موجودة في ملفك${subjectName ? `: ${subjectName}` : ''}.`
-      : `Ce post concerne une matière présente dans votre profil${subjectName ? ` : ${subjectName}` : ''}.`,
+      ? `تطابق المواد: ${subjectMatchedCount}/${subjectTotalCount}. درجة المادة: ${subjectCategoryPercent}% من فئة المادة.`
+      : `Correspondance matières : ${subjectMatchedCount}/${subjectTotalCount}. Score matière : ${subjectCategoryPercent}% de la catégorie matière.`,
     subjectPartial: language === 'ar'
-      ? `يوجد سياق دراسي قريب${subjectName ? ` حول ${subjectName}` : ''}.`
-      : `Il y a un contexte académique proche${subjectName ? ` autour de ${subjectName}` : ''}.`,
+      ? `تطابق جزئي في المواد: ${subjectMatchedCount}/${subjectTotalCount}. درجة المادة: ${subjectCategoryPercent}% من فئة المادة.`
+      : `Correspondance partielle des matières : ${subjectMatchedCount}/${subjectTotalCount}. Score matière : ${subjectCategoryPercent}% de la catégorie matière.`,
     subjectMissing: language === 'ar'
-      ? 'لم نرصد تطابقاً قوياً في المادة بين هذا المنشور ومواد ملفك.'
-      : 'Aucune correspondance forte de matière détectée avec votre profil.',
+      ? `تطابق المواد: ${subjectMatchedCount}/${subjectTotalCount}. درجة المادة: 0% من فئة المادة.`
+      : `Correspondance matières : ${subjectMatchedCount}/${subjectTotalCount}. Score matière : 0% de la catégorie matière.`,
+    matchedSubjects: language === 'ar' ? 'مواد متطابقة' : 'Matières trouvées',
+    missingSubjects: language === 'ar' ? 'مواد غير موجودة في ملفك' : 'Matières absentes de votre profil',
     roleComplement: language === 'ar'
       ? 'أحد الطرفين يستطيع المساعدة بينما الطرف الآخر يحتاجها.'
       : 'Une personne peut aider pendant que l’autre cherche de l’aide.',
@@ -253,11 +267,16 @@ const CompatibilityDetailsDialog: React.FC<CompatibilityDetailsDialogProps> = ({
           <div className="mt-5 space-y-3">
             <h3 className="text-sm font-black text-slate-900">{text.context}</h3>
             <div className="flex flex-wrap gap-2">
-              {hasSubjectContext && subjectName ? (
-                <span className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 ring-1 ring-emerald-100">
-                  <CheckCircle2 size={14} /> {subjectName}
+              {matchedSubjectCodes.map((subjectCode) => (
+                <span key={`matched-${subjectCode}`} className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 ring-1 ring-emerald-100">
+                  <CheckCircle2 size={14} /> {text.matchedSubjects}: {getSubjectLabel(subjectCode)}
                 </span>
-              ) : null}
+              ))}
+              {missingSubjectCodes.map((subjectCode) => (
+                <span key={`missing-${subjectCode}`} className="inline-flex items-center gap-2 rounded-full bg-orange-50 px-3 py-1.5 text-xs font-bold text-orange-700 ring-1 ring-orange-100">
+                  <BookOpen size={14} /> {text.missingSubjects}: {getSubjectLabel(subjectCode)}
+                </span>
+              ))}
               {rolePreference && postRole ? (
                 <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-700 ring-1 ring-slate-200">
                   <Handshake size={14} /> {roleLabels[rolePreference]?.[language]} ↔ {roleLabels[postRole]?.[language]}

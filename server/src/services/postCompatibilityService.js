@@ -20,12 +20,6 @@ const getProfileSubjectCodes = (profile) => uniqueCodes([
   ...extractRemainingSubjectCodes(profile?.remainingSubjects ?? [])
 ]);
 
-const getPrioritySubjectCodes = (profile) => uniqueCodes(
-  (profile?.subjectsSettings ?? [])
-    .filter((item) => item?.isPriority && typeof item?.subjectCode === 'string')
-    .map((item) => item.subjectCode)
-);
-
 const getReceiverRolePreference = (profile) => {
   const priorities = Array.isArray(profile?.prioritiesOrder) ? profile.prioritiesOrder : [];
   const roleOrder = priorities.filter((item) => item === 'need_help' || item === 'can_help');
@@ -38,10 +32,32 @@ const getReceiverActivityPreference = (profile) => {
   return activityOrder[0] ?? null;
 };
 
-const getPostSubjectCode = (post) => {
-  if (!Array.isArray(post?.subjectCodes)) return null;
-  const first = post.subjectCodes.find((code) => typeof code === 'string' && code.trim());
-  return first ? first.trim() : null;
+const getPostSubjectCodes = (post) => uniqueCodes(Array.isArray(post?.subjectCodes) ? post.subjectCodes : []);
+
+const getSubjectMatchDetails = (postSubjectCodes, receiverSubjectCodes) => {
+  const receiverSubjectSet = new Set(receiverSubjectCodes.map((code) => normalizeValue(code)));
+  const matchedSubjectCodes = [];
+  const missingSubjectCodes = [];
+
+  for (const subjectCode of postSubjectCodes) {
+    if (receiverSubjectSet.has(normalizeValue(subjectCode))) {
+      matchedSubjectCodes.push(subjectCode);
+    } else {
+      missingSubjectCodes.push(subjectCode);
+    }
+  }
+
+  const subjectTotalCount = postSubjectCodes.length;
+  const subjectMatchedCount = matchedSubjectCodes.length;
+  const subjectScore = subjectTotalCount > 0 ? Math.round((subjectMatchedCount / subjectTotalCount) * 50) : 0;
+
+  return {
+    subjectScore,
+    subjectMatchedCount,
+    subjectTotalCount,
+    subjectMatchedCodes: matchedSubjectCodes,
+    subjectMissingCodes: missingSubjectCodes
+  };
 };
 
 const getPostRole = (post) => (
@@ -59,21 +75,15 @@ const getPostActivity = (post) => (
 );
 
 export const computePostCompatibilityForUser = (post, receiverProfile) => {
-  const postSubjectCode = getPostSubjectCode(post);
+  const postSubjectCodes = getPostSubjectCodes(post);
   const receiverSubjectCodes = getProfileSubjectCodes(receiverProfile);
-  const receiverPrioritySubjectCodes = getPrioritySubjectCodes(receiverProfile);
-
-  let subjectScore = 0;
-  if (postSubjectCode) {
-    const normalizedPostSubject = normalizeValue(postSubjectCode);
-    const receiverPrioritySet = new Set(receiverPrioritySubjectCodes.map((code) => normalizeValue(code)));
-    const receiverSubjectSet = new Set(receiverSubjectCodes.map((code) => normalizeValue(code)));
-    if (receiverPrioritySet.has(normalizedPostSubject)) {
-      subjectScore = 50;
-    } else if (receiverSubjectSet.has(normalizedPostSubject)) {
-      subjectScore = 30;
-    }
-  }
+  const {
+    subjectScore,
+    subjectMatchedCount,
+    subjectTotalCount,
+    subjectMatchedCodes,
+    subjectMissingCodes
+  } = getSubjectMatchDetails(postSubjectCodes, receiverSubjectCodes);
 
   const receiverRolePreference = getReceiverRolePreference(receiverProfile);
   const postRole = getPostRole(post);
@@ -107,6 +117,10 @@ export const computePostCompatibilityForUser = (post, receiverProfile) => {
     compatibilityPercentage,
     compatibilityBreakdown: {
       subjectScore,
+      subjectMatchedCount,
+      subjectTotalCount,
+      subjectMatchedCodes,
+      subjectMissingCodes,
       roleScore,
       activityScore
     }
