@@ -1,12 +1,9 @@
 import Chat from '../models/Chat.js';
 import Message from '../models/Message.js';
-import Notification from '../models/Notification.js';
 import User from '../models/User.js';
 import Profile from '../models/Profile.js';
-import redis from '../config/redis.js';
 import { containsProfanity, maskProfanity } from '../utils/profanityFilter.js';
-import { sendTelegramNotificationForEvent } from '../utils/telegram.js';
-import { formatTelegramMessage, notificationText, resolveTelegramLanguage } from '../services/notificationService.js';
+import { createNotification, notificationText } from '../services/notificationService.js';
 
 export const getChats = async (req, res) => {
   try {
@@ -76,21 +73,23 @@ export const createOrGetChat = async (req, res) => {
         relatedPostId: postId || null
       });
 
-      await Notification.create({
+      await createNotification({
         userId: otherUserId,
+        actorId: req.user._id,
         type: 'chat_initiated',
         payload: {
           chatId: chat._id,
+          conversationId: chat._id,
           initiatorId: req.user._id,
-          initiatorUsername: req.user.username
+          initiatorUsername: req.user.username,
+          link: `/messages/${chat._id}`,
+          message: notificationText.chatInitiated.ar
+        },
+        telegram: {
+          eventName: 'new_conversation_created',
+          ar: notificationText.chatInitiated.ar,
+          fr: notificationText.chatInitiated.fr
         }
-      });
-
-      await redis.del(`notifications:unread:${otherUserId}`);
-      await sendTelegramNotificationForEvent({
-        eventName: 'new_conversation_created',
-        recipientUserId: otherUserId,
-        message: formatTelegramMessage({ ar: notificationText.chatInitiated.ar, fr: notificationText.chatInitiated.fr, link: `/messages/${chat._id}`, language: await resolveTelegramLanguage(otherUserId) })
       });
     }
 
@@ -176,22 +175,24 @@ export const sendMessage = async (req, res) => {
       p => p.toString() !== req.user._id.toString()
     );
 
-    await Notification.create({
+    await createNotification({
       userId: recipientId,
+      actorId: req.user._id,
       type: 'new_message',
       payload: {
         chatId,
+        conversationId: chat._id,
         messageId: message._id,
         senderId: req.user._id,
-        senderUsername: req.user.username
+        senderUsername: req.user.username,
+        link: `/messages/${chat._id}`,
+        message: notificationText.newMessage.ar
+      },
+      telegram: {
+        eventName: 'new_message_sent',
+        ar: notificationText.newMessage.ar,
+        fr: notificationText.newMessage.fr
       }
-    });
-
-    await redis.del(`notifications:unread:${recipientId}`);
-    await sendTelegramNotificationForEvent({
-      eventName: 'new_message_sent',
-      recipientUserId: recipientId,
-      message: formatTelegramMessage({ ar: notificationText.newMessage.ar, fr: notificationText.newMessage.fr, link: `/messages/${chat._id}`, language: await resolveTelegramLanguage(recipientId) })
     });
 
     res.status(201).json({ message });

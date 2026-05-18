@@ -1,5 +1,4 @@
 import Post from '../models/Post.js';
-import Notification from '../models/Notification.js';
 import User from '../models/User.js';
 import Profile from '../models/Profile.js';
 import Conversation from '../models/Conversation.js';
@@ -15,8 +14,7 @@ import { containsProfanity, maskProfanity } from '../utils/profanityFilter.js';
 import { getMajorAvailability } from '../services/academicSettingsService.js';
 import { incrementMatch, incrementPost } from '../services/majorStatsService.js';
 import { computePostCompatibilityForUser } from '../services/postCompatibilityService.js';
-import { createNotification, createNotificationsForUsers, formatTelegramMessage, notificationText, resolveTelegramLanguage } from '../services/notificationService.js';
-import { sendTelegramNotificationForEvent } from '../utils/telegram.js';
+import { createNotification, createNotificationsForUsers, notificationText } from '../services/notificationService.js';
 
 const notifyMatchingUsersAboutPost = async (post, actorId) => {
   const subjectCodes = Array.isArray(post.subjectCodes) ? post.subjectCodes : [];
@@ -785,6 +783,7 @@ export const createJoinRequest = async (req, res) => {
 
     await createNotification({
       userId: post.authorId,
+      actorId: req.user._id,
       type: 'join_request_received',
       payload: {
         postId: post._id,
@@ -846,7 +845,7 @@ export const acceptJoinRequest = async (req, res) => {
     const { id, requestId } = req.params;
     let responsePayload = null;
     let matchSnapshot = null;
-    let telegramRecipientId = null;
+    let acceptedNotification = null;
 
     await dbSession.withTransaction(async () => {
       const post = await Post.findById(id).session(dbSession);
@@ -941,8 +940,9 @@ export const acceptJoinRequest = async (req, res) => {
 
       await deleteNotificationsByJoinRequestId(requestId, dbSession);
 
-      await Notification.create([{
+      acceptedNotification = {
         userId: joinRequest.requesterId,
+        actorId: req.user._id,
         type: 'join_request_accepted',
         payload: {
           postId: post._id,
@@ -952,10 +952,13 @@ export const acceptJoinRequest = async (req, res) => {
           sessionId: lifecycleSession._id,
           link: `/messages/${conversation._id}`,
           message: notificationText.joinRequestAccepted.ar
+        },
+        telegram: {
+          eventName: 'join_request_accepted',
+          ar: notificationText.joinRequestAccepted.ar,
+          fr: notificationText.joinRequestAccepted.fr
         }
-      }], { session: dbSession });
-
-      telegramRecipientId = joinRequest.requesterId.toString();
+      };
 
       responsePayload = {
         joinRequest: joinRequest.toObject(),
@@ -968,13 +971,8 @@ export const acceptJoinRequest = async (req, res) => {
     if (matchSnapshot?.majorId && matchSnapshot?.facultyId) {
       await incrementMatch(matchSnapshot.majorId, matchSnapshot.facultyId, responsePayload?.joinRequest?.acceptedAt ?? new Date());
     }
-    if (telegramRecipientId) {
-      await redis.del(`notifications:unread:${telegramRecipientId}`);
-      await sendTelegramNotificationForEvent({
-        eventName: 'join_request_accepted',
-        recipientUserId: telegramRecipientId,
-        message: formatTelegramMessage({ ar: notificationText.joinRequestAccepted.ar, fr: notificationText.joinRequestAccepted.fr, link: `/messages/${responsePayload?.conversationId}`, language: await resolveTelegramLanguage(telegramRecipientId) })
-      });
+    if (acceptedNotification) {
+      await createNotification(acceptedNotification);
     }
 
     res.json(responsePayload);
@@ -1023,6 +1021,7 @@ export const rejectJoinRequest = async (req, res) => {
 
     await createNotification({
       userId: joinRequest.requesterId,
+      actorId: req.user._id,
       type: 'join_request_rejected',
       payload: {
         postId: post._id,
