@@ -64,6 +64,7 @@ const PostsFeedPage: React.FC = () => {
   }, []);
 
   const subjectOptions = useMemo(() => getProfileSelectableSubjectCodes(profile), [profile]);
+  const importantSubjectCodes = useMemo(() => (profile?.subjectsSettings ?? []).filter((item) => item.isPriority).map((item) => item.subjectCode), [profile?.subjectsSettings]);
   const selectedSubjectFullNames = useMemo(
     () => selectedSubjects.map((subjectCode) => ({ code: subjectCode, fullName: getSubjectNameByCode(subjectCode) || subjectCode })),
     [selectedSubjects]

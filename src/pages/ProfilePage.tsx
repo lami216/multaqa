@@ -2,6 +2,7 @@ import { CheckCircle2, Copy, Edit3, GraduationCap, LogOut, MapPin, MessageCircle
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
+import SubjectBadge from '../components/subjects/SubjectBadge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -235,7 +236,10 @@ const ProfilePage: React.FC = () => {
   const facultyLabel = resolvedFaculty?.nameFr ?? profile?.faculty ?? 'Faculté non renseignée';
   const levelLabel = resolvedLevel?.nameFr ?? profile?.level ?? 'Niveau libre';
   const majorLabel = resolvedMajor?.nameFr ?? profile?.major ?? 'Filière non renseignée';
-  const courseLabels = profile?.courses?.length ? profile.courses : resolvedSubjectNames;
+  const prioritySet = new Set((profile?.subjectsSettings ?? []).filter((item) => item.isPriority).map((item) => item.subjectCode));
+  const courseLabels = (profile?.courses?.length
+    ? profile.courses.map((label) => ({ label, code: label, isImportant: false }))
+    : resolvedSubjectNames.map((label, index) => ({ label, code: catalogSubjects[index]?.code ?? label, isImportant: prioritySet.has(catalogSubjects[index]?.code ?? '') })));
   const normalizedPreferences = parseLegacyPriorities(profile?.prioritiesOrder);
   const rolePreferences = normalizeRolePreferences(profile?.rolePreferences ?? normalizedPreferences.rolePreferences);
   const activityPreferences = normalizeActivityPreferences(profile?.activityPreferences ?? normalizedPreferences.activityPreferences);
@@ -611,7 +615,7 @@ const ProfilePage: React.FC = () => {
                 <h3 className="font-semibold text-slate-900 mb-2">Matières suivies</h3>
                 <div className="flex flex-wrap gap-2">
                   {(courseLabels ?? []).map((subject) => (
-                    <span key={subject} className="badge-soft" title={subject}>{buildSubjectInitials(subject, subject)}</span>
+                    <SubjectBadge key={subject.code} label={subject.label} compactLabel={buildSubjectInitials(subject.label, subject.code)} isImportant={subject.isImportant} importantLabel={language === 'ar' ? 'مهم' : 'Important'} />
                   ))}
                   {!courseLabels?.length && <span className="text-sm text-slate-500">Ajoutez vos matières suivies.</span>}
                 </div>

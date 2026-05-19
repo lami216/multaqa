@@ -22,6 +22,7 @@ import { resolveAuthorId } from '../lib/postUtils';
 import { getCatalogSubjectByCode, getSubjectFullName, getSubjectShortNameByCode } from '../lib/catalog';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import CompatibilityDetailsDialog from '../components/CompatibilityDetailsDialog';
+import SubjectBadge from '../components/subjects/SubjectBadge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { useSmartPolling } from '../hooks/useSmartPolling';
 
@@ -78,6 +79,7 @@ const PostDetailsPage: React.FC = () => {
   const [joinRequestStatus, setJoinRequestStatus] = useState<'none' | 'pending' | 'accepted' | 'rejected'>('none');
   const [selectedSubjectName, setSelectedSubjectName] = useState('');
   const [isCompatibilityOpen, setIsCompatibilityOpen] = useState(false);
+  const prioritySet = useMemo(() => new Set((profile?.subjectsSettings ?? []).filter((item) => item.isPriority).map((item) => item.subjectCode)), [profile?.subjectsSettings]);
   const lastKnownTimestampRef = useRef<string | undefined>(undefined);
   const authorId = useMemo(() => resolveAuthorId(post), [post]);
   const isAuthor = useMemo(() => (authorId ? authorId === currentUserId : false), [authorId, currentUserId]);
@@ -385,14 +387,14 @@ setPost({ ...(data.post as PostResponse), userId: (data.post as PostResponse).us
                 {(post.subjectCodes ?? []).map((subjectCode) => {
                   const subject = getCatalogSubjectByCode(subjectCode);
                   return (
-                    <button
+                    <SubjectBadge
                       key={subjectCode}
-                      type="button"
-                      className="badge-soft bg-emerald-50 text-emerald-700"
+                      label={getSubjectFullName(subjectCode) || subjectCode}
+                      compactLabel={subject?.shortName || getSubjectShortNameByCode(subjectCode) || 'M'}
+                      isImportant={prioritySet.has(subjectCode)}
+                      importantLabel={document?.documentElement?.lang?.startsWith('ar') ? 'مهم' : 'Important'}
                       onClick={() => setSelectedSubjectName(getSubjectFullName(subjectCode) || subjectCode)}
-                    >
-                      {subject?.shortName || getSubjectShortNameByCode(subjectCode) || 'M'}
-                    </button>
+                    />
                   );
                 })}
               </div>

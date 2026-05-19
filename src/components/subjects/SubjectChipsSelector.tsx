@@ -1,6 +1,7 @@
 import React from 'react';
 import { getSubjectShortNameByCode } from '../../lib/catalog';
 import SelectedSubjectPill from './SelectedSubjectPill';
+import SubjectBadge from './SubjectBadge';
 
 interface SubjectOption {
   code: string;
@@ -16,6 +17,8 @@ interface SubjectChipsSelectorProps {
   emptyMessage?: string;
   selectedLabel?: string;
   onToggle: (subjectCode: string) => void;
+  importantSubjectCodes?: string[];
+  importantLabel?: string;
 }
 
 const SubjectChipsSelector: React.FC<SubjectChipsSelectorProps> = ({
@@ -26,8 +29,11 @@ const SubjectChipsSelector: React.FC<SubjectChipsSelectorProps> = ({
   highlight,
   emptyMessage,
   selectedLabel = 'Selected subjects:',
-  onToggle
+  onToggle,
+  importantSubjectCodes = [],
+  importantLabel = 'Important'
 }) => {
+  const importantSet = new Set(importantSubjectCodes);
   return (
     <div className="space-y-2">
       {warning ? (
@@ -42,16 +48,15 @@ const SubjectChipsSelector: React.FC<SubjectChipsSelectorProps> = ({
           options.map((subject) => {
             const selected = selectedCodes.includes(subject);
             return (
-              <button
-                type="button"
+              <SubjectBadge
                 key={subject}
+                label={subject}
+                compactLabel={getSubjectShortNameByCode(subject) || 'M'}
+                isImportant={importantSet.has(subject)}
+                importantLabel={importantLabel}
                 onClick={() => onToggle(subject)}
-                className={`rounded-full border px-3 py-1 text-sm transition ${
-                  selected ? 'border-emerald-400 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-white text-slate-600 hover:border-emerald-200 hover:bg-emerald-50'
-                }`}
-              >
-                {getSubjectShortNameByCode(subject) || 'M'}
-              </button>
+                className={selected ? 'border-emerald-400 bg-emerald-50 text-emerald-700 ring-2 ring-emerald-100' : ''}
+              />
             );
           })
         )}
@@ -65,6 +70,8 @@ const SubjectChipsSelector: React.FC<SubjectChipsSelectorProps> = ({
               <SelectedSubjectPill
                 key={subject.code}
                 label={subject.fullName}
+                isImportant={importantSet.has(subject.code)}
+                importantLabel={importantLabel}
                 onRemove={() => onToggle(subject.code)}
               />
             ))}
