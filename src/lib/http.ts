@@ -114,7 +114,9 @@ export interface RemainingSubjectItem {
   majorId: string;
 }
 
-export type PriorityRoleKey = 'need_help' | 'can_help' | 'td' | 'archive';
+export type RolePreferenceKey = 'need_help' | 'can_help';
+export type ActivityPreferenceKey = 'td' | 'archive';
+export type PriorityRoleKey = RolePreferenceKey | ActivityPreferenceKey;
 export type PostRoleKey = 'need_help' | 'can_help';
 export type PostActivityKey = 'td' | 'archive';
 export type StudyTeamRoleKey = 'general_review' | 'td' | 'archive';
@@ -134,6 +136,8 @@ export interface Profile {
   remainingSubjects?: RemainingSubjectItem[];
   remainingSubjectsConfirmed?: boolean;
   prioritiesOrder?: PriorityRoleKey[];
+  rolePreferences?: RolePreferenceKey[];
+  activityPreferences?: ActivityPreferenceKey[];
   skills?: string[];
   courses?: string[];
   availability?: string;

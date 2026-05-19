@@ -113,7 +113,9 @@ export const profileSchema = z.object({
   semester: z.string().optional(),
   subjectsSettings: z.array(subjectSettingsSchema).optional(),
   remainingSubjects: z.array(remainingSubjectSchema).optional(),
-  prioritiesOrder: z.array(z.enum(['need_help', 'can_help', 'td', 'archive'])).length(4).optional()
+  prioritiesOrder: z.array(z.enum(['need_help', 'can_help', 'td', 'archive'])).length(4).optional(),
+  rolePreferences: z.array(z.enum(['need_help', 'can_help'])).length(2).optional(),
+  activityPreferences: z.array(z.enum(['td', 'archive'])).length(2).optional()
 });
 
 

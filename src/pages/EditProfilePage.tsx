@@ -20,7 +20,18 @@ import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { useAuth } from '../context/AuthContext';
 import { processImageFile } from '../lib/imageProcessing';
 import { uploadToImageKit } from '../lib/imagekitClient';
-import { DEFAULT_PRIORITIES_ORDER, PRIORITY_ROLE_OPTIONS, type PriorityRoleKey } from '../lib/priorities';
+import {
+  ACTIVITY_PREFERENCE_OPTIONS,
+  DEFAULT_ACTIVITY_PREFERENCES_ORDER,
+  DEFAULT_ROLE_PREFERENCES_ORDER,
+  DEFAULT_PRIORITIES_ORDER,
+  ROLE_PREFERENCE_OPTIONS,
+  normalizeActivityPreferences,
+  normalizeRolePreferences,
+  parseLegacyPriorities,
+  type ActivityPreferenceKey,
+  type RolePreferenceKey
+} from '../lib/priorities';
 import { buildSubjectInitials } from '../lib/subjectDisplay';
 
 const EditProfilePage: React.FC = () => {
@@ -68,10 +79,11 @@ const EditProfilePage: React.FC = () => {
     }));
   };
 
-  const normalizePrioritiesOrder = (order?: Profile['prioritiesOrder']) => {
-    const incoming = Array.isArray(order) ? order.filter((item): item is PriorityRoleKey => DEFAULT_PRIORITIES_ORDER.includes(item as PriorityRoleKey)) : [];
-    const rest = DEFAULT_PRIORITIES_ORDER.filter((item) => !incoming.includes(item));
-    return [...incoming, ...rest];
+  const normalizePreferenceState = (rawProfile?: Profile) => {
+    const fromLegacy = parseLegacyPriorities(rawProfile?.prioritiesOrder);
+    const rolePreferences = normalizeRolePreferences(rawProfile?.rolePreferences ?? fromLegacy.rolePreferences);
+    const activityPreferences = normalizeActivityPreferences(rawProfile?.activityPreferences ?? fromLegacy.activityPreferences);
+    return { rolePreferences, activityPreferences, prioritiesOrder: [...rolePreferences, ...activityPreferences] };
   };
 
   const getAvailableLevels = (facultyId?: string) =>
@@ -152,7 +164,7 @@ const EditProfilePage: React.FC = () => {
         rawProfile?.subjectsSettings
       ),
       remainingSubjects: rawProfile?.remainingSubjects ?? [],
-      prioritiesOrder: normalizePrioritiesOrder(rawProfile?.prioritiesOrder),
+      ...normalizePreferenceState(rawProfile),
       courses: catalogSubjects.map((subject) => subject.nameFr)
     } as Profile;
   };
@@ -198,7 +210,7 @@ const EditProfilePage: React.FC = () => {
           semesterId: meData.profile?.semesterId ?? meData.profile?.semester,
           subjectsSettings: meData.profile?.subjectsSettings ?? [],
           remainingSubjects: meData.profile?.remainingSubjects ?? [],
-          prioritiesOrder: normalizePrioritiesOrder(meData.profile?.prioritiesOrder)
+          ...normalizePreferenceState(meData.profile)
         } as Profile;
 
         const catalogFaculties = getFaculties().filter((faculty) => isFacultyEnabled(faculty.id, settingsData.catalogVisibility));
@@ -464,7 +476,7 @@ const EditProfilePage: React.FC = () => {
         subjectCodes: form.subjectCodes,
         courses: selectedSubjects.map((subject) => subject.nameFr),
         subjectsSettings: syncSubjectSettings(form.subjectCodes ?? [], form.subjectsSettings),
-        prioritiesOrder: normalizePrioritiesOrder(form.prioritiesOrder),
+        ...normalizePreferenceState(form),
         availability: form.availability,
         languages: form.languages ?? [],
         bio: form.bio,
@@ -581,14 +593,22 @@ const EditProfilePage: React.FC = () => {
     }));
   };
 
-  const togglePriorityRoleSelection = (role: PriorityRoleKey) => {
+  const togglePreferenceSelection = (key: RolePreferenceKey | ActivityPreferenceKey, group: 'role' | 'activity') => {
     isDirtyRef.current = true;
     setForm((prev) => {
-      const current = Array.isArray(prev.prioritiesOrder)
-        ? prev.prioritiesOrder.filter((item): item is PriorityRoleKey => DEFAULT_PRIORITIES_ORDER.includes(item as PriorityRoleKey))
-        : [];
-      const next = current.includes(role) ? current.filter((item) => item !== role) : [...current, role];
-      return { ...prev, prioritiesOrder: next };
+      const rolePreferences = normalizeRolePreferences(prev.rolePreferences);
+      const activityPreferences = normalizeActivityPreferences(prev.activityPreferences);
+      const nextRole = group === 'role'
+        ? (rolePreferences.includes(key as RolePreferenceKey)
+            ? rolePreferences.filter((item) => item !== key)
+            : [...rolePreferences, key as RolePreferenceKey])
+        : rolePreferences;
+      const nextActivity = group === 'activity'
+        ? (activityPreferences.includes(key as ActivityPreferenceKey)
+            ? activityPreferences.filter((item) => item !== key)
+            : [...activityPreferences, key as ActivityPreferenceKey])
+        : activityPreferences;
+      return { ...prev, rolePreferences: nextRole, activityPreferences: nextActivity, prioritiesOrder: [...nextRole, ...nextActivity] };
     });
   };
 
@@ -929,11 +949,12 @@ const EditProfilePage: React.FC = () => {
           )}
         </div>
 
-        <div className="space-y-2">
-          <label className="text-sm font-semibold text-slate-700">ترتيب الأولوية</label>
+        <div className="space-y-4">
+          <div className="space-y-2">
+          <label className="text-sm font-semibold text-slate-700">تفضيل الدور</label>
           <div className="grid sm:grid-cols-2 gap-2">
-            {PRIORITY_ROLE_OPTIONS.map((option) => {
-              const activeOrder = (form.prioritiesOrder ?? []).filter((item): item is PriorityRoleKey => DEFAULT_PRIORITIES_ORDER.includes(item as PriorityRoleKey));
+            {ROLE_PREFERENCE_OPTIONS.map((option) => {
+              const activeOrder = normalizeRolePreferences(form.rolePreferences ?? DEFAULT_ROLE_PREFERENCES_ORDER);
               const badgeNumber = activeOrder.indexOf(option.key) + 1;
               const selected = badgeNumber > 0;
 
@@ -941,7 +962,7 @@ const EditProfilePage: React.FC = () => {
                 <button
                   key={option.key}
                   type="button"
-                  onClick={() => togglePriorityRoleSelection(option.key)}
+                  onClick={() => togglePreferenceSelection(option.key, 'role')}
                   className={`relative rounded-xl border px-3 py-3 text-left transition ${selected ? 'border-emerald-300 bg-emerald-50 text-emerald-900 shadow-sm' : 'border-slate-200 bg-white text-slate-700'}`}
                 >
                   {selected && (
@@ -958,6 +979,23 @@ const EditProfilePage: React.FC = () => {
             })}
           </div>
         </div>
+        <div className="space-y-2">
+          <label className="text-sm font-semibold text-slate-700">تفضيل النشاط</label>
+          <div className="grid sm:grid-cols-2 gap-2">
+            {ACTIVITY_PREFERENCE_OPTIONS.map((option) => {
+              const activeOrder = normalizeActivityPreferences(form.activityPreferences ?? DEFAULT_ACTIVITY_PREFERENCES_ORDER);
+              const badgeNumber = activeOrder.indexOf(option.key) + 1;
+              const selected = badgeNumber > 0;
+              return (
+                <button key={option.key} type="button" onClick={() => togglePreferenceSelection(option.key, 'activity')} className={`relative rounded-xl border px-3 py-3 text-left transition ${selected ? 'border-emerald-300 bg-emerald-50 text-emerald-900 shadow-sm' : 'border-slate-200 bg-white text-slate-700'}`}>
+                  {selected && <span className="absolute right-2 top-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-emerald-600 text-xs font-semibold text-white">{badgeNumber}</span>}
+                  <div><p className="text-sm font-semibold">{option.label}</p><p className="text-xs text-slate-500">{option.helper}</p></div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
         <div>
           <label className="text-sm font-semibold text-slate-700">Bio</label>
           <textarea
