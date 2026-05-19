@@ -150,6 +150,18 @@ export interface Profile {
   updatedAt?: string;
 }
 
+export interface WrittenReviewItem {
+  score: number;
+  review: string;
+  createdAt?: string;
+  reviewer: {
+    id: string;
+    username: string;
+    major?: string;
+    level?: string;
+  };
+}
+
 export interface PostPayload {
   category: 'study_partner' | 'project_team' | 'tutor_offer';
   title?: string;

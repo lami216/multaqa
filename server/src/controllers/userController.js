@@ -41,6 +41,24 @@ const buildPublicProfileResult = async (user) => {
   const reviewerMap = new Map(reviewers.map((reviewer) => [reviewer._id.toString(), reviewer]));
   const reviewerProfileMap = new Map(reviewerProfiles.map((profile) => [profile.userId.toString(), profile]));
 
+  const sanitizedReviews = writtenReviews
+    .filter((item) => item.reviewerId && item.review)
+    .sort((a, b) => new Date(b.createdAt ?? 0).getTime() - new Date(a.createdAt ?? 0).getTime())
+    .map((item) => {
+      const key = item.reviewerId.toString();
+      return {
+        score: item.score,
+        review: item.review,
+        createdAt: item.createdAt,
+        reviewer: {
+          id: key,
+          username: reviewerMap.get(key)?.username ?? 'Member',
+          major: reviewerProfileMap.get(key)?.major ?? '',
+          level: reviewerProfileMap.get(key)?.level ?? ''
+        }
+      };
+    });
+
   return {
     user: {
       id: user._id,
@@ -52,22 +70,7 @@ const buildPublicProfileResult = async (user) => {
     },
     profile,
     posts,
-    writtenReviews: writtenReviews
-      .filter((item) => item.reviewerId)
-      .map((item) => {
-        const key = item.reviewerId.toString();
-        return {
-          score: item.score,
-          review: item.review,
-          createdAt: item.createdAt,
-          reviewer: {
-            id: key,
-            username: reviewerMap.get(key)?.username ?? 'Member',
-            major: reviewerProfileMap.get(key)?.major ?? '',
-            level: reviewerProfileMap.get(key)?.level ?? ''
-          }
-        };
-      })
+    writtenReviews: sanitizedReviews
   };
 };
 
