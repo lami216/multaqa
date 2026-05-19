@@ -18,7 +18,7 @@ interface SubjectChipsSelectorProps {
   selectedLabel?: string;
   onToggle: (subjectCode: string) => void;
   importantSubjectCodes?: string[];
-  importantLabel?: string;
+ 
 }
 
 const SubjectChipsSelector: React.FC<SubjectChipsSelectorProps> = ({
@@ -31,7 +31,6 @@ const SubjectChipsSelector: React.FC<SubjectChipsSelectorProps> = ({
   selectedLabel = 'Selected subjects:',
   onToggle,
   importantSubjectCodes = [],
-  importantLabel = 'Important'
 }) => {
   const importantSet = new Set(importantSubjectCodes);
   return (
@@ -53,7 +52,7 @@ const SubjectChipsSelector: React.FC<SubjectChipsSelectorProps> = ({
                 label={subject}
                 compactLabel={getSubjectShortNameByCode(subject) || 'M'}
                 isImportant={importantSet.has(subject)}
-                importantLabel={importantLabel}
+               
                 onClick={() => onToggle(subject)}
                 className={selected ? 'border-emerald-400 bg-emerald-50 text-emerald-700 ring-2 ring-emerald-100' : ''}
               />
@@ -71,7 +70,7 @@ const SubjectChipsSelector: React.FC<SubjectChipsSelectorProps> = ({
                 key={subject.code}
                 label={subject.fullName}
                 isImportant={importantSet.has(subject.code)}
-                importantLabel={importantLabel}
+               
                 onRemove={() => onToggle(subject.code)}
               />
             ))}

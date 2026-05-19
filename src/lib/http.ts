@@ -194,7 +194,7 @@ export interface PostResponse extends PostPayload {
   createdAt: string;
   updatedAt: string;
   language?: string;
-  author?: { id?: string; username: string; avatarUrl?: string; profile?: Profile };
+  author?: { id?: string; username: string; avatarUrl?: string; averageRating?: number; totalReviews?: number; sessionsCount?: number; profile?: Profile };
 }
 
 export interface FacultyItem {

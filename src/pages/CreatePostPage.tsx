@@ -203,7 +203,7 @@ const CreatePostPage: React.FC = () => {
                   selectedLabel={copy.selectedSubjects}
                   onToggle={toggleSubject}
                   importantSubjectCodes={importantSubjectCodes}
-                  importantLabel={language === 'ar' ? 'مهم' : 'Important'}
+                 
                 />
               </section>
 

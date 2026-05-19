@@ -8,6 +8,7 @@ import type { PostResponse } from '../lib/http';
 import { resolveAuthorId } from '../lib/postUtils';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import CompatibilityDetailsDialog from './CompatibilityDetailsDialog';
+import { TrustSnapshot } from './common/TrustSnapshot';
 import SubjectBadge from './subjects/SubjectBadge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 
@@ -91,7 +92,6 @@ const PostCard: React.FC<PostCardProps> = ({
                       label={getSubjectFullName(subjectCode) || subjectCode}
                       compactLabel={subject?.shortName || getSubjectShortNameByCode(subjectCode) || 'M'}
                       isImportant={prioritySet.has(subjectCode)}
-                      importantLabel={language === 'ar' ? 'مهم' : 'Important'}
                       onClick={() => setSelectedSubjectName(getSubjectFullName(subjectCode) || subjectCode)}
                     />
                   );
@@ -148,6 +148,12 @@ const PostCard: React.FC<PostCardProps> = ({
               <p className="text-xs font-medium text-slate-500">{new Date(post.createdAt).toLocaleDateString()}</p>
             </div>
           </Link>
+          <TrustSnapshot
+            language={language}
+            rating={post.author?.averageRating}
+            sessionsCount={post.author?.sessionsCount}
+            reviewsCount={post.author?.totalReviews}
+          />
 
           {typeof post.compatibilityPercentage === 'number' ? (
             <div className="text-end">
