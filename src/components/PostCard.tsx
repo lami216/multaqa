@@ -8,6 +8,7 @@ import type { PostResponse } from '../lib/http';
 import { resolveAuthorId } from '../lib/postUtils';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import CompatibilityDetailsDialog from './CompatibilityDetailsDialog';
+import SubjectBadge from './subjects/SubjectBadge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 
 const roleLabels: Record<string, { fr: string; ar: string }> = {
@@ -52,6 +53,7 @@ const PostCard: React.FC<PostCardProps> = ({
   const activityLabel = normalizedActivity ? activityLabels[normalizedActivity]?.[language] ?? normalizedActivity : t.post.notSpecified;
   const descriptionClassName = `text-sm leading-7 text-slate-600${clampDescription ? ' line-clamp-3' : ''}`;
   const [selectedSubjectName, setSelectedSubjectName] = useState('');
+  const prioritySet = new Set((profile?.subjectsSettings ?? []).filter((item) => item.isPriority).map((item) => item.subjectCode));
   const [isCompatibilityOpen, setIsCompatibilityOpen] = useState(false);
   const title = post.category === 'study_partner'
     ? (post.subjectCodes ?? []).map((subjectCode) => getSubjectFullName(subjectCode) || subjectCode).join(' · ') || post.title
@@ -84,14 +86,14 @@ const PostCard: React.FC<PostCardProps> = ({
                 {(post.subjectCodes ?? []).map((subjectCode) => {
                   const subject = getCatalogSubjectByCode(subjectCode);
                   return (
-                    <button
+                    <SubjectBadge
                       key={subjectCode}
-                      type="button"
-                      className="badge-soft bg-emerald-50 text-emerald-700 ring-emerald-100 transition hover:bg-emerald-100"
+                      label={getSubjectFullName(subjectCode) || subjectCode}
+                      compactLabel={subject?.shortName || getSubjectShortNameByCode(subjectCode) || 'M'}
+                      isImportant={prioritySet.has(subjectCode)}
+                      importantLabel={language === 'ar' ? 'مهم' : 'Important'}
                       onClick={() => setSelectedSubjectName(getSubjectFullName(subjectCode) || subjectCode)}
-                    >
-                      {subject?.shortName || getSubjectShortNameByCode(subjectCode) || 'M'}
-                    </button>
+                    />
                   );
                 })}
                 <span className="badge-soft bg-slate-100 text-slate-700 ring-slate-200">{t.post.role}: {roleLabel}</span>

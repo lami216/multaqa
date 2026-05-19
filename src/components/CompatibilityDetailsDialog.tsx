@@ -181,7 +181,7 @@ const CompatibilityDetailsDialog: React.FC<CompatibilityDetailsDialogProps> = ({
       score: breakdown.activityScore,
       max: 20
     }
-  ].sort((a, b) => b.score - a.score) : [];
+  ] : [];
 
   const contextItems = [
     profile?.faculty && post.faculty && normalizeValue(profile.faculty) === normalizeValue(post.faculty)

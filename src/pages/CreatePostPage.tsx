@@ -75,6 +75,7 @@ const CreatePostPage: React.FC = () => {
 
   const copy = t.createPost;
   const subjectOptions = useMemo(() => getProfileSelectableSubjectCodes(profile), [profile]);
+  const importantSubjectCodes = useMemo(() => (profile?.subjectsSettings ?? []).filter((item) => item.isPriority).map((item) => item.subjectCode), [profile?.subjectsSettings]);
   const isStudyPartner = form.category === 'study_partner';
   const isStudyTeam = form.category === 'project_team';
   const studyPartnerValid = selectedSubjects.length >= 1 && selectedSubjects.length <= 2 && Boolean(selectedRole) && Boolean(selectedActivity) && Boolean(availabilityDate);
@@ -201,6 +202,8 @@ const CreatePostPage: React.FC = () => {
                   emptyMessage={copy.emptySubjects}
                   selectedLabel={copy.selectedSubjects}
                   onToggle={toggleSubject}
+                  importantSubjectCodes={importantSubjectCodes}
+                  importantLabel={language === 'ar' ? 'مهم' : 'Important'}
                 />
               </section>
 
