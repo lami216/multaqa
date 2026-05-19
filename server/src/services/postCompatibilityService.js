@@ -21,12 +21,16 @@ const getProfileSubjectCodes = (profile) => uniqueCodes([
 ]);
 
 const getReceiverRolePreference = (profile) => {
+  const explicitRolePreferences = Array.isArray(profile?.rolePreferences) ? profile.rolePreferences : [];
+  if (explicitRolePreferences.length > 0) return explicitRolePreferences[0];
   const priorities = Array.isArray(profile?.prioritiesOrder) ? profile.prioritiesOrder : [];
   const roleOrder = priorities.filter((item) => item === 'need_help' || item === 'can_help');
   return roleOrder[0] ?? null;
 };
 
 const getReceiverActivityPreference = (profile) => {
+  const explicitActivityPreferences = Array.isArray(profile?.activityPreferences) ? profile.activityPreferences : [];
+  if (explicitActivityPreferences.length > 0) return explicitActivityPreferences[0];
   const priorities = Array.isArray(profile?.prioritiesOrder) ? profile.prioritiesOrder : [];
   const activityOrder = priorities.filter((item) => item === 'td' || item === 'archive');
   return activityOrder[0] ?? null;

@@ -92,6 +92,20 @@ const profileSchema = new mongoose.Schema({
     }],
     default: ['need_help', 'can_help', 'td', 'archive']
   },
+  rolePreferences: {
+    type: [{
+      type: String,
+      enum: ['need_help', 'can_help']
+    }],
+    default: ['need_help', 'can_help']
+  },
+  activityPreferences: {
+    type: [{
+      type: String,
+      enum: ['td', 'archive']
+    }],
+    default: ['td', 'archive']
+  },
   availability: {
     type: String,
     trim: true

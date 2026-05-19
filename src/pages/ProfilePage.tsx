@@ -21,7 +21,7 @@ import {
   isFacultyEnabled
 } from '../lib/catalog';
 import { type AcademicSettingsResponse, disconnectTelegramRequest, fetchAcademicSettings, generateTelegramLinkTokenRequest, http, type Profile, type RemainingSubjectItem, updateProfileSettingsRequest } from '../lib/http';
-import { PRIORITY_ROLE_LABELS } from '../lib/priorities';
+import { normalizeActivityPreferences, normalizeRolePreferences, parseLegacyPriorities } from '../lib/priorities';
 import { buildSubjectInitials } from '../lib/subjectDisplay';
 
 const ProfilePage: React.FC = () => {
@@ -236,7 +236,15 @@ const ProfilePage: React.FC = () => {
   const levelLabel = resolvedLevel?.nameFr ?? profile?.level ?? 'Niveau libre';
   const majorLabel = resolvedMajor?.nameFr ?? profile?.major ?? 'Filière non renseignée';
   const courseLabels = profile?.courses?.length ? profile.courses : resolvedSubjectNames;
-  const prioritiesOrder = profile?.prioritiesOrder ?? ['need_help', 'can_help', 'td', 'archive'];
+  const normalizedPreferences = parseLegacyPriorities(profile?.prioritiesOrder);
+  const rolePreferences = normalizeRolePreferences(profile?.rolePreferences ?? normalizedPreferences.rolePreferences);
+  const activityPreferences = normalizeActivityPreferences(profile?.activityPreferences ?? normalizedPreferences.activityPreferences);
+  const roleLabels = language === 'ar'
+    ? { need_help: 'أحتاج مساعدة', can_help: 'أستطيع المساعدة' }
+    : { need_help: 'Besoin d’aide', can_help: 'Je peux aider' };
+  const activityLabels = language === 'ar'
+    ? { td: 'حل TD', archive: 'حل الأرشيف' }
+    : { td: 'TD', archive: 'Archives / anciens sujets' };
   const majorKey = resolvedFaculty && resolvedLevel && resolvedMajor ? buildAcademicMajorKey(resolvedFaculty.id, resolvedLevel.id, resolvedMajor.id) : '';
   const majorAvailability = majorKey ? academicSettings.majorAvailability?.[majorKey] : undefined;
   const majorStatus = majorAvailability?.status ?? 'active';
@@ -722,10 +730,18 @@ const ProfilePage: React.FC = () => {
             )}
 
             <div className="card-surface p-4">
-              <h3 className="font-semibold text-slate-900 mb-2">ترتيب الأولوية</h3>
+              <h3 className="font-semibold text-slate-900 mb-2">{language === 'ar' ? 'تفضيل الدور' : 'Préférence de rôle'}</h3>
               <div className="flex flex-wrap gap-2">
-                {prioritiesOrder.map((item, index) => (
-                  <span key={item} className="badge-soft bg-emerald-50 text-emerald-700">#{index + 1} {PRIORITY_ROLE_LABELS[item as keyof typeof PRIORITY_ROLE_LABELS] ?? item}</span>
+                {rolePreferences.map((item, index) => (
+                  <span key={item} className="badge-soft bg-emerald-50 text-emerald-700">#{index + 1} {roleLabels[item]}</span>
+                ))}
+              </div>
+            </div>
+            <div className="card-surface p-4">
+              <h3 className="font-semibold text-slate-900 mb-2">{language === 'ar' ? 'تفضيل النشاط' : 'Préférence d’activité'}</h3>
+              <div className="flex flex-wrap gap-2">
+                {activityPreferences.map((item, index) => (
+                  <span key={item} className="badge-soft bg-emerald-50 text-emerald-700">#{index + 1} {activityLabels[item]}</span>
                 ))}
               </div>
             </div>

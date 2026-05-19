@@ -51,11 +51,13 @@ const getSubjectLabel = (subjectCode: string) => (
 );
 
 const getRolePreference = (profile?: Profile | null) => (
-  profile?.prioritiesOrder?.find((item) => item === 'need_help' || item === 'can_help')
+  profile?.rolePreferences?.find((item) => item === 'need_help' || item === 'can_help')
+  ?? profile?.prioritiesOrder?.find((item) => item === 'need_help' || item === 'can_help')
 );
 
 const getActivityPreference = (profile?: Profile | null) => (
-  profile?.prioritiesOrder?.find((item) => item === 'td' || item === 'archive')
+  profile?.activityPreferences?.find((item) => item === 'td' || item === 'archive')
+  ?? profile?.prioritiesOrder?.find((item) => item === 'td' || item === 'archive')
 );
 
 const getPostActivity = (post: PostResponse) => {
