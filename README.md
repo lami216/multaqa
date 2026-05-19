@@ -174,10 +174,18 @@ IMAGEKIT_URL_ENDPOINT=https://ik.imagekit.io/your_id
 TELEGRAM_BOT_TOKEN=your_telegram_bot_token
 APP_BASE_URL=http://localhost:5173
 
+# Weekly digest schedule (server local time)
+WEEKLY_SUMMARY_ENABLED=true
+WEEKLY_SUMMARY_DAY=0
+WEEKLY_SUMMARY_HOUR=10
+WEEKLY_SUMMARY_WINDOW_MINUTES=15
+
 ADMIN_SEED_EMAIL=admin@multaqa.mr
 ADMIN_SEED_PASSWORD=securepassword
 ADMIN_SEED_USERNAME=admin
 ```
+
+Weekly summary notifications are gated by a weekly scheduler window and persisted per user/week in MongoDB to prevent duplicates after restarts. Set `WEEKLY_SUMMARY_ENABLED=false` to disable digest sending until scheduler configuration is ready.
 
 Create root `.env`:
 

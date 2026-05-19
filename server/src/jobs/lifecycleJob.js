@@ -7,11 +7,31 @@ import { cleanupSessionLifecycle, deleteNotificationsByConversationId, deleteNot
 import User from '../models/User.js';
 import Profile from '../models/Profile.js';
 import Notification from '../models/Notification.js';
+import WeeklyDigestLog from '../models/WeeklyDigestLog.js';
 import { createNotification, notificationText } from '../services/notificationService.js';
 import redis from '../config/redis.js';
 
 const ONE_MINUTE = 60 * 1000;
-const WEEKLY_SUMMARY_TTL = 7 * 24 * 60 * 60;
+const WEEKLY_SUMMARY_ENABLED = process.env.WEEKLY_SUMMARY_ENABLED !== 'false';
+const WEEKLY_SUMMARY_DAY = Number(process.env.WEEKLY_SUMMARY_DAY ?? 0); // 0 = Sunday
+const WEEKLY_SUMMARY_HOUR = Number(process.env.WEEKLY_SUMMARY_HOUR ?? 10);
+const WEEKLY_SUMMARY_WINDOW_MINUTES = Number(process.env.WEEKLY_SUMMARY_WINDOW_MINUTES ?? 15);
+
+const getWeekKey = (date) => {
+  const utcDate = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNumber = utcDate.getUTCDay() || 7;
+  utcDate.setUTCDate(utcDate.getUTCDate() + 4 - dayNumber);
+  const yearStart = new Date(Date.UTC(utcDate.getUTCFullYear(), 0, 1));
+  const weekNo = Math.ceil((((utcDate - yearStart) / 86400000) + 1) / 7);
+  return `${utcDate.getUTCFullYear()}-W${String(weekNo).padStart(2, '0')}`;
+};
+
+const shouldRunWeeklySummary = (now) => {
+  if (!WEEKLY_SUMMARY_ENABLED) return false;
+  if (now.getDay() !== WEEKLY_SUMMARY_DAY) return false;
+  if (now.getHours() !== WEEKLY_SUMMARY_HOUR) return false;
+  return now.getMinutes() < WEEKLY_SUMMARY_WINDOW_MINUTES;
+};
 
 const cleanupExpiredConversations = async () => {
   const now = new Date();
@@ -64,13 +84,23 @@ const processSessions = async () => {
 
 const processWeeklySummary = async () => {
   const now = new Date();
-  const weekAgo = new Date(now.getTime() - WEEKLY_SUMMARY_TTL * 1000);
+  if (!shouldRunWeeklySummary(now)) return;
+
+  const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const weekKey = getWeekKey(now);
   const users = await User.find({ telegramLinked: true }).select('_id');
 
   for (const user of users) {
-    const key = `weekly-summary:${user._id}`;
-    const alreadySent = await redis.get(key);
+    const key = `weekly-summary:${user._id}:${weekKey}`;
+    const [alreadySent, persistedDigest] = await Promise.all([
+      redis.get(key),
+      WeeklyDigestLog.findOne({ userId: user._id, weekKey }).select('_id')
+    ]);
     if (alreadySent) continue;
+    if (persistedDigest) {
+      await redis.set(key, '1', 8 * 24 * 60 * 60);
+      continue;
+    }
 
     const [completedSessions, recentRatings, unreadCount, profile] = await Promise.all([
       Session.countDocuments({ participants: user._id, status: 'completed', endedAt: { $gte: weekAgo } }),
@@ -95,7 +125,8 @@ const processWeeklySummary = async () => {
         fr: `${notificationText.weeklySummary.fr}\n✅ ${completedSessions} sessions terminées\n💬 ${recentRatings} nouveaux avis`
       }
     });
-    await redis.set(key, '1', WEEKLY_SUMMARY_TTL);
+    await WeeklyDigestLog.create({ userId: user._id, weekKey, sentAt: now });
+    await redis.set(key, '1', 8 * 24 * 60 * 60);
   }
 };
 
