@@ -392,7 +392,7 @@ setPost({ ...(data.post as PostResponse), userId: (data.post as PostResponse).us
                       label={getSubjectFullName(subjectCode) || subjectCode}
                       compactLabel={subject?.shortName || getSubjectShortNameByCode(subjectCode) || 'M'}
                       isImportant={prioritySet.has(subjectCode)}
-                      importantLabel={document?.documentElement?.lang?.startsWith('ar') ? 'مهم' : 'Important'}
+                     
                       onClick={() => setSelectedSubjectName(getSubjectFullName(subjectCode) || subjectCode)}
                     />
                   );

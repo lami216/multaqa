@@ -69,6 +69,14 @@ export const notificationText = {
   suitablePost: {
     fr: 'Un nouveau post correspond à votre profil.',
     ar: 'هناك منشور جديد مناسب لملفك.'
+  },
+  importantSubjectPost: {
+    fr: 'Nouveau post dans une matière importante.',
+    ar: 'منشور جديد في مادة مهمة لك.'
+  },
+  weeklySummary: {
+    fr: 'Votre résumé hebdomadaire Multaqa est prêt.',
+    ar: 'ملخصك الأسبوعي في ملتقى جاهز.'
   }
 };
 

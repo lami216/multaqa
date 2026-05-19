@@ -9,7 +9,6 @@ interface SubjectBadgeProps {
   onRemove?: () => void;
   className?: string;
   dir?: 'rtl' | 'ltr';
-  importantLabel?: string;
 }
 
 const SubjectBadge: React.FC<SubjectBadgeProps> = ({
@@ -20,7 +19,6 @@ const SubjectBadge: React.FC<SubjectBadgeProps> = ({
   onRemove,
   className = '',
   dir,
-  importantLabel,
 }) => {
   const content = compactLabel ?? label;
   const baseClass = isImportant
@@ -38,7 +36,6 @@ const SubjectBadge: React.FC<SubjectBadgeProps> = ({
     >
       {isImportant ? <Star size={13} className="fill-amber-400 text-amber-500" aria-hidden="true" /> : null}
       <span>{content}</span>
-      {isImportant && importantLabel ? <span className="text-[10px] font-black uppercase tracking-wide text-amber-700">{importantLabel}</span> : null}
       {onRemove ? (
         <button
           type="button"

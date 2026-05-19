@@ -6,12 +6,12 @@ interface SelectedSubjectPillProps {
   label: string;
   onRemove?: () => void;
   isImportant?: boolean;
-  importantLabel?: string;
+ 
 }
 
-const SelectedSubjectPill: React.FC<SelectedSubjectPillProps> = ({ label, onRemove, isImportant, importantLabel }) => {
+const SelectedSubjectPill: React.FC<SelectedSubjectPillProps> = ({ label, onRemove, isImportant }) => {
   return (
-    <SubjectBadge label={label} isImportant={isImportant} importantLabel={importantLabel} onRemove={onRemove} className="shadow-sm" />
+    <SubjectBadge label={label} isImportant={isImportant} onRemove={onRemove} className="shadow-sm" />
   );
 };
 

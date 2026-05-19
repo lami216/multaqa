@@ -1,6 +1,7 @@
 import User from '../models/User.js';
 import Profile from '../models/Profile.js';
 import Post from '../models/Post.js';
+import Session from '../models/Session.js';
 import redis from '../config/redis.js';
 import { maybeActivateMajor, getMajorAvailability } from '../services/academicSettingsService.js';
 import { incrementUser } from '../services/majorStatsService.js';
@@ -12,6 +13,34 @@ const buildPublicProfileResult = async (user) => {
     .sort({ createdAt: -1 })
     .limit(10);
 
+  const completedSessions = await Session.find({
+    status: 'completed',
+    participants: user._id
+  }).select('participants rating endedAt createdAt');
+
+  const writtenReviews = completedSessions.flatMap((session) => {
+    const entries = Array.from(session.rating?.entries?.() ?? []);
+    return entries
+      .filter(([targetUserId, rating]) => targetUserId?.toString() === user._id.toString() && rating?.review?.trim())
+      .map(([_, rating]) => {
+        const reviewerId = session.participants.find((participantId) => participantId.toString() !== user._id.toString());
+        return {
+          reviewerId,
+          score: rating.score,
+          review: rating.review.trim(),
+          createdAt: rating.createdAt ?? session.endedAt ?? session.createdAt
+        };
+      });
+  });
+
+  const reviewerIds = [...new Set(writtenReviews.map((item) => item.reviewerId?.toString()).filter(Boolean))];
+  const [reviewers, reviewerProfiles] = await Promise.all([
+    User.find({ _id: { $in: reviewerIds } }).select('username').lean(),
+    Profile.find({ userId: { $in: reviewerIds } }).select('userId major level').lean()
+  ]);
+  const reviewerMap = new Map(reviewers.map((reviewer) => [reviewer._id.toString(), reviewer]));
+  const reviewerProfileMap = new Map(reviewerProfiles.map((profile) => [profile.userId.toString(), profile]));
+
   return {
     user: {
       id: user._id,
@@ -22,7 +51,23 @@ const buildPublicProfileResult = async (user) => {
       sessionsCount: user.sessionsCount ?? 0
     },
     profile,
-    posts
+    posts,
+    writtenReviews: writtenReviews
+      .filter((item) => item.reviewerId)
+      .map((item) => {
+        const key = item.reviewerId.toString();
+        return {
+          score: item.score,
+          review: item.review,
+          createdAt: item.createdAt,
+          reviewer: {
+            id: key,
+            username: reviewerMap.get(key)?.username ?? 'Member',
+            major: reviewerProfileMap.get(key)?.major ?? '',
+            level: reviewerProfileMap.get(key)?.level ?? ''
+          }
+        };
+      })
   };
 };
 

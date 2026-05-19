@@ -46,6 +46,33 @@ const notifyMatchingUsersAboutPost = async (post, actorId) => {
   });
 };
 
+const notifyImportantSubjectFollowers = async (post, actorId) => {
+  const subjectCodes = Array.isArray(post.subjectCodes) ? post.subjectCodes : [];
+  if (!post?._id || !subjectCodes.length) return;
+  const matchingProfiles = await Profile.find({
+    userId: { $ne: actorId },
+    'subjectsSettings.subjectCode': { $in: subjectCodes },
+    'subjectsSettings.isPriority': true
+  }).select('userId');
+
+  await createNotificationsForUsers({
+    userIds: matchingProfiles.map((profile) => profile.userId),
+    actorId,
+    type: 'important_subject_post',
+    payload: {
+      postId: post._id,
+      senderId: actorId,
+      link: `/posts/${post._id}`,
+      message: notificationText.importantSubjectPost.ar
+    },
+    telegram: {
+      eventName: 'important_subject_post_created',
+      ar: notificationText.importantSubjectPost.ar,
+      fr: notificationText.importantSubjectPost.fr
+    }
+  });
+};
+
 const getAvailabilityCutoff = (value) => {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return null;
@@ -218,7 +245,7 @@ export const getPosts = async (req, res) => {
 
     const posts = await Post.find(query)
       .sort({ createdAt: -1 })
-      .populate('authorId', 'username');
+      .populate('authorId', 'username averageRating totalReviews sessionsCount');
 
     const userProfile = req.user?._id ? await Profile.findOne({ userId: req.user._id }) : null;
     const fallbackSubjects = selectedSubjectList.length
@@ -294,7 +321,10 @@ export const getPosts = async (req, res) => {
           author: {
             id: post.authorId._id,
             username: post.authorId.username,
-            avatarUrl: profile?.avatarUrl
+            avatarUrl: profile?.avatarUrl,
+            averageRating: post.authorId.averageRating ?? 0,
+            totalReviews: post.authorId.totalReviews ?? 0,
+            sessionsCount: post.authorId.sessionsCount ?? 0
           }
         };
       })
@@ -335,7 +365,7 @@ export const getPosts = async (req, res) => {
 export const getPost = async (req, res) => {
   try {
     const { id } = req.params;
-    const post = await Post.findById(id).populate('authorId', 'username');
+    const post = await Post.findById(id).populate('authorId', 'username averageRating totalReviews sessionsCount');
     if (!post) {
       return res.status(404).json({ error: 'Post not found' });
     }
@@ -470,6 +500,8 @@ export const createPost = async (req, res) => {
 
       await incrementPost(post.majorId, post.facultyId, post.createdAt);
       await notifyMatchingUsersAboutPost(post, req.user._id);
+    await notifyImportantSubjectFollowers(post, req.user._id);
+      await notifyImportantSubjectFollowers(post, req.user._id);
 
       await redis.del('posts:*');
 
@@ -547,6 +579,8 @@ export const createPost = async (req, res) => {
 
       await incrementPost(post.majorId, post.facultyId, post.createdAt);
       await notifyMatchingUsersAboutPost(post, req.user._id);
+    await notifyImportantSubjectFollowers(post, req.user._id);
+      await notifyImportantSubjectFollowers(post, req.user._id);
 
       await redis.del('posts:*');
 
@@ -563,6 +597,7 @@ export const createPost = async (req, res) => {
 
     await incrementPost(post.majorId, post.facultyId, post.createdAt);
     await notifyMatchingUsersAboutPost(post, req.user._id);
+    await notifyImportantSubjectFollowers(post, req.user._id);
 
     await redis.del('posts:*');
 

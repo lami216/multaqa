@@ -24,6 +24,7 @@ import {
 import { type AcademicSettingsResponse, disconnectTelegramRequest, fetchAcademicSettings, generateTelegramLinkTokenRequest, http, type Profile, type RemainingSubjectItem, updateProfileSettingsRequest } from '../lib/http';
 import { normalizeActivityPreferences, normalizeRolePreferences, parseLegacyPriorities } from '../lib/priorities';
 import { buildSubjectInitials } from '../lib/subjectDisplay';
+import { TrustSnapshot } from '../components/common/TrustSnapshot';
 
 const ProfilePage: React.FC = () => {
   const { language, t } = useLanguage();
@@ -50,6 +51,7 @@ const ProfilePage: React.FC = () => {
   const [copySuccess, setCopySuccess] = useState(false);
   const [disconnectingTelegram, setDisconnectingTelegram] = useState(false);
   const [activeTab, setActiveTab] = useState<'posts' | 'resources' | 'reviews'>('posts');
+  const [writtenReviews, setWrittenReviews] = useState<any[]>([]);
   const [academicSettings, setAcademicSettings] = useState<AcademicSettingsResponse>({
     academicTermType: 'odd',
     catalogVisibility: { faculties: {}, majors: {} },
@@ -152,7 +154,7 @@ const ProfilePage: React.FC = () => {
       const profileEndpoint = id ? `/users/id/${id}` : (currentUserId ? `/users/id/${currentUserId}` : '');
       if (!profileEndpoint) return;
       const [{ data }, { data: settingsData }] = await Promise.all([
-        http.get<{ user: { id: string; averageRating?: number; totalReviews?: number; sessionsCount?: number }; profile: Profile; posts: unknown }>(profileEndpoint, {
+        http.get<{ user: { id: string; averageRating?: number; totalReviews?: number; sessionsCount?: number }; profile: Profile; posts: unknown; writtenReviews?: any[] }>(profileEndpoint, {
           headers: {
             'Cache-Control': 'no-cache',
             Pragma: 'no-cache'
@@ -168,6 +170,7 @@ const ProfilePage: React.FC = () => {
         sessionsCount: data.user?.sessionsCount ?? 0
       } as ProfileView;
       setProfile(merged);
+      setWrittenReviews(data.writtenReviews ?? []);
       setAcademicSettings(settingsData);
     };
 
@@ -569,6 +572,7 @@ const ProfilePage: React.FC = () => {
             <p className="text-xs font-bold uppercase tracking-wide text-slate-500">{t.profile.rating}</p>
           </div>
         </div>
+        <TrustSnapshot language={language} rating={profileView?.avgRating} sessionsCount={profileView?.sessionsCount} reviewsCount={profileView?.reviewsCount} compact={false} />
 
         <div className="border-b border-slate-200">
           <div className="flex flex-wrap gap-1">
@@ -615,7 +619,7 @@ const ProfilePage: React.FC = () => {
                 <h3 className="font-semibold text-slate-900 mb-2">Matières suivies</h3>
                 <div className="flex flex-wrap gap-2">
                   {(courseLabels ?? []).map((subject) => (
-                    <SubjectBadge key={subject.code} label={subject.label} compactLabel={buildSubjectInitials(subject.label, subject.code)} isImportant={subject.isImportant} importantLabel={language === 'ar' ? 'مهم' : 'Important'} />
+                    <SubjectBadge key={subject.code} label={subject.label} compactLabel={buildSubjectInitials(subject.label, subject.code)} isImportant={subject.isImportant} />
                   ))}
                   {!courseLabels?.length && <span className="text-sm text-slate-500">Ajoutez vos matières suivies.</span>}
                 </div>
@@ -763,10 +767,14 @@ const ProfilePage: React.FC = () => {
         )}
 
         {activeTab === 'reviews' && (
+          writtenReviews.length ? (
+            <div className="space-y-3">{writtenReviews.map((item, index) => (<article key={`${item.reviewer?.username ?? 'member'}-${index}`} className="rounded-2xl border border-slate-200 bg-white p-4"><p className="text-sm font-bold text-slate-900">{item.reviewer?.username} · {item.score}★</p><p className="text-xs text-slate-500">{[item.reviewer?.level, item.reviewer?.major, item.createdAt ? new Date(item.createdAt).toLocaleDateString() : ''].filter(Boolean).join(' · ')}</p><p className="mt-2 text-sm text-slate-700">{item.review}</p></article>))}</div>
+          ) : (
           <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-slate-600">
             <h3 className="text-base font-semibold text-slate-800">Reviews</h3>
             <p className="mt-2 text-sm">{t.profile.reviewsEmpty}</p>
           </div>
+          )
         )}
       </section>
     </div>
