@@ -169,7 +169,19 @@ const ProfilePage: React.FC = () => {
         sessionsCount: data.user?.sessionsCount ?? 0
       } as ProfileView;
       setProfile(merged);
-      setWrittenReviews((data.writtenReviews ?? []).filter((item) => item?.review?.trim()));
+      const normalizedWrittenReviews = (data.writtenReviews ?? [])
+        .map((item) => {
+          const rawReview = (item as { review?: string; comment?: string; text?: string }).review
+            ?? (item as { comment?: string }).comment
+            ?? (item as { text?: string }).text
+            ?? '';
+          return {
+            ...item,
+            review: typeof rawReview === 'string' ? rawReview.trim() : ''
+          };
+        })
+        .filter((item) => item.review);
+      setWrittenReviews(normalizedWrittenReviews);
       setAcademicSettings(settingsData);
     };
 
@@ -770,7 +782,7 @@ const ProfilePage: React.FC = () => {
                 <article key={`${item.reviewer?.id ?? item.reviewer?.username ?? 'member'}-${index}`} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
                   <p className="text-sm font-bold text-slate-900">{item.reviewer?.username} · {item.score}★</p>
                   <p className="text-xs text-slate-500">
-                    {[item.reviewer?.level, item.reviewer?.major, item.createdAt ? new Date(item.createdAt).toLocaleDateString(language === 'ar' ? 'ar-DZ' : 'fr-FR') : '']
+                    {[item.reviewer?.faculty, item.reviewer?.level, item.reviewer?.major, item.createdAt ? new Date(item.createdAt).toLocaleDateString(language === 'ar' ? 'ar-DZ' : 'fr-FR') : '']
                       .filter(Boolean)
                       .join(' · ')}
                   </p>

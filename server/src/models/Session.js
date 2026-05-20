@@ -28,6 +28,7 @@ const sessionSchema = new mongoose.Schema({
   rating: {
     type: Map,
     of: new mongoose.Schema({
+      raterId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: false },
       score: { type: Number, min: 1, max: 5, required: true },
       review: { type: String, trim: true, default: '' },
       createdAt: { type: Date, default: Date.now }

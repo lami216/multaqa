@@ -50,21 +50,6 @@ const getSubjectLabel = (subjectCode: string) => (
   getSubjectFullName(subjectCode) || getSubjectShortNameByCode(subjectCode) || subjectCode
 );
 
-const getRolePreference = (profile?: Profile | null) => (
-  profile?.rolePreferences?.find((item) => item === 'need_help' || item === 'can_help')
-  ?? profile?.prioritiesOrder?.find((item) => item === 'need_help' || item === 'can_help')
-);
-
-const getActivityPreference = (profile?: Profile | null) => (
-  profile?.activityPreferences?.find((item) => item === 'td' || item === 'archive')
-  ?? profile?.prioritiesOrder?.find((item) => item === 'td' || item === 'archive')
-);
-
-const getPostActivity = (post: PostResponse) => {
-  const legacyPostRole = (post as { postRole?: string }).postRole;
-  return post.postActivity ?? (legacyPostRole === 'td' || legacyPostRole === 'archive' ? legacyPostRole : undefined);
-};
-
 const getScoreTone = (score: number) => {
   if (score >= 80) return 'from-emerald-500 to-emerald-600 text-emerald-700 bg-emerald-50 ring-emerald-100';
   if (score >= 60) return 'from-amber-400 to-amber-500 text-amber-700 bg-amber-50 ring-amber-100';
@@ -95,10 +80,10 @@ const CompatibilityDetailsDialog: React.FC<CompatibilityDetailsDialogProps> = ({
   const subjectTotalCount = breakdown?.subjectTotalCount ?? postSubjectCodes.length;
   const subjectMatchedCount = breakdown?.subjectMatchedCount ?? matchedSubjectCodes.length;
   const subjectCategoryPercent = subjectTotalCount > 0 ? Math.round((subjectMatchedCount / subjectTotalCount) * 100) : 0;
-  const rolePreference = getRolePreference(profile);
-  const activityPreference = getActivityPreference(profile);
-  const postRole = post.postRole === 'need_help' || post.postRole === 'can_help' ? post.postRole : undefined;
-  const postActivity = getPostActivity(post);
+  const rolePreference = breakdown?.receiverRolePreference ?? null;
+  const postRole = breakdown?.postRole ?? null;
+  const activityPreference = breakdown?.receiverActivityPreference ?? null;
+  const postActivity = breakdown?.postActivity ?? null;
 
   const text = {
     title: language === 'ar' ? 'لماذا هذا التوافق؟' : 'Pourquoi cette compatibilité ?',
@@ -279,14 +264,14 @@ const CompatibilityDetailsDialog: React.FC<CompatibilityDetailsDialogProps> = ({
                   <BookOpen size={14} /> {text.missingSubjects}: {getSubjectLabel(subjectCode)}
                 </span>
               ))}
-              {rolePreference && postRole ? (
+              {rolePreference && postRole && roleLabels[rolePreference] && roleLabels[postRole] ? (
                 <span className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-700 ring-1 ring-slate-200">
                   <Handshake size={14} /> {roleLabels[rolePreference]?.[language]} ↔ {roleLabels[postRole]?.[language]}
                 </span>
               ) : null}
-              {activityPreference && postActivity ? (
+              {activityPreference && postActivity && activityLabels[activityPreference] && activityLabels[postActivity] ? (
                 <span className="inline-flex items-center gap-2 rounded-full bg-indigo-50 px-3 py-1.5 text-xs font-bold text-indigo-700 ring-1 ring-indigo-100">
-                  <Sparkles size={14} /> {activityLabels[activityPreference]?.[language]} / {activityLabels[postActivity]?.[language]}
+                  <Sparkles size={14} /> {activityLabels[activityPreference]?.[language]} ↔ {activityLabels[postActivity]?.[language]}
                 </span>
               ) : null}
               {contextItems.map((item) => item ? (

@@ -23,7 +23,8 @@ const buildPublicProfileResult = async (user) => {
     return entries
       .filter(([targetUserId, rating]) => targetUserId?.toString() === user._id.toString() && rating?.review?.trim())
       .map(([_, rating]) => {
-        const reviewerId = session.participants.find((participantId) => participantId.toString() !== user._id.toString());
+        const reviewerId = rating.raterId
+          ?? session.participants.find((participantId) => participantId.toString() !== user._id.toString());
         return {
           reviewerId,
           score: rating.score,
@@ -36,7 +37,7 @@ const buildPublicProfileResult = async (user) => {
   const reviewerIds = [...new Set(writtenReviews.map((item) => item.reviewerId?.toString()).filter(Boolean))];
   const [reviewers, reviewerProfiles] = await Promise.all([
     User.find({ _id: { $in: reviewerIds } }).select('username').lean(),
-    Profile.find({ userId: { $in: reviewerIds } }).select('userId major level').lean()
+    Profile.find({ userId: { $in: reviewerIds } }).select('userId faculty major level').lean()
   ]);
   const reviewerMap = new Map(reviewers.map((reviewer) => [reviewer._id.toString(), reviewer]));
   const reviewerProfileMap = new Map(reviewerProfiles.map((profile) => [profile.userId.toString(), profile]));
@@ -53,6 +54,7 @@ const buildPublicProfileResult = async (user) => {
         reviewer: {
           id: key,
           username: reviewerMap.get(key)?.username ?? 'Member',
+          faculty: reviewerProfileMap.get(key)?.faculty ?? '',
           major: reviewerProfileMap.get(key)?.major ?? '',
           level: reviewerProfileMap.get(key)?.level ?? ''
         }

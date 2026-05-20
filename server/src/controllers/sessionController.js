@@ -155,6 +155,7 @@ export const submitSessionRating = async (req, res) => {
 
     if (normalizedScore >= 1) {
       session.rating.set(targetUserId, {
+        raterId: req.user._id,
         score: normalizedScore,
         review: typeof review === 'string' ? review.trim() : '',
         createdAt: new Date()
