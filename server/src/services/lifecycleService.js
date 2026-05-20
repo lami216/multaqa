@@ -110,6 +110,7 @@ export const cleanupSessionLifecycle = async (sessionId) => {
     await dbSession.withTransaction(async () => {
       const sessionDoc = await Session.findById(sessionId).session(dbSession);
       if (!sessionDoc) return;
+      if (sessionDoc.cleanupProcessedAt) return;
 
       const participantIds = (sessionDoc.participants ?? []).map((entry) => toObjectId(entry));
       if (participantIds.length) {
@@ -143,7 +144,8 @@ export const cleanupSessionLifecycle = async (sessionId) => {
         await Post.deleteOne({ _id: sessionDoc.postId }, { session: dbSession });
       }
 
-      await Session.deleteOne({ _id: sessionDoc._id, status: 'completed' }, { session: dbSession });
+      sessionDoc.cleanupProcessedAt = new Date();
+      await sessionDoc.save({ session: dbSession });
       cleaned = true;
     });
 

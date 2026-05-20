@@ -74,7 +74,8 @@ const processSessions = async () => {
 
   const dueCleanup = await Session.find({
     status: 'completed',
-    completionDeadlineAt: { $lte: now }
+    completionDeadlineAt: { $lte: now },
+    cleanupProcessedAt: null
   }).select('_id');
 
   for (const session of dueCleanup) {
