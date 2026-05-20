@@ -157,6 +157,7 @@ export interface WrittenReviewItem {
   reviewer: {
     id: string;
     username: string;
+    faculty?: string;
     major?: string;
     level?: string;
   };
@@ -195,6 +196,10 @@ export interface PostResponse extends PostPayload {
   matchPercent?: number;
   compatibilityPercentage?: number;
   compatibilityBreakdown?: {
+    receiverRolePreference?: 'need_help' | 'can_help' | null;
+    postRole?: 'need_help' | 'can_help' | null;
+    receiverActivityPreference?: 'td' | 'archive' | null;
+    postActivity?: 'td' | 'archive' | null;
     subjectScore: number;
     subjectMatchedCount?: number;
     subjectTotalCount?: number;

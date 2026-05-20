@@ -120,6 +120,10 @@ export const computePostCompatibilityForUser = (post, receiverProfile) => {
   return {
     compatibilityPercentage,
     compatibilityBreakdown: {
+      receiverRolePreference,
+      postRole,
+      receiverActivityPreference,
+      postActivity,
       subjectScore,
       subjectMatchedCount,
       subjectTotalCount,
