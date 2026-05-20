@@ -25,6 +25,7 @@ const sessionSchema = new mongoose.Schema({
   completionDeadlineAt: { type: Date, default: null },
   confirmedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   completedBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  cleanupProcessedAt: { type: Date, default: null },
   rating: {
     type: Map,
     of: new mongoose.Schema({
