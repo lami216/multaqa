@@ -21,7 +21,7 @@ import {
   getTermSemesterForLevel,
   isFacultyEnabled
 } from '../lib/catalog';
-import { type AcademicSettingsResponse, disconnectTelegramRequest, fetchAcademicSettings, generateTelegramLinkTokenRequest, http, type Profile, type RemainingSubjectItem, type WrittenReviewItem, updateProfileSettingsRequest } from '../lib/http';
+import { type AcademicSettingsResponse, disconnectTelegramRequest, fetchAcademicSettings, generateTelegramLinkTokenRequest, http, type Profile, type RatingDistribution, type RemainingSubjectItem, type WrittenReviewItem, updateProfileSettingsRequest } from '../lib/http';
 import { normalizeActivityPreferences, normalizeRolePreferences, parseLegacyPriorities } from '../lib/priorities';
 import { buildSubjectInitials } from '../lib/subjectDisplay';
 
@@ -49,8 +49,9 @@ const ProfilePage: React.FC = () => {
   const [telegramLinkData, setTelegramLinkData] = useState<{ token: string; botUsername: string } | null>(null);
   const [copySuccess, setCopySuccess] = useState(false);
   const [disconnectingTelegram, setDisconnectingTelegram] = useState(false);
-  const [activeTab, setActiveTab] = useState<'posts' | 'resources' | 'reviews'>('posts');
   const [writtenReviews, setWrittenReviews] = useState<WrittenReviewItem[]>([]);
+  const [ratingDistribution, setRatingDistribution] = useState<RatingDistribution>({ 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 });
+  const [showAllReviews, setShowAllReviews] = useState(false);
   const [academicSettings, setAcademicSettings] = useState<AcademicSettingsResponse>({
     academicTermType: 'odd',
     catalogVisibility: { faculties: {}, majors: {} },
@@ -153,7 +154,7 @@ const ProfilePage: React.FC = () => {
       const profileEndpoint = id ? `/users/id/${id}` : (currentUserId ? `/users/id/${currentUserId}` : '');
       if (!profileEndpoint) return;
       const [{ data }, { data: settingsData }] = await Promise.all([
-        http.get<{ user: { id: string; averageRating?: number; totalReviews?: number; sessionsCount?: number }; profile: Profile; posts: unknown; writtenReviews?: WrittenReviewItem[] }>(profileEndpoint, {
+        http.get<{ user: { id: string; averageRating?: number; totalReviews?: number; sessionsCount?: number }; profile: Profile; posts: unknown; ratingDistribution?: RatingDistribution; writtenReviews?: WrittenReviewItem[] }>(profileEndpoint, {
           headers: {
             'Cache-Control': 'no-cache',
             Pragma: 'no-cache'
@@ -182,6 +183,7 @@ const ProfilePage: React.FC = () => {
         })
         .filter((item) => item.review);
       setWrittenReviews(normalizedWrittenReviews);
+      setRatingDistribution(data.ratingDistribution ?? { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 });
       setAcademicSettings(settingsData);
     };
 
@@ -360,6 +362,9 @@ const ProfilePage: React.FC = () => {
   const sessionsCount = profileView?.sessionsCount ?? 0;
   const avgRating = profileView?.avgRating ?? 0;
   const avgRatingDisplay = Number(avgRating).toFixed(1);
+  const writtenReviewsToRender = showAllReviews ? writtenReviews : writtenReviews.slice(0, 3);
+  const shouldShowAllButton = writtenReviews.length > 3;
+  const hasRatings = Object.values(ratingDistribution).some((count) => count > 0);
 
   return (
     <div className="space-y-6">
@@ -583,29 +588,7 @@ const ProfilePage: React.FC = () => {
             <p className="text-xs font-bold uppercase tracking-wide text-slate-500">{t.profile.rating}</p>
           </div>
         </div>
-        <div className="border-b border-slate-200">
-          <div className="flex flex-wrap gap-1">
-            {[
-              { key: 'posts', label: t.profile.posts },
-              { key: 'resources', label: t.profile.resources },
-              { key: 'reviews', label: t.profile.reviewsTab }
-            ].map((tab) => (
-              <button
-                key={tab.key}
-                type="button"
-                onClick={() => setActiveTab(tab.key as 'posts' | 'resources' | 'reviews')}
-                className={`rounded-t-lg px-4 py-2 text-sm font-semibold transition ${
-                  activeTab === tab.key ? 'border-b-2 border-emerald-500 text-emerald-600' : 'text-slate-500 hover:text-slate-700'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {activeTab === 'posts' && (
-          <div className="space-y-4">
+        <div className="space-y-4">
             {isOwner ? (
               <div className="flex flex-wrap gap-2">
                 <Link to="/posts" className="primary-btn">
@@ -766,37 +749,62 @@ const ProfilePage: React.FC = () => {
               <MapPin size={16} /> {profile?.availability ?? 'Disponibilité à définir'}
             </div>
           </div>
-        )}
-
-        {activeTab === 'resources' && (
-          <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-slate-600">
-            <h3 className="text-base font-semibold text-slate-800">Resources</h3>
-            <p className="mt-2 text-sm">{t.profile.resourcesEmpty}</p>
-          </div>
-        )}
-
-        {activeTab === 'reviews' && (
-          writtenReviews.length ? (
-            <div className="space-y-3">
-              {writtenReviews.map((item, index) => (
-                <article key={`${item.reviewer?.id ?? item.reviewer?.username ?? 'member'}-${index}`} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                  <p className="text-sm font-bold text-slate-900">{item.reviewer?.username} · {item.score}★</p>
-                  <p className="text-xs text-slate-500">
-                    {[item.reviewer?.faculty, item.reviewer?.level, item.reviewer?.major, item.createdAt ? new Date(item.createdAt).toLocaleDateString(language === 'ar' ? 'ar-DZ' : 'fr-FR') : '']
-                      .filter(Boolean)
-                      .join(' · ')}
-                  </p>
-                  <p className="mt-2 text-sm text-slate-700">{item.review}</p>
-                </article>
-              ))}
+        <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
+          <header className="space-y-1">
+            <h2 className="text-lg font-bold text-slate-900">{t.profile.studentReviewsTitle}</h2>
+            <p className="text-sm text-slate-500">{t.profile.studentReviewsSubtitle}</p>
+          </header>
+          {hasRatings ? (
+            <div className="space-y-2">
+              {[5, 4, 3, 2, 1].map((star) => {
+                const count = ratingDistribution[star as 1 | 2 | 3 | 4 | 5] ?? 0;
+                const width = reviewsCount > 0 ? Math.round((count / reviewsCount) * 100) : 0;
+                return (
+                  <div key={star} className="grid grid-cols-[58px_1fr_40px] items-center gap-2 text-sm">
+                    <span className="font-semibold text-slate-700">{star} ⭐</span>
+                    <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+                      <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${width}%` }} />
+                    </div>
+                    <span className="text-end font-semibold text-slate-700">{count}</span>
+                  </div>
+                );
+              })}
+              <p className="pt-2 text-sm font-semibold text-emerald-700">{t.profile.averageRatingLabel(avgRatingDisplay)}</p>
             </div>
           ) : (
-          <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-slate-600">
-            <h3 className="text-base font-semibold text-slate-800">{t.profile.reviewsTab}</h3>
-            <p className="mt-2 text-sm">{t.profile.reviewsEmpty}</p>
-          </div>
-          )
-        )}
+            <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600">{t.profile.reviewsDistributionEmpty}</div>
+          )}
+
+          {writtenReviews.length ? (
+            <div className="space-y-3">
+              {writtenReviewsToRender.map((item, index) => (
+                <article key={`${item.reviewer?.id ?? item.reviewer?.username ?? 'member'}-${index}`} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3">
+                      <Avatar className="h-10 w-10">
+                        <AvatarFallback className="bg-emerald-50 text-emerald-700">{item.reviewer?.username?.slice(0, 1)?.toUpperCase() ?? 'M'}</AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="text-sm font-bold text-slate-900">{item.reviewer?.username}</p>
+                        <p className="text-xs text-slate-500">{[item.reviewer?.level, item.reviewer?.major].filter(Boolean).join(' · ') || t.profile.reviewerInfoFallback}</p>
+                      </div>
+                    </div>
+                    <p className="text-sm font-semibold text-amber-500">{item.score}★</p>
+                  </div>
+                  <p className="mt-2 text-sm text-slate-700">{item.review}</p>
+                  {item.createdAt ? <p className="mt-2 text-xs text-slate-500">{new Intl.DateTimeFormat(language === 'ar' ? 'ar-DZ' : 'fr-FR').format(new Date(item.createdAt))}</p> : null}
+                </article>
+              ))}
+              {shouldShowAllButton ? (
+                <button type="button" className="secondary-btn w-full sm:w-auto" onClick={() => setShowAllReviews((prev) => !prev)}>
+                  {showAllReviews ? t.profile.showLessReviews : t.profile.showAllReviews}
+                </button>
+              ) : null}
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600">{t.profile.reviewsEmpty}</div>
+          )}
+        </section>
       </section>
     </div>
   );

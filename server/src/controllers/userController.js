@@ -17,6 +17,17 @@ const buildPublicProfileResult = async (user) => {
     status: 'completed',
     participants: user._id
   }).select('participants rating endedAt createdAt');
+  const ratingDistribution = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+
+  completedSessions.forEach((session) => {
+    const entries = Array.from(session.rating?.entries?.() ?? []);
+    entries.forEach(([targetUserId, rating]) => {
+      if (targetUserId?.toString() !== user._id.toString()) return;
+      const score = Number(rating?.score);
+      if (!Number.isInteger(score) || score < 1 || score > 5) return;
+      ratingDistribution[score] += 1;
+    });
+  });
 
   const writtenReviews = completedSessions.flatMap((session) => {
     const entries = Array.from(session.rating?.entries?.() ?? []);
@@ -72,6 +83,8 @@ const buildPublicProfileResult = async (user) => {
     },
     profile,
     posts,
+    ratingDistribution,
+    totalWrittenReviews: sanitizedReviews.length,
     writtenReviews: sanitizedReviews
   };
 };
