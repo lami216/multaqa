@@ -1,4 +1,5 @@
 import Profile from '../models/Profile.js';
+import mongoose from 'mongoose';
 import Subject from '../models/Subject.js';
 import UnionReview from '../models/UnionReview.js';
 import UnionReviewAttendance from '../models/UnionReviewAttendance.js';
@@ -16,6 +17,7 @@ const basePopulate = [
 
 export const createUnionReview = async (req, res) => {
   try {
+    console.log('[UnionReview] received body', req.body);
     const { organizer, facultyId, level, majorId, subjectId, subjectCode, location, startsAt } = req.body;
     if (!['UNEM', 'UGEM'].includes(organizer)) return res.status(400).json({ error: 'Organizer must be UNEM or UGEM' });
     if (!facultyId || !level || !majorId || !location || !startsAt || (!subjectId && !subjectCode)) {
@@ -25,8 +27,16 @@ export const createUnionReview = async (req, res) => {
     const startsAtDate = new Date(startsAt);
     if (Number.isNaN(startsAtDate.getTime())) return res.status(400).json({ error: 'startsAt must be a valid date' });
 
-    const subject = await (subjectId ? Subject.findOne({ _id: subjectId, active: true }) : Subject.findOne({ code: subjectCode, active: true }));
-    if (!subject) return res.status(400).json({ error: 'Invalid subject selection' });
+    const normalizedSubjectCode = typeof subjectCode === 'string' ? subjectCode.trim() : '';
+    const hasValidObjectId = typeof subjectId === 'string' && mongoose.Types.ObjectId.isValid(subjectId);
+
+    const subject = await (hasValidObjectId
+      ? Subject.findOne({ _id: subjectId, active: true })
+      : Subject.findOne({ code: normalizedSubjectCode, active: true }));
+
+    if (!subject) {
+      return res.status(400).json({ error: 'Invalid subject selection: provide a valid subjectId or subjectCode' });
+    }
 
     const review = await UnionReview.create({
       organizer,
@@ -60,8 +70,9 @@ export const createUnionReview = async (req, res) => {
     const hydrated = await UnionReview.findById(review._id).populate(basePopulate);
     return res.status(201).json({ review: hydrated });
   } catch (error) {
-    console.error('Create union review error:', error);
-    return res.status(500).json({ error: 'Failed to create union review' });
+    console.error('[UnionReview] create error', error);
+    const details = error instanceof Error ? error.message : String(error);
+    return res.status(500).json({ error: `Failed to create union review: ${details}` });
   }
 };
 
