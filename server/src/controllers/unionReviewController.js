@@ -15,8 +15,10 @@ export const createUnionReview = async (req, res) => {
       return res.status(400).json({ error: 'organizer, facultyId, level, majorId, subjectCode, location and startsAt are required' });
     }
 
+    console.log('[UnionReview] backend received startsAt', startsAt);
     const startsAtDate = new Date(startsAt);
     if (Number.isNaN(startsAtDate.getTime())) return res.status(400).json({ error: 'startsAt must be a valid date' });
+    console.log('[UnionReview] backend parsed startsAtDate', startsAtDate.toISOString());
 
     const review = await UnionReview.create({
       organizer,
@@ -48,10 +50,17 @@ export const createUnionReview = async (req, res) => {
     await createNotificationsForUsers({
       userIds,
       actorId: req.user._id,
+      includeActor: true,
       type: 'union_review_published',
-      payload: { link: '/posts', message: subjectLabel, reviewId: review._id.toString(), location: review.location, startsAt: review.startsAt, organizer: review.organizer }
+      payload: { link: '/', message: subjectLabel, reviewId: review._id.toString(), location: review.location, startsAt: review.startsAt, organizer: review.organizer },
+      telegram: {
+        eventName: 'union_review_published',
+        ar: `مراجعة جديدة من ${review.organizer} في مادة ${review.subjectNameAr || review.subjectCode}، في ${review.location}.`,
+        fr: `Nouvelle révision de ${review.organizer} pour ${review.subjectNameFr || review.subjectCode}, à ${review.location}.`
+      }
     });
 
+    console.log('[UnionReview] returned review.startsAt', review.startsAt.toISOString());
     return res.status(201).json({ review });
   } catch (error) {
     console.error('[UnionReview] create error', error);
@@ -84,10 +93,11 @@ export const getStudentUnionReviews = async (req, res) => {
 
 export const markGoing = async (req, res) => {
   const eventId = req.params.id;
-  try {
+  const existing = await UnionReviewAttendance.findOne({ eventId, userId: req.user._id });
+  if (!existing) {
     await UnionReviewAttendance.create({ eventId, userId: req.user._id });
     await UnionReview.updateOne({ _id: eventId }, { $inc: { goingCount: 1 } });
-  } catch {}
+  }
   const review = await UnionReview.findById(eventId);
   return res.json({ review, isGoing: true });
 };

@@ -155,10 +155,10 @@ export const createNotification = async ({ userId, actorId, type, payload = {}, 
   return notification;
 };
 
-export const createNotificationsForUsers = async ({ userIds, actorId, type, payload, telegram }) => {
+export const createNotificationsForUsers = async ({ userIds, actorId, type, payload, telegram, includeActor = false }) => {
   const actorKey = normalizeId(actorId);
   const uniqueRecipientIds = [...new Set((userIds ?? []).map((id) => normalizeId(id)).filter(Boolean))]
-    .filter((id) => id !== actorKey);
+    .filter((id) => includeActor || id !== actorKey);
 
   await Promise.all(uniqueRecipientIds.map((userId) => createNotification({ userId, actorId, type, payload, telegram })));
 };

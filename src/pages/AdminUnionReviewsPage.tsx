@@ -40,15 +40,17 @@ export default function AdminUnionReviewsPage() {
     });
   }, []);
 
+  const currentTermType = academicSettings.settings?.currentTermType ?? academicSettings.academicTermType ?? 'odd';
+
   const levels = useMemo<CatalogLevel[]>(() => getLevelsByFaculty(form.facultyId, academicSettings.catalogVisibility), [form.facultyId, academicSettings.catalogVisibility]);
 
   const majors = useMemo<CatalogMajor[]>(() => getMajorsByFacultyAndLevel(form.facultyId, form.level, academicSettings.catalogVisibility), [form.facultyId, form.level, academicSettings.catalogVisibility]);
 
   const subjects = useMemo<CatalogSubject[]>(() => {
-    const semesterId = getTermSemesterForLevel(form.level, academicSettings.academicTermType);
+    const semesterId = getTermSemesterForLevel(form.level, currentTermType);
     if (!semesterId) return [];
-    return getSubjectsByMajorAndSemester(form.facultyId, form.level, form.majorId, semesterId, academicSettings.academicTermType, academicSettings.catalogVisibility);
-  }, [form.facultyId, form.level, form.majorId, academicSettings.academicTermType, academicSettings.catalogVisibility]);
+    return getSubjectsByMajorAndSemester(form.facultyId, form.level, form.majorId, semesterId, currentTermType, academicSettings.catalogVisibility);
+  }, [form.facultyId, form.level, form.majorId, currentTermType, academicSettings.catalogVisibility]);
 
   const refreshReviews = async () => {
     const reviewsRes = await fetchAdminUnionReviews();
@@ -69,6 +71,10 @@ export default function AdminUnionReviewsPage() {
       return;
     }
 
+    const startsAtIso = new Date(form.startsAt).toISOString();
+    console.log('[UnionReview] selected startsAt raw', form.startsAt);
+    console.log('[UnionReview] payload startsAt', startsAtIso);
+
     const payload = {
       organizer: form.organizer,
       facultyId: form.facultyId,
@@ -78,7 +84,7 @@ export default function AdminUnionReviewsPage() {
       subjectNameAr: selectedSubject.nameAr,
       subjectNameFr: selectedSubject.nameFr,
       location: form.location.trim(),
-      startsAt: form.startsAt
+      startsAt: startsAtIso
     };
 
     try {

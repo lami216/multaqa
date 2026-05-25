@@ -6,8 +6,8 @@ const UnionReviewCountdown: React.FC<{ startsAt: string }> = ({ startsAt }) => {
   const [now, setNow] = useState(Date.now());
   useEffect(() => { const id = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(id); }, []);
   const diff = new Date(startsAt).getTime() - now;
-  const sign = diff >= 0 ? '-' : '+';
   const t = Math.abs(diff);
+  const sign = t < 1000 ? '' : (diff > 0 ? '-' : '+');
   const h = Math.floor(t / 3600000);
   const m = Math.floor((t % 3600000) / 60000);
   const s = Math.floor((t % 60000) / 1000);
