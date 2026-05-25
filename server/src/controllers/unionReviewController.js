@@ -1,6 +1,4 @@
 import Profile from '../models/Profile.js';
-import mongoose from 'mongoose';
-import Subject from '../models/Subject.js';
 import UnionReview from '../models/UnionReview.js';
 import UnionReviewAttendance from '../models/UnionReviewAttendance.js';
 import UnionReviewView from '../models/UnionReviewView.js';
@@ -9,51 +7,27 @@ import { createNotificationsForUsers } from '../services/notificationService.js'
 
 const isExpired = (startsAt) => Date.now() >= (new Date(startsAt).getTime() + 60 * 60 * 1000);
 
-const basePopulate = [
-  { path: 'facultyId', select: 'nameAr nameFr' },
-  { path: 'majorId', select: 'nameAr nameFr' },
-  { path: 'subjectId', select: 'nameAr nameFr code' }
-];
-
 export const createUnionReview = async (req, res) => {
   try {
-    console.log('[UnionReview] received body', req.body);
-    const { organizer, facultyId, level, majorId, subjectId, subjectCode, location, startsAt } = req.body;
+    const { organizer, facultyId, level, majorId, subjectCode, subjectNameAr, subjectNameFr, location, startsAt } = req.body;
     if (!['UNEM', 'UGEM'].includes(organizer)) return res.status(400).json({ error: 'Organizer must be UNEM or UGEM' });
-    if (!facultyId || !level || !majorId || !location || !startsAt || (!subjectId && !subjectCode)) {
-      return res.status(400).json({ error: 'organizer, facultyId, level, majorId, subjectId/subjectCode, location and startsAt are required' });
+    if (!facultyId || !level || !majorId || !subjectCode || !location || !startsAt) {
+      return res.status(400).json({ error: 'organizer, facultyId, level, majorId, subjectCode, location and startsAt are required' });
     }
 
     const startsAtDate = new Date(startsAt);
     if (Number.isNaN(startsAtDate.getTime())) return res.status(400).json({ error: 'startsAt must be a valid date' });
 
-    const normalizedSubjectCode = typeof subjectCode === 'string' ? subjectCode.trim() : '';
-    const hasValidObjectId = typeof subjectId === 'string' && mongoose.Types.ObjectId.isValid(subjectId);
-
-    let subject = null;
-    if (hasValidObjectId) {
-      subject = await Subject.findOne({ _id: subjectId, active: true });
-    }
-    if (!subject && normalizedSubjectCode) {
-      subject = await Subject.findOne({
-        active: true,
-        $or: [{ code: normalizedSubjectCode }, { subjectCode: normalizedSubjectCode }]
-      });
-    }
-
-    if (!subject) {
-      return res.status(400).json({ error: 'Invalid subject selection: provide a valid subjectId or subjectCode' });
-    }
-
     const review = await UnionReview.create({
       organizer,
-      facultyId: subject.facultyId,
+      facultyId: String(facultyId).trim(),
       level,
-      majorId: subject.majorId,
-      subjectId: subject._id,
+      majorId: String(majorId).trim(),
+      subjectCode: String(subjectCode).trim(),
+      subjectNameAr: typeof subjectNameAr === 'string' ? subjectNameAr.trim() : undefined,
+      subjectNameFr: typeof subjectNameFr === 'string' ? subjectNameFr.trim() : undefined,
       location: String(location).trim(),
       startsAt: startsAtDate,
-      subjectCode: subject.code,
       createdBy: req.user._id
     });
 
@@ -61,12 +35,16 @@ export const createUnionReview = async (req, res) => {
       $or: [
         { subjectCodes: review.subjectCode },
         { 'remainingSubjects.subjectCode': review.subjectCode },
-        { facultyId: String(review.facultyId), majorId: String(review.majorId), level: review.level }
+        {
+          facultyId: review.facultyId,
+          majorId: review.majorId,
+          level: review.level
+        }
       ]
     }).select('userId');
 
     const userIds = targetProfiles.map((p) => p.userId);
-    const subjectLabel = subject.nameFr;
+    const subjectLabel = review.subjectNameFr || review.subjectCode;
     await createNotificationsForUsers({
       userIds,
       actorId: req.user._id,
@@ -74,8 +52,7 @@ export const createUnionReview = async (req, res) => {
       payload: { link: '/posts', message: subjectLabel, reviewId: review._id.toString(), location: review.location, startsAt: review.startsAt, organizer: review.organizer }
     });
 
-    const hydrated = await UnionReview.findById(review._id).populate(basePopulate);
-    return res.status(201).json({ review: hydrated });
+    return res.status(201).json({ review });
   } catch (error) {
     console.error('[UnionReview] create error', error);
     const details = error instanceof Error ? error.message : String(error);
@@ -84,21 +61,21 @@ export const createUnionReview = async (req, res) => {
 };
 
 export const getAdminUnionReviews = async (req, res) => {
-  const reviews = await UnionReview.find().sort({ startsAt: -1 }).populate(basePopulate);
+  const reviews = await UnionReview.find().sort({ startsAt: -1 });
   return res.json({ reviews: reviews.map((r) => ({ ...r.toObject(), computedStatus: isExpired(r.startsAt) ? 'expired' : r.status })) });
 };
 
 export const getStudentUnionReviews = async (req, res) => {
   const isAdmin = req.user?.role === 'admin';
   const baseQuery = isAdmin ? { status: 'published' } : { status: 'published', startsAt: { $gte: new Date(Date.now() - 60 * 60 * 1000) } };
-  const reviews = await UnionReview.find(baseQuery).sort({ startsAt: 1 }).populate(basePopulate);
+  const reviews = await UnionReview.find(baseQuery).sort({ startsAt: 1 });
   if (isAdmin) return res.json({ reviews });
   const profile = await Profile.findOne({ userId: req.user._id }).lean();
   const user = await User.findById(req.user._id).select('remainingSubjects').lean();
   const relevant = reviews.filter((r) => profile && (
     (profile.subjectCodes ?? []).includes(r.subjectCode)
     || (user?.remainingSubjects ?? []).includes(r.subjectCode)
-    || (String(profile.facultyId) === String(r.facultyId._id) && String(profile.majorId) === String(r.majorId._id) && profile.level === r.level)
+    || (String(profile.facultyId) === String(r.facultyId) && String(profile.majorId) === String(r.majorId) && profile.level === r.level)
   ));
   const attendances = await UnionReviewAttendance.find({ userId: req.user._id, eventId: { $in: relevant.map((r) => r._id) } }).select('eventId');
   const attendingSet = new Set(attendances.map((a) => String(a.eventId)));
@@ -111,7 +88,7 @@ export const markGoing = async (req, res) => {
     await UnionReviewAttendance.create({ eventId, userId: req.user._id });
     await UnionReview.updateOne({ _id: eventId }, { $inc: { goingCount: 1 } });
   } catch {}
-  const review = await UnionReview.findById(eventId).populate(basePopulate);
+  const review = await UnionReview.findById(eventId);
   return res.json({ review, isGoing: true });
 };
 

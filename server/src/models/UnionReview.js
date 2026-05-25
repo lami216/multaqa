@@ -2,11 +2,12 @@ import mongoose from 'mongoose';
 
 const unionReviewSchema = new mongoose.Schema({
   organizer: { type: String, enum: ['UNEM', 'UGEM'], required: true },
-  facultyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Faculty', required: true },
-  majorId: { type: mongoose.Schema.Types.ObjectId, ref: 'Major', required: true },
+  facultyId: { type: String, required: true, trim: true },
+  majorId: { type: String, required: true, trim: true },
   level: { type: String, enum: ['L1', 'L2', 'L3', 'M1', 'M2'], required: true },
-  subjectId: { type: mongoose.Schema.Types.ObjectId, ref: 'Subject', required: true },
   subjectCode: { type: String, required: true, trim: true },
+  subjectNameAr: { type: String, trim: true },
+  subjectNameFr: { type: String, trim: true },
   location: { type: String, required: true, trim: true, maxlength: 220 },
   startsAt: { type: Date, required: true },
   status: { type: String, enum: ['published', 'expired', 'cancelled'], default: 'published' },

@@ -14,7 +14,7 @@ type AdminUnionReviewForm = {
   level: string;
   majorId: string;
   selectedSubjectValue: string;
-  selectedSubject: Pick<CatalogSubject, 'id' | 'code' | 'nameAr' | 'nameFr'> & { _id?: string; subjectCode?: string } | null;
+  selectedSubject: Pick<CatalogSubject, 'id' | 'code' | 'nameAr' | 'nameFr'> | null;
   location: string;
   startsAt: string;
 };
@@ -62,56 +62,27 @@ export default function AdminUnionReviewsPage() {
       return;
     }
 
-    const selectedSubject = subjects.find((subject) => {
-      const possibleValues = [
-        (subject as CatalogSubject & { _id?: string })._id,
-        subject.id,
-        subject.code,
-        (subject as CatalogSubject & { subjectCode?: string }).subjectCode
-      ].filter(Boolean);
+    const selectedSubject = subjects.find((subject) => subject.code === form.selectedSubjectValue) ?? form.selectedSubject;
 
-      return possibleValues.includes(form.selectedSubjectValue);
-    }) ?? form.selectedSubject;
-
-    const subjectId =
-      (selectedSubject as { _id?: string } | null)?._id
-      || selectedSubject?.id
-      || undefined;
-
-    const subjectCode =
-      selectedSubject?.code
-      || (selectedSubject as { subjectCode?: string } | null)?.subjectCode
-      || undefined;
+    if (!selectedSubject?.code) {
+      toast.error(language === 'ar' ? 'اختيار المادة غير صالح' : 'Sélection de matière invalide');
+      return;
+    }
 
     const payload = {
       organizer: form.organizer,
       facultyId: form.facultyId,
       level: form.level,
       majorId: form.majorId,
-      subjectId,
-      subjectCode,
+      subjectCode: selectedSubject.code,
+      subjectNameAr: selectedSubject.nameAr,
+      subjectNameFr: selectedSubject.nameFr,
       location: form.location.trim(),
       startsAt: form.startsAt
     };
 
-    console.log('[UnionReview DEBUG] selected subject value:', form.selectedSubjectValue);
-    console.log('[UnionReview DEBUG] subjects list:', subjects);
-    console.log('[UnionReview DEBUG] payload before submit:', payload);
-
-    if (!subjectId && !subjectCode) {
-      console.error('[UnionReview] invalid selected subject', {
-        selectedSubjectValue: form.selectedSubjectValue,
-        selectedSubject,
-        subjects
-      });
-      throw new Error('Invalid subject selection: no subjectId or subjectCode found');
-    }
-
     try {
       setPublishing(true);
-      console.log('[UnionReview] selectedSubjectValue', form.selectedSubjectValue);
-      console.log('[UnionReview] selectedSubject', selectedSubject);
-      console.log('[UnionReview] payload', payload);
       const response = await createUnionReview(payload);
       console.log('[UnionReview] created', response.data);
       toast.success(language === 'ar' ? 'تم نشر مراجعة الإتحادات بنجاح' : 'La révision de l’union a été publiée avec succès');
@@ -146,34 +117,23 @@ export default function AdminUnionReviewsPage() {
           </select>
           <select value={form.selectedSubjectValue} onChange={(e) => setForm((prev) => {
             const value = e.target.value;
-            const selected = subjects.find((subject) => {
-              const possibleValues = [
-                (subject as CatalogSubject & { _id?: string })._id,
-                subject.id,
-                subject.code,
-                (subject as CatalogSubject & { subjectCode?: string }).subjectCode
-              ].filter(Boolean);
-              return possibleValues.includes(value);
-            }) ?? null;
+            const selected = subjects.find((subject) => subject.code === value) ?? null;
             return {
               ...prev,
               selectedSubjectValue: value,
               selectedSubject: selected
                 ? {
-                  _id: (selected as CatalogSubject & { _id?: string })._id,
                   id: selected.id,
                   code: selected.code,
-                  subjectCode: (selected as CatalogSubject & { subjectCode?: string }).subjectCode,
                   nameAr: selected.nameAr,
                   nameFr: selected.nameFr
                 }
                 : null
             };
           })} disabled={!form.facultyId || !form.level || !form.majorId}>
-            <option value=''>{t.unionReviews.subject}</option>{subjects.map((s) => {
-              const optionValue = (s as CatalogSubject & { _id?: string; subjectCode?: string })._id || s.id || s.code || (s as CatalogSubject & { subjectCode?: string }).subjectCode || '';
-              return <option key={s.id} value={optionValue}>{language === 'ar' ? (s.nameAr || s.code) : (s.nameFr || s.code)}</option>;
-            })}
+            <option value=''>{t.unionReviews.subject}</option>{subjects.map((s) => (
+              <option key={s.id} value={s.code}>{language === 'ar' ? (s.nameAr || s.code) : (s.nameFr || s.code)}</option>
+            ))}
           </select>
           <input value={form.location} placeholder={t.unionReviews.location} onChange={(e) => setForm((prev) => ({ ...prev, location: e.target.value }))} />
           <div className='rounded-xl border border-slate-200 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-900'>
