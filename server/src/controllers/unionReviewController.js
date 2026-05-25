@@ -30,9 +30,16 @@ export const createUnionReview = async (req, res) => {
     const normalizedSubjectCode = typeof subjectCode === 'string' ? subjectCode.trim() : '';
     const hasValidObjectId = typeof subjectId === 'string' && mongoose.Types.ObjectId.isValid(subjectId);
 
-    const subject = await (hasValidObjectId
-      ? Subject.findOne({ _id: subjectId, active: true })
-      : Subject.findOne({ code: normalizedSubjectCode, active: true }));
+    let subject = null;
+    if (hasValidObjectId) {
+      subject = await Subject.findOne({ _id: subjectId, active: true });
+    }
+    if (!subject && normalizedSubjectCode) {
+      subject = await Subject.findOne({
+        active: true,
+        $or: [{ code: normalizedSubjectCode }, { subjectCode: normalizedSubjectCode }]
+      });
+    }
 
     if (!subject) {
       return res.status(400).json({ error: 'Invalid subject selection: provide a valid subjectId or subjectCode' });

@@ -271,7 +271,7 @@ export interface CreateUnionReviewPayload {
   facultyId: string;
   level: string;
   majorId: string;
-  subjectId: string;
+  subjectId?: string;
   subjectCode?: string;
   location: string;
   startsAt: string;
