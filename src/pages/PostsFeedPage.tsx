@@ -5,9 +5,10 @@ import PostCard from '../components/PostCard';
 import SubjectChipsSelector from '../components/subjects/SubjectChipsSelector';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
-import { getSubjectNameByCode } from '../lib/catalog';
-import { fetchPosts, type PostPayload, type PostResponse, type PostRoleKey } from '../lib/http';
+import { getSubjectNameByCode, getSubjectsByMajorAndSemester } from '../lib/catalog';
+import { fetchAcademicSettings, fetchPosts, type AcademicSettingsResponse, type PostPayload, type PostResponse, type PostRoleKey } from '../lib/http';
 import { getProfileSelectableSubjectCodes } from '../lib/profileSubjects';
+import { getActiveSemesterForLevel, resolveCurrentAcademicTerm } from '../lib/academicTerm';
 
 const roleCopy: Record<PostRoleKey, { fr: { label: string; helper: string }; ar: { label: string; helper: string } }> = {
   need_help: {
@@ -63,7 +64,23 @@ const PostsFeedPage: React.FC = () => {
     }
   }, []);
 
-  const subjectOptions = useMemo(() => getProfileSelectableSubjectCodes(profile), [profile]);
+  const [academicSettings, setAcademicSettings] = useState<AcademicSettingsResponse | null>(null);
+
+  useEffect(() => { void fetchAcademicSettings().then(({ data }) => setAcademicSettings(data)).catch(() => setAcademicSettings(null)); }, []);
+
+  const subjectOptions = useMemo(() => {
+    const currentTermType = resolveCurrentAcademicTerm(academicSettings);
+    const semesterId = getActiveSemesterForLevel(profile?.level, academicSettings);
+    const resolvedSubjects = semesterId
+      ? getSubjectsByMajorAndSemester(profile?.facultyId, profile?.level, profile?.majorId, semesterId, currentTermType, academicSettings?.catalogVisibility)
+      : [];
+    console.log('[AcademicTerm] raw settings', academicSettings);
+    console.log('[AcademicTerm] resolved', currentTermType);
+    console.log('[AcademicTerm] level', profile?.level);
+    console.log('[AcademicTerm] semesterId', semesterId);
+    console.log('[AcademicTerm] subjects', resolvedSubjects.map((s) => s.code));
+    return resolvedSubjects.length ? resolvedSubjects.map((subject) => subject.code) : getProfileSelectableSubjectCodes(profile);
+  }, [profile, academicSettings]);
   const importantSubjectCodes = useMemo(() => (profile?.subjectsSettings ?? []).filter((item) => item.isPriority).map((item) => item.subjectCode), [profile?.subjectsSettings]);
   const selectedSubjectFullNames = useMemo(
     () => selectedSubjects.map((subjectCode) => ({ code: subjectCode, fullName: getSubjectNameByCode(subjectCode) || subjectCode })),
