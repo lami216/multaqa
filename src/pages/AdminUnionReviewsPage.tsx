@@ -14,7 +14,7 @@ type AdminUnionReviewForm = {
   level: string;
   majorId: string;
   selectedSubjectValue: string;
-  selectedSubject: Pick<CatalogSubject, 'id' | 'code' | 'nameAr' | 'nameFr'> | null;
+  selectedSubject: Pick<CatalogSubject, 'id' | 'code' | 'nameAr' | 'nameFr'> & { _id?: string; subjectCode?: string } | null;
   location: string;
   startsAt: string;
 };
@@ -62,22 +62,50 @@ export default function AdminUnionReviewsPage() {
       return;
     }
 
-    const selectedSubject = subjects.find((subject) =>
-      subject.id === form.selectedSubjectValue
-      || subject.code === form.selectedSubjectValue
-      || (subject as CatalogSubject & { subjectCode?: string }).subjectCode === form.selectedSubjectValue
-    ) ?? form.selectedSubject;
+    const selectedSubject = subjects.find((subject) => {
+      const possibleValues = [
+        (subject as CatalogSubject & { _id?: string })._id,
+        subject.id,
+        subject.code,
+        (subject as CatalogSubject & { subjectCode?: string }).subjectCode
+      ].filter(Boolean);
+
+      return possibleValues.includes(form.selectedSubjectValue);
+    }) ?? form.selectedSubject;
+
+    const subjectId =
+      (selectedSubject as { _id?: string } | null)?._id
+      || selectedSubject?.id
+      || undefined;
+
+    const subjectCode =
+      selectedSubject?.code
+      || (selectedSubject as { subjectCode?: string } | null)?.subjectCode
+      || undefined;
 
     const payload = {
       organizer: form.organizer,
       facultyId: form.facultyId,
       level: form.level,
       majorId: form.majorId,
-      subjectId: selectedSubject?.id,
-      subjectCode: selectedSubject?.code || (selectedSubject as { subjectCode?: string } | null)?.subjectCode,
+      subjectId,
+      subjectCode,
       location: form.location.trim(),
       startsAt: form.startsAt
     };
+
+    console.log('[UnionReview DEBUG] selected subject value:', form.selectedSubjectValue);
+    console.log('[UnionReview DEBUG] subjects list:', subjects);
+    console.log('[UnionReview DEBUG] payload before submit:', payload);
+
+    if (!subjectId && !subjectCode) {
+      console.error('[UnionReview] invalid selected subject', {
+        selectedSubjectValue: form.selectedSubjectValue,
+        selectedSubject,
+        subjects
+      });
+      throw new Error('Invalid subject selection: no subjectId or subjectCode found');
+    }
 
     try {
       setPublishing(true);
@@ -118,16 +146,34 @@ export default function AdminUnionReviewsPage() {
           </select>
           <select value={form.selectedSubjectValue} onChange={(e) => setForm((prev) => {
             const value = e.target.value;
-            const selected = subjects.find((subject) => subject.id === value || subject.code === value) ?? null;
+            const selected = subjects.find((subject) => {
+              const possibleValues = [
+                (subject as CatalogSubject & { _id?: string })._id,
+                subject.id,
+                subject.code,
+                (subject as CatalogSubject & { subjectCode?: string }).subjectCode
+              ].filter(Boolean);
+              return possibleValues.includes(value);
+            }) ?? null;
             return {
               ...prev,
               selectedSubjectValue: value,
               selectedSubject: selected
-                ? { id: selected.id, code: selected.code, nameAr: selected.nameAr, nameFr: selected.nameFr }
+                ? {
+                  _id: (selected as CatalogSubject & { _id?: string })._id,
+                  id: selected.id,
+                  code: selected.code,
+                  subjectCode: (selected as CatalogSubject & { subjectCode?: string }).subjectCode,
+                  nameAr: selected.nameAr,
+                  nameFr: selected.nameFr
+                }
                 : null
             };
           })} disabled={!form.facultyId || !form.level || !form.majorId}>
-            <option value=''>{t.unionReviews.subject}</option>{subjects.map((s) => <option key={s.id} value={s.id}>{language === 'ar' ? (s.nameAr || s.code) : (s.nameFr || s.code)}</option>)}
+            <option value=''>{t.unionReviews.subject}</option>{subjects.map((s) => {
+              const optionValue = (s as CatalogSubject & { _id?: string; subjectCode?: string })._id || s.id || s.code || (s as CatalogSubject & { subjectCode?: string }).subjectCode || '';
+              return <option key={s.id} value={optionValue}>{language === 'ar' ? (s.nameAr || s.code) : (s.nameFr || s.code)}</option>;
+            })}
           </select>
           <input value={form.location} placeholder={t.unionReviews.location} onChange={(e) => setForm((prev) => ({ ...prev, location: e.target.value }))} />
           <div className='rounded-xl border border-slate-200 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-900'>
