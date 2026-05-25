@@ -18,15 +18,15 @@ const basePopulate = [
 
 export const createUnionReview = async (req, res) => {
   try {
-    const payload = req.body;
+    const { organizer, facultyId, level, majorId, subjectId, location, startsAt } = req.body;
     const [faculty, major, subject] = await Promise.all([
-      Faculty.findOne({ _id: payload.facultyId, active: true }),
-      Major.findOne({ _id: payload.majorId, active: true }),
-      Subject.findOne({ _id: payload.subjectId, active: true })
+      Faculty.findOne({ _id: facultyId, active: true }),
+      Major.findOne({ _id: majorId, active: true }),
+      Subject.findOne({ _id: subjectId, active: true })
     ]);
     if (!faculty || !major || !subject) return res.status(400).json({ error: 'Invalid academic catalog selection' });
 
-    const review = await UnionReview.create({ ...payload, subjectCode: subject.code, createdBy: req.user._id });
+    const review = await UnionReview.create({ organizer, facultyId, level, majorId, subjectId, location, startsAt, subjectCode: subject.code, createdBy: req.user._id });
 
     const targetProfiles = await Profile.find({
       $or: [

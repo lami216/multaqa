@@ -251,7 +251,7 @@ export interface SubjectItem {
 
 export interface UnionReviewItem {
   _id: string;
-  title: string;
+  title?: string;
   description?: string;
   organizer: 'UNEM' | 'UGEM';
   facultyId: FacultyItem;
