@@ -1,5 +1,5 @@
 import { Calendar, MapPin, Users } from 'lucide-react';
-import React from 'react';
+import React, { useState } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { markUnionReviewGoing, markUnionReviewView, type UnionReviewItem } from '../lib/http';
 import UnionReviewCountdown from './UnionReviewCountdown';
@@ -11,14 +11,25 @@ const UnionReviewCard: React.FC<{ review: UnionReviewItem; onUpdate: (r: UnionRe
   const subjectLabel = language === 'ar'
     ? (review.subjectNameAr || review.subjectCode)
     : (review.subjectNameFr || review.subjectCode);
+  const [goingPending, setGoingPending] = useState(false);
   const generatedTitle = language === 'ar' ? `مراجعة في مادة ${subjectLabel ?? ''}` : `Révision de ${subjectLabel ?? ''}`;
+  const locale = language === 'ar' ? 'ar-DZ' : 'fr-FR';
   return <div className={`rounded-3xl border p-4 shadow-sm ${tone}`} onMouseEnter={() => { void markUnionReviewView(review._id); }}>
     <div className="flex items-center justify-between gap-2"><span className={`badge-soft ${isUnem ? 'text-emerald-700' : 'text-amber-700'}`}>{review.organizer}</span><UnionReviewCountdown startsAt={review.startsAt} /></div>
     <h3 className="mt-2 text-lg font-black">{generatedTitle}</h3>
     <p className="text-sm text-slate-600">{subjectLabel}</p>
     <div className="mt-2 grid gap-1 text-xs text-slate-600 sm:grid-cols-2"><p>{review.facultyId}</p><p>{review.majorId} • {review.level}</p></div>
-    <div className="mt-3 flex flex-wrap items-center gap-3 text-sm"><span className="inline-flex items-center gap-1"><MapPin size={14} />{review.location}</span><span className="inline-flex items-center gap-1"><Calendar size={14} />{new Date(review.startsAt).toLocaleString()}</span></div>
-    <div className="mt-3 flex items-center justify-between"><span className="inline-flex items-center gap-1 text-sm"><Users size={14} /> {review.goingCount}</span>{!admin && <button type="button" className="primary-btn" disabled={review.isGoing} onClick={async ()=>{const {data}=await markUnionReviewGoing(review._id); onUpdate({...review,...data.review,isGoing:true});}}>{t.unionReviews.attend}</button>}</div>
+    <div className="mt-3 flex flex-wrap items-center gap-3 text-sm"><span className="inline-flex items-center gap-1"><MapPin size={14} />{review.location}</span><span className="inline-flex items-center gap-1"><Calendar size={14} />{new Date(review.startsAt).toLocaleString(locale)}</span></div>
+    <div className="mt-3 flex items-center justify-between"><span className="inline-flex items-center gap-1 text-sm"><Users size={14} /> {review.goingCount}</span>{!admin && <button type="button" className="primary-btn" disabled={review.isGoing || goingPending} onClick={async ()=>{
+      if (review.isGoing || goingPending) return;
+      try {
+        setGoingPending(true);
+        const {data}=await markUnionReviewGoing(review._id);
+        onUpdate({...review,...data.review,isGoing:true});
+      } finally {
+        setGoingPending(false);
+      }
+    }}>{t.unionReviews.attend}</button>}</div>
     {admin ? <p className="mt-2 text-xs text-slate-500">views: {review.viewsCount} • going: {review.goingCount}</p> : null}
   </div>;
 };
