@@ -22,6 +22,7 @@ import telegramRoutes from './routes/telegramRoutes.js';
 import { authenticate } from './middleware/auth.js';
 import lookupRoutes from './routes/lookupRoutes.js';
 import sessionRoutes from './routes/sessionRoutes.js';
+import unionReviewRoutes from './routes/unionReviewRoutes.js';
 import { startLifecycleJob } from './jobs/lifecycleJob.js';
 
 // مهم: لا تستخدم static import هنا لأن ESM ينفّذ imports قبل dotenv.config
@@ -84,6 +85,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/telegram', telegramRoutes);
 app.use('/api/sessions', sessionRoutes);
 app.use('/api', lookupRoutes);
+app.use('/api', unionReviewRoutes);
 
 if (isProduction) {
   const frontendDist = path.resolve(__dirname, '../../dist');
