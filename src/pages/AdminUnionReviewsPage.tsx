@@ -1,8 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { CalendarClock } from 'lucide-react';
+import { toast } from 'sonner';
 import AdminSidebar from '../components/admin/AdminSidebar';
 import UnionReviewCard from '../components/UnionReviewCard';
 import { useLanguage } from '../context/LanguageContext';
-import { fetchAcademicSettings, createAdminUnionReview, fetchAdminUnionReviews, type AcademicSettingsResponse, type UnionReviewItem } from '../lib/http';
+import { fetchAcademicSettings, createUnionReview, fetchAdminUnionReviews, type AcademicSettingsResponse, type UnionReviewItem } from '../lib/http';
 import { getFaculties, getLevelsByFaculty, getMajorsByFacultyAndLevel, getSubjectsByMajorAndSemester, getTermSemesterForLevel, isFacultyEnabled, type CatalogFaculty, type CatalogLevel, type CatalogMajor, type CatalogSubject } from '../lib/catalog';
 
 type AdminUnionReviewForm = {
@@ -26,6 +28,7 @@ export default function AdminUnionReviewsPage() {
   });
   const [faculties, setFaculties] = useState<CatalogFaculty[]>([]);
   const [form, setForm] = useState<AdminUnionReviewForm>({ organizer: 'UNEM', facultyId: '', level: '', majorId: '', subjectId: '', location: '', startsAt: '' });
+  const [publishing, setPublishing] = useState(false);
 
   useEffect(() => {
     void Promise.all([fetchAdminUnionReviews(), fetchAcademicSettings()]).then(([reviewsRes, settingsRes]) => {
@@ -45,10 +48,50 @@ export default function AdminUnionReviewsPage() {
     return getSubjectsByMajorAndSemester(form.facultyId, form.level, form.majorId, semesterId, academicSettings.academicTermType, academicSettings.catalogVisibility);
   }, [form.facultyId, form.level, form.majorId, academicSettings.academicTermType, academicSettings.catalogVisibility]);
 
+  const refreshReviews = async () => {
+    const reviewsRes = await fetchAdminUnionReviews();
+    setReviews(reviewsRes.data.reviews ?? []);
+  };
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!form.organizer || !form.facultyId || !form.level || !form.majorId || !form.subjectId || !form.location.trim() || !form.startsAt) {
+      toast.error(language === 'ar' ? 'أكمل كل الحقول المطلوبة قبل النشر' : 'Complétez tous les champs requis avant la publication');
+      return;
+    }
+
+    const selectedSubject = subjects.find((subject) => subject.id === form.subjectId);
+    const payload = {
+      organizer: form.organizer,
+      facultyId: form.facultyId,
+      level: form.level,
+      majorId: form.majorId,
+      subjectId: form.subjectId,
+      subjectCode: selectedSubject?.code,
+      location: form.location.trim(),
+      startsAt: form.startsAt
+    };
+
+    try {
+      setPublishing(true);
+      console.log('[UnionReview] submitting payload', payload);
+      const response = await createUnionReview(payload);
+      console.log('[UnionReview] created', response.data);
+      toast.success(language === 'ar' ? 'تم نشر مراجعة الإتحادات بنجاح' : 'La révision de l’union a été publiée avec succès');
+      setForm({ organizer: 'UNEM', facultyId: '', level: '', majorId: '', subjectId: '', location: '', startsAt: '' });
+      await refreshReviews();
+    } catch (error) {
+      console.error('[UnionReview] publish failed', error);
+      toast.error(language === 'ar' ? 'فشل نشر مراجعة الإتحادات' : 'Échec de la publication de la révision de l’union');
+    } finally {
+      setPublishing(false);
+    }
+  };
+
   return <div className='grid gap-4 md:grid-cols-[240px_minmax(0,1fr)]'>
     <AdminSidebar />
     <div className='space-y-4'>
-      <div className='card-surface p-5'>
+      <form className='card-surface p-5' onSubmit={(e) => { void handleSubmit(e); }}>
         <h1 className='section-title'>{t.unionReviews.adminTitle}</h1>
         <div className='mt-4 grid gap-3 md:grid-cols-2'>
           <select value={form.organizer} onChange={(e) => setForm((prev) => ({ ...prev, organizer: e.target.value as 'UNEM' | 'UGEM' }))}>
@@ -67,13 +110,23 @@ export default function AdminUnionReviewsPage() {
             <option value=''>{t.unionReviews.subject}</option>{subjects.map((s) => <option key={s.id} value={s.id}>{language === 'ar' ? (s.nameAr || s.code) : (s.nameFr || s.code)}</option>)}
           </select>
           <input value={form.location} placeholder={t.unionReviews.location} onChange={(e) => setForm((prev) => ({ ...prev, location: e.target.value }))} />
-          <input type='datetime-local' value={form.startsAt} onChange={(e) => setForm((prev) => ({ ...prev, startsAt: e.target.value }))} />
+          <div className='rounded-xl border border-slate-200 bg-white px-3 py-2 dark:border-slate-700 dark:bg-slate-900'>
+            <div className='mb-2 flex items-center gap-2 text-slate-700 dark:text-slate-200'>
+              <CalendarClock size={16} className='shrink-0' />
+              <span className='text-sm font-semibold'>
+                {language === 'ar' ? 'مراجعة الإتحادات' : 'Révisions des unions'}
+              </span>
+            </div>
+            <input
+              className='w-full'
+              type='datetime-local'
+              value={form.startsAt}
+              onChange={(e) => setForm((prev) => ({ ...prev, startsAt: e.target.value }))}
+            />
+          </div>
         </div>
-        <button className='primary-btn mt-3' onClick={async () => {
-          const { data } = await createAdminUnionReview(form);
-          setReviews((p) => [data.review, ...p]);
-        }}>{t.unionReviews.publish}</button>
-      </div>
+        <button type='submit' className='primary-btn mt-3' disabled={publishing}>{publishing ? (language === 'ar' ? 'جاري النشر...' : 'Publication...') : t.unionReviews.publish}</button>
+      </form>
       <div className='grid gap-3'>{reviews.map((r) => <UnionReviewCard key={r._id} review={r} onUpdate={() => { }} admin />)}</div>
     </div>
   </div>;
