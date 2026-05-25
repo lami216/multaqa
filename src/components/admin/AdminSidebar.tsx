@@ -1,5 +1,5 @@
 import React from 'react';
-import { BarChart3, GraduationCap, Trophy, CalendarClock } from 'lucide-react';
+import { BarChart3, GraduationCap, Trophy } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useLanguage } from '../../context/LanguageContext';
 
@@ -9,8 +9,7 @@ const AdminSidebar: React.FC = () => {
   const adminLinks = [
     { to: '/admin', label: t.admin.statistics, icon: BarChart3 },
     { to: '/admin/academic-settings', label: t.admin.academicSettings, icon: GraduationCap },
-    { to: '/admin/war', label: t.admin.warDashboard, icon: Trophy },
-    { to: '/admin/union-reviews', label: t.admin.unionReviews, icon: CalendarClock }
+    { to: '/admin/war', label: t.admin.warDashboard, icon: Trophy }
   ];
 
   return (
