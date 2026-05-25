@@ -1,5 +1,3 @@
-import Faculty from '../models/Faculty.js';
-import Major from '../models/Major.js';
 import Profile from '../models/Profile.js';
 import Subject from '../models/Subject.js';
 import UnionReview from '../models/UnionReview.js';
@@ -18,15 +16,29 @@ const basePopulate = [
 
 export const createUnionReview = async (req, res) => {
   try {
-    const { organizer, facultyId, level, majorId, subjectId, location, startsAt } = req.body;
-    const [faculty, major, subject] = await Promise.all([
-      Faculty.findOne({ _id: facultyId, active: true }),
-      Major.findOne({ _id: majorId, active: true }),
-      Subject.findOne({ _id: subjectId, active: true })
-    ]);
-    if (!faculty || !major || !subject) return res.status(400).json({ error: 'Invalid academic catalog selection' });
+    const { organizer, facultyId, level, majorId, subjectId, subjectCode, location, startsAt } = req.body;
+    if (!['UNEM', 'UGEM'].includes(organizer)) return res.status(400).json({ error: 'Organizer must be UNEM or UGEM' });
+    if (!facultyId || !level || !majorId || !location || !startsAt || (!subjectId && !subjectCode)) {
+      return res.status(400).json({ error: 'organizer, facultyId, level, majorId, subjectId/subjectCode, location and startsAt are required' });
+    }
 
-    const review = await UnionReview.create({ organizer, facultyId, level, majorId, subjectId, location, startsAt, subjectCode: subject.code, createdBy: req.user._id });
+    const startsAtDate = new Date(startsAt);
+    if (Number.isNaN(startsAtDate.getTime())) return res.status(400).json({ error: 'startsAt must be a valid date' });
+
+    const subject = await (subjectId ? Subject.findOne({ _id: subjectId, active: true }) : Subject.findOne({ code: subjectCode, active: true }));
+    if (!subject) return res.status(400).json({ error: 'Invalid subject selection' });
+
+    const review = await UnionReview.create({
+      organizer,
+      facultyId: subject.facultyId,
+      level,
+      majorId: subject.majorId,
+      subjectId: subject._id,
+      location: String(location).trim(),
+      startsAt: startsAtDate,
+      subjectCode: subject.code,
+      createdBy: req.user._id
+    });
 
     const targetProfiles = await Profile.find({
       $or: [
