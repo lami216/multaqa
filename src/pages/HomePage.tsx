@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import EmptyState from '../components/common/EmptyState';
 import SearchField from '../components/common/SearchField';
 import PostCard from '../components/PostCard';
+import UnionReviewsSection from '../components/UnionReviewsSection';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { fetchPosts, type PostResponse } from '../lib/http';
@@ -91,6 +92,8 @@ const HomePage: React.FC = () => {
           </div>
         </div>
       </section>
+
+      <UnionReviewsSection />
 
       <section className="space-y-4">
         <div className="flex items-end justify-between gap-3">

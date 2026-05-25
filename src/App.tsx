@@ -20,6 +20,7 @@ import AdminDashboardPage from './pages/AdminDashboardPage';
 import AdminAcademicSettingsPage from './pages/AdminAcademicSettingsPage';
 import AdminWarDashboardPage from './pages/AdminWarDashboardPage';
 import { LoginPage, SignupPage } from './pages/AuthPages';
+import AdminUnionReviewsPage from './pages/AdminUnionReviewsPage';
 
 const AdminRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
   const { user } = useAuth();
@@ -159,6 +160,19 @@ const App: React.FC = () => {
                       <AdminRoute>
                         <Layout>
                           <AdminAcademicSettingsPage />
+                        </Layout>
+                      </AdminRoute>
+                    </ProtectedRoute>
+                  )}
+                />
+
+                <Route
+                  path="/admin/union-reviews"
+                  element={(
+                    <ProtectedRoute>
+                      <AdminRoute>
+                        <Layout>
+                          <AdminUnionReviewsPage />
                         </Layout>
                       </AdminRoute>
                     </ProtectedRoute>

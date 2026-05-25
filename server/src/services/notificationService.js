@@ -77,6 +77,10 @@ export const notificationText = {
   weeklySummary: {
     fr: 'Votre résumé hebdomadaire Multaqa est prêt.',
     ar: 'ملخصك الأسبوعي في ملتقى جاهز.'
+  },
+  unionReviewPublished: {
+    fr: 'Nouvelle révision de l'union disponible.',
+    ar: 'مراجعة جديدة من الإتحاد متاحة الآن.'
   }
 };
 
