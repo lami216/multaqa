@@ -254,10 +254,12 @@ export interface UnionReviewItem {
   title?: string;
   description?: string;
   organizer: 'UNEM' | 'UGEM';
-  facultyId: FacultyItem;
-  majorId: MajorItem;
+  facultyId: string;
+  majorId: string;
   level: string;
-  subjectId: SubjectItem;
+  subjectCode: string;
+  subjectNameAr?: string;
+  subjectNameFr?: string;
   location: string;
   startsAt: string;
   status: 'published' | 'expired' | 'cancelled';
@@ -271,8 +273,9 @@ export interface CreateUnionReviewPayload {
   facultyId: string;
   level: string;
   majorId: string;
-  subjectId?: string;
-  subjectCode?: string;
+  subjectCode: string;
+  subjectNameAr?: string;
+  subjectNameFr?: string;
   location: string;
   startsAt: string;
 }
