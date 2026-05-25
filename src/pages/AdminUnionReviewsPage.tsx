@@ -5,8 +5,18 @@ import { toast } from 'sonner';
 import AdminSidebar from '../components/admin/AdminSidebar';
 import UnionReviewCard from '../components/UnionReviewCard';
 import { useLanguage } from '../context/LanguageContext';
-import { fetchAcademicSettings, createUnionReview, fetchAdminUnionReviews, type AcademicSettingsResponse, type UnionReviewItem } from '../lib/http';
+import { fetchAdminAcademicSettings, createUnionReview, fetchAdminUnionReviews, type AcademicSettingsResponse, type UnionReviewItem } from '../lib/http';
 import { getFaculties, getLevelsByFaculty, getMajorsByFacultyAndLevel, getSubjectsByMajorAndSemester, getTermSemesterForLevel, isFacultyEnabled, type CatalogFaculty, type CatalogLevel, type CatalogMajor, type CatalogSubject } from '../lib/catalog';
+
+
+function resolveCurrentAcademicTerm(settings: AcademicSettingsResponse): 'odd' | 'even' {
+  return (
+    settings.settings?.currentTermType
+    ?? settings.currentTermType
+    ?? settings.academicTermType
+    ?? 'odd'
+  );
+}
 
 type AdminUnionReviewForm = {
   organizer: 'UNEM' | 'UGEM';
@@ -33,22 +43,17 @@ export default function AdminUnionReviewsPage() {
   const [publishing, setPublishing] = useState(false);
 
   useEffect(() => {
-    void Promise.all([fetchAdminUnionReviews(), fetchAcademicSettings()]).then(([reviewsRes, settingsRes]) => {
+    void Promise.all([fetchAdminUnionReviews(), fetchAdminAcademicSettings()]).then(([reviewsRes, settingsRes]) => {
       setReviews(reviewsRes.data.reviews ?? []);
       setAcademicSettings(settingsRes);
       setFaculties(getFaculties().filter((faculty) => isFacultyEnabled(faculty.id, settingsRes.catalogVisibility)));
     });
   }, []);
 
-  const currentTermType = useMemo(
-    () => academicSettings.settings?.currentTermType
-      ?? academicSettings.academicTermType
-      ?? 'odd',
-    [academicSettings.settings?.currentTermType, academicSettings.academicTermType]
-  );
+  const currentTermType = useMemo(() => resolveCurrentAcademicTerm(academicSettings), [academicSettings]);
 
-  console.log('[UnionReview] currentTermType', currentTermType);
-  console.log('[UnionReview] selected level', form.level);
+  console.log('[UnionReview AcademicSettings raw]', academicSettings);
+  console.log('[UnionReview currentTermType]', currentTermType);
 
   const levels = useMemo<CatalogLevel[]>(() => getLevelsByFaculty(form.facultyId, academicSettings.catalogVisibility), [form.facultyId, academicSettings.catalogVisibility]);
 
@@ -56,10 +61,10 @@ export default function AdminUnionReviewsPage() {
 
   const subjects = useMemo<CatalogSubject[]>(() => {
     const semesterId = getTermSemesterForLevel(form.level, currentTermType);
-    console.log('[UnionReview] resolved semesterId', semesterId);
+    console.log('[UnionReview semesterId]', semesterId);
     if (!semesterId) return [];
     const resolvedSubjects = getSubjectsByMajorAndSemester(form.facultyId, form.level, form.majorId, semesterId, currentTermType, academicSettings.catalogVisibility);
-    console.log('[UnionReview] subjects', resolvedSubjects.map((s) => s.code));
+    console.log('[UnionReview subject codes]', resolvedSubjects.map((s) => s.code));
     return resolvedSubjects;
   }, [form.facultyId, form.level, form.majorId, currentTermType, academicSettings.catalogVisibility]);
 
