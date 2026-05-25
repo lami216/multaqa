@@ -40,7 +40,15 @@ export default function AdminUnionReviewsPage() {
     });
   }, []);
 
-  const currentTermType = academicSettings.settings?.currentTermType ?? academicSettings.academicTermType ?? 'odd';
+  const currentTermType = useMemo(
+    () => academicSettings.settings?.currentTermType
+      ?? academicSettings.academicTermType
+      ?? 'odd',
+    [academicSettings.settings?.currentTermType, academicSettings.academicTermType]
+  );
+
+  console.log('[UnionReview] currentTermType', currentTermType);
+  console.log('[UnionReview] selected level', form.level);
 
   const levels = useMemo<CatalogLevel[]>(() => getLevelsByFaculty(form.facultyId, academicSettings.catalogVisibility), [form.facultyId, academicSettings.catalogVisibility]);
 
@@ -48,8 +56,11 @@ export default function AdminUnionReviewsPage() {
 
   const subjects = useMemo<CatalogSubject[]>(() => {
     const semesterId = getTermSemesterForLevel(form.level, currentTermType);
+    console.log('[UnionReview] resolved semesterId', semesterId);
     if (!semesterId) return [];
-    return getSubjectsByMajorAndSemester(form.facultyId, form.level, form.majorId, semesterId, currentTermType, academicSettings.catalogVisibility);
+    const resolvedSubjects = getSubjectsByMajorAndSemester(form.facultyId, form.level, form.majorId, semesterId, currentTermType, academicSettings.catalogVisibility);
+    console.log('[UnionReview] subjects', resolvedSubjects.map((s) => s.code));
+    return resolvedSubjects;
   }, [form.facultyId, form.level, form.majorId, currentTermType, academicSettings.catalogVisibility]);
 
   const refreshReviews = async () => {
