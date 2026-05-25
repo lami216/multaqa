@@ -265,6 +265,17 @@ export interface UnionReviewItem {
   goingCount: number;
   isGoing?: boolean;
 }
+
+export interface CreateUnionReviewPayload {
+  organizer: 'UNEM' | 'UGEM';
+  facultyId: string;
+  level: string;
+  majorId: string;
+  subjectId: string;
+  subjectCode?: string;
+  location: string;
+  startsAt: string;
+}
 export interface ConversationSummary {
   _id: string;
   type: 'post' | 'direct';
@@ -515,4 +526,4 @@ export const fetchUnionReviews = () => http.get<{ reviews: UnionReviewItem[] }>(
 export const markUnionReviewGoing = (id: string) => http.post<{ review: UnionReviewItem }>(`/union-reviews/${id}/going`);
 export const markUnionReviewView = (id: string) => http.post(`/union-reviews/${id}/view`);
 export const fetchAdminUnionReviews = () => http.get<{ reviews: UnionReviewItem[] }>('/admin/union-reviews');
-export const createAdminUnionReview = (payload: Record<string, unknown>) => http.post<{ review: UnionReviewItem }>('/admin/union-reviews', payload);
+export const createUnionReview = (payload: CreateUnionReviewPayload) => http.post<{ review: UnionReviewItem }>('/admin/union-reviews', payload);
