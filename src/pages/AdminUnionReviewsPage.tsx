@@ -13,7 +13,8 @@ type AdminUnionReviewForm = {
   facultyId: string;
   level: string;
   majorId: string;
-  subjectId: string;
+  selectedSubjectValue: string;
+  selectedSubject: Pick<CatalogSubject, 'id' | 'code' | 'nameAr' | 'nameFr'> | null;
   location: string;
   startsAt: string;
 };
@@ -28,7 +29,7 @@ export default function AdminUnionReviewsPage() {
     majorAvailability: {}
   });
   const [faculties, setFaculties] = useState<CatalogFaculty[]>([]);
-  const [form, setForm] = useState<AdminUnionReviewForm>({ organizer: 'UNEM', facultyId: '', level: '', majorId: '', subjectId: '', location: '', startsAt: '' });
+  const [form, setForm] = useState<AdminUnionReviewForm>({ organizer: 'UNEM', facultyId: '', level: '', majorId: '', selectedSubjectValue: '', selectedSubject: null, location: '', startsAt: '' });
   const [publishing, setPublishing] = useState(false);
 
   useEffect(() => {
@@ -56,30 +57,37 @@ export default function AdminUnionReviewsPage() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!form.organizer || !form.facultyId || !form.level || !form.majorId || !form.subjectId || !form.location.trim() || !form.startsAt) {
+    if (!form.organizer || !form.facultyId || !form.level || !form.majorId || !form.selectedSubjectValue || !form.location.trim() || !form.startsAt) {
       toast.error(language === 'ar' ? 'أكمل كل الحقول المطلوبة قبل النشر' : 'Complétez tous les champs requis avant la publication');
       return;
     }
 
-    const selectedSubject = subjects.find((subject) => subject.id === form.subjectId);
+    const selectedSubject = subjects.find((subject) =>
+      subject.id === form.selectedSubjectValue
+      || subject.code === form.selectedSubjectValue
+      || (subject as CatalogSubject & { subjectCode?: string }).subjectCode === form.selectedSubjectValue
+    ) ?? form.selectedSubject;
+
     const payload = {
       organizer: form.organizer,
       facultyId: form.facultyId,
       level: form.level,
       majorId: form.majorId,
-      subjectId: form.subjectId,
-      subjectCode: selectedSubject?.code,
+      subjectId: selectedSubject?.id,
+      subjectCode: selectedSubject?.code || (selectedSubject as { subjectCode?: string } | null)?.subjectCode,
       location: form.location.trim(),
       startsAt: form.startsAt
     };
 
     try {
       setPublishing(true);
+      console.log('[UnionReview] selectedSubjectValue', form.selectedSubjectValue);
+      console.log('[UnionReview] selectedSubject', selectedSubject);
       console.log('[UnionReview] payload', payload);
       const response = await createUnionReview(payload);
       console.log('[UnionReview] created', response.data);
       toast.success(language === 'ar' ? 'تم نشر مراجعة الإتحادات بنجاح' : 'La révision de l’union a été publiée avec succès');
-      setForm({ organizer: 'UNEM', facultyId: '', level: '', majorId: '', subjectId: '', location: '', startsAt: '' });
+      setForm({ organizer: 'UNEM', facultyId: '', level: '', majorId: '', selectedSubjectValue: '', selectedSubject: null, location: '', startsAt: '' });
       await refreshReviews();
     } catch (error) {
       console.error('[UnionReview] create failed', (error instanceof AxiosError ? error.response?.data : undefined) || error);
@@ -99,16 +107,26 @@ export default function AdminUnionReviewsPage() {
           <select value={form.organizer} onChange={(e) => setForm((prev) => ({ ...prev, organizer: e.target.value as 'UNEM' | 'UGEM' }))}>
             <option value='UNEM'>UNEM</option><option value='UGEM'>UGEM</option>
           </select>
-          <select value={form.facultyId} onChange={(e) => setForm((prev) => ({ ...prev, facultyId: e.target.value, level: '', majorId: '', subjectId: '' }))}>
+          <select value={form.facultyId} onChange={(e) => setForm((prev) => ({ ...prev, facultyId: e.target.value, level: '', majorId: '', selectedSubjectValue: '', selectedSubject: null }))}>
             <option value=''>{t.unionReviews.faculty}</option>{faculties.map((f) => <option key={f.id} value={f.id}>{language === 'ar' ? f.nameAr : f.nameFr}</option>)}
           </select>
-          <select value={form.level} onChange={(e) => setForm((prev) => ({ ...prev, level: e.target.value, majorId: '', subjectId: '' }))} disabled={!form.facultyId}>
+          <select value={form.level} onChange={(e) => setForm((prev) => ({ ...prev, level: e.target.value, majorId: '', selectedSubjectValue: '', selectedSubject: null }))} disabled={!form.facultyId}>
             <option value=''>{t.unionReviews.level}</option>{levels.map((l) => <option key={l.id} value={l.id}>{language === 'ar' ? l.nameAr : l.nameFr}</option>)}
           </select>
-          <select value={form.majorId} onChange={(e) => setForm((prev) => ({ ...prev, majorId: e.target.value, subjectId: '' }))} disabled={!form.facultyId || !form.level}>
+          <select value={form.majorId} onChange={(e) => setForm((prev) => ({ ...prev, majorId: e.target.value, selectedSubjectValue: '', selectedSubject: null }))} disabled={!form.facultyId || !form.level}>
             <option value=''>{t.unionReviews.major}</option>{majors.map((m) => <option key={m.id} value={m.id}>{language === 'ar' ? m.nameAr : m.nameFr}</option>)}
           </select>
-          <select value={form.subjectId} onChange={(e) => setForm((prev) => ({ ...prev, subjectId: e.target.value }))} disabled={!form.facultyId || !form.level || !form.majorId}>
+          <select value={form.selectedSubjectValue} onChange={(e) => setForm((prev) => {
+            const value = e.target.value;
+            const selected = subjects.find((subject) => subject.id === value || subject.code === value) ?? null;
+            return {
+              ...prev,
+              selectedSubjectValue: value,
+              selectedSubject: selected
+                ? { id: selected.id, code: selected.code, nameAr: selected.nameAr, nameFr: selected.nameFr }
+                : null
+            };
+          })} disabled={!form.facultyId || !form.level || !form.majorId}>
             <option value=''>{t.unionReviews.subject}</option>{subjects.map((s) => <option key={s.id} value={s.id}>{language === 'ar' ? (s.nameAr || s.code) : (s.nameFr || s.code)}</option>)}
           </select>
           <input value={form.location} placeholder={t.unionReviews.location} onChange={(e) => setForm((prev) => ({ ...prev, location: e.target.value }))} />
