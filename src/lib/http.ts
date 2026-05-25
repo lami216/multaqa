@@ -411,6 +411,7 @@ export interface AcademicSettingsNode {
 
 export interface AcademicSettingsResponse {
   academicTermType: 'odd' | 'even';
+  currentTermType?: 'odd' | 'even';
   catalogVisibility: {
     faculties: Record<string, boolean>;
     majors: Record<string, MajorVisibilityConfig>;
