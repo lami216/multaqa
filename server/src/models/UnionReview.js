@@ -1,8 +1,6 @@
 import mongoose from 'mongoose';
 
 const unionReviewSchema = new mongoose.Schema({
-  title: { type: String, required: true, trim: true, maxlength: 160 },
-  description: { type: String, trim: true, maxlength: 600 },
   organizer: { type: String, enum: ['UNEM', 'UGEM'], required: true },
   facultyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Faculty', required: true },
   majorId: { type: mongoose.Schema.Types.ObjectId, ref: 'Major', required: true },
