@@ -18,23 +18,15 @@ const basePopulate = [
 
 export const createUnionReview = async (req, res) => {
   try {
-    const { organizer, facultyId, level, majorId, subjectId, subjectCode, location, startsAt } = req.body;
-    if (!['UNEM', 'UGEM'].includes(organizer)) return res.status(400).json({ error: 'Organizer must be UNEM or UGEM' });
-    if (!facultyId || !level || !majorId || !location || !startsAt || (!subjectId && !subjectCode)) {
-      return res.status(400).json({ error: 'organizer, facultyId, level, majorId, subjectId/subjectCode, location and startsAt are required' });
-    }
-
-    const startsAtDate = new Date(startsAt);
-    if (Number.isNaN(startsAtDate.getTime())) return res.status(400).json({ error: 'startsAt must be a valid date' });
-
+    const { organizer, facultyId, level, majorId, subjectId, location, startsAt } = req.body;
     const [faculty, major, subject] = await Promise.all([
       Faculty.findOne({ _id: facultyId, active: true }),
       Major.findOne({ _id: majorId, active: true }),
-      subjectId ? Subject.findOne({ _id: subjectId, active: true }) : Subject.findOne({ code: subjectCode, active: true })
+      Subject.findOne({ _id: subjectId, active: true })
     ]);
     if (!faculty || !major || !subject) return res.status(400).json({ error: 'Invalid academic catalog selection' });
 
-    const review = await UnionReview.create({ organizer, facultyId, level, majorId, subjectId: subject._id, location: String(location).trim(), startsAt: startsAtDate, subjectCode: subject.code, createdBy: req.user._id });
+    const review = await UnionReview.create({ organizer, facultyId, level, majorId, subjectId, location, startsAt, subjectCode: subject.code, createdBy: req.user._id });
 
     const targetProfiles = await Profile.find({
       $or: [
