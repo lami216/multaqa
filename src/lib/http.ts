@@ -248,23 +248,6 @@ export interface SubjectItem {
   active: boolean;
 }
 
-
-export interface UnionReviewItem {
-  _id: string;
-  title: string;
-  description?: string;
-  organizer: 'UNEM' | 'UGEM';
-  facultyId: FacultyItem;
-  majorId: MajorItem;
-  level: string;
-  subjectId: SubjectItem;
-  location: string;
-  startsAt: string;
-  status: 'published' | 'expired' | 'cancelled';
-  viewsCount: number;
-  goingCount: number;
-  isGoing?: boolean;
-}
 export interface ConversationSummary {
   _id: string;
   type: 'post' | 'direct';
@@ -509,10 +492,3 @@ export const fetchAcademicSettings = () => http.get<AcademicSettingsResponse>('/
 export const fetchAdminAcademicSettings = () => http.get<AcademicSettingsResponse>('/admin/academic-settings');
 export const updateAdminAcademicSettings = (payload: { currentTermType: 'odd' | 'even'; faculties: AcademicSettingsNode[] }) =>
   http.put<AcademicSettingsResponse>('/admin/academic-settings', payload);
-
-
-export const fetchUnionReviews = () => http.get<{ reviews: UnionReviewItem[] }>('/union-reviews');
-export const markUnionReviewGoing = (id: string) => http.post<{ review: UnionReviewItem }>(`/union-reviews/${id}/going`);
-export const markUnionReviewView = (id: string) => http.post(`/union-reviews/${id}/view`);
-export const fetchAdminUnionReviews = () => http.get<{ reviews: UnionReviewItem[] }>('/admin/union-reviews');
-export const createAdminUnionReview = (payload: Record<string, unknown>) => http.post<{ review: UnionReviewItem }>('/admin/union-reviews', payload);
