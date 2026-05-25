@@ -75,14 +75,14 @@ export default function AdminUnionReviewsPage() {
 
     try {
       setPublishing(true);
-      console.log('[UnionReview] submitting payload', payload);
+      console.log('[UnionReview] payload', payload);
       const response = await createUnionReview(payload);
       console.log('[UnionReview] created', response.data);
       toast.success(language === 'ar' ? 'تم نشر مراجعة الإتحادات بنجاح' : 'La révision de l’union a été publiée avec succès');
       setForm({ organizer: 'UNEM', facultyId: '', level: '', majorId: '', subjectId: '', location: '', startsAt: '' });
       await refreshReviews();
     } catch (error) {
-      console.error('[UnionReview] publish failed', error);
+      console.error('[UnionReview] create failed', (error instanceof AxiosError ? error.response?.data : undefined) || error);
       const apiMessage = error instanceof AxiosError ? error.response?.data?.error : undefined;
       toast.error(apiMessage || (language === 'ar' ? 'فشل نشر مراجعة الإتحادات' : 'Échec de la publication de la révision de l’union'));
     } finally {
