@@ -4,9 +4,10 @@ import { Link, useNavigate } from 'react-router-dom';
 import SubjectChipsSelector from '../components/subjects/SubjectChipsSelector';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
-import { getSubjectNameByCode } from '../lib/catalog';
-import { createPost, type PostActivityKey, type PostPayload, type PostRoleKey, type StudyTeamRoleKey } from '../lib/http';
+import { getSubjectNameByCode, getSubjectsByMajorAndSemester } from '../lib/catalog';
+import { createPost, fetchAcademicSettings, type AcademicSettingsResponse, type PostActivityKey, type PostPayload, type PostRoleKey, type StudyTeamRoleKey } from '../lib/http';
 import { getProfileSelectableSubjectCodes } from '../lib/profileSubjects';
+import { getActiveSemesterForLevel, resolveCurrentAcademicTerm } from '../lib/academicTerm';
 
 const roleCopy: Record<PostRoleKey, { fr: { label: string; helper: string }; ar: { label: string; helper: string } }> = {
   need_help: {
@@ -74,7 +75,23 @@ const CreatePostPage: React.FC = () => {
   const subjectsLimitTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const copy = t.createPost;
-  const subjectOptions = useMemo(() => getProfileSelectableSubjectCodes(profile), [profile]);
+  const [academicSettings, setAcademicSettings] = useState<AcademicSettingsResponse | null>(null);
+
+  useEffect(() => { void fetchAcademicSettings().then(({ data }) => setAcademicSettings(data)).catch(() => setAcademicSettings(null)); }, []);
+
+  const subjectOptions = useMemo(() => {
+    const currentTermType = resolveCurrentAcademicTerm(academicSettings);
+    const semesterId = getActiveSemesterForLevel(profile?.level, academicSettings);
+    const resolvedSubjects = semesterId
+      ? getSubjectsByMajorAndSemester(profile?.facultyId, profile?.level, profile?.majorId, semesterId, currentTermType, academicSettings?.catalogVisibility)
+      : [];
+    console.log('[AcademicTerm] raw settings', academicSettings);
+    console.log('[AcademicTerm] resolved', currentTermType);
+    console.log('[AcademicTerm] level', profile?.level);
+    console.log('[AcademicTerm] semesterId', semesterId);
+    console.log('[AcademicTerm] subjects', resolvedSubjects.map((s) => s.code));
+    return resolvedSubjects.length ? resolvedSubjects.map((subject) => subject.code) : getProfileSelectableSubjectCodes(profile);
+  }, [profile, academicSettings]);
   const importantSubjectCodes = useMemo(() => (profile?.subjectsSettings ?? []).filter((item) => item.isPriority).map((item) => item.subjectCode), [profile?.subjectsSettings]);
   const isStudyPartner = form.category === 'study_partner';
   const isStudyTeam = form.category === 'project_team';
