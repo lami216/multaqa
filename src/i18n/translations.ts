@@ -94,6 +94,23 @@ export const translations = {
       publishing: 'Publication…',
       footerNote: 'Les posts restent alignés avec les matières sélectionnées.'
     },
+
+    unionReviews: {
+      title: 'Révisions des unions',
+      attend: 'Je vais assister',
+      empty: 'Aucune révision active pour votre profil.',
+      adminTitle: 'Publier une révision d’union',
+      publish: 'Publier',
+      organizer: 'Union',
+      faculty: 'Faculté',
+      major: 'Spécialité',
+      level: 'Niveau',
+      subject: 'Matière',
+      location: 'Lieu',
+      startsAt: 'Date et heure',
+      description: 'Description courte',
+      titleField: 'Titre'
+    },
     common: {
       language: 'Langue',
       arabic: 'العربية',
@@ -202,6 +219,7 @@ export const translations = {
       statistics: 'Statistiques',
       academicSettings: 'Paramètres académiques',
       warDashboard: 'Classement université',
+      unionReviews: 'Révisions des unions',
       consoleTitle: 'Console administrateur',
       consoleSubtitle: 'Vue d’ensemble des posts, utilisateurs et indicateurs clés.',
       loadingStats: 'Chargement des statistiques…',
@@ -344,6 +362,23 @@ export const translations = {
       publish: 'نشر',
       publishing: 'جاري النشر…',
       footerNote: 'تبقى المنشورات مرتبطة بالمواد المختارة.'
+    },
+
+    unionReviews: {
+      title: 'مراجعات الإتحادات',
+      attend: 'سأحضر',
+      empty: 'لا توجد مراجعات نشطة مناسبة لملفك حالياً.',
+      adminTitle: 'نشر مراجعة إتحاد',
+      publish: 'نشر',
+      organizer: 'الإتحاد',
+      faculty: 'الكلية',
+      major: 'التخصص',
+      level: 'المستوى',
+      subject: 'المادة',
+      location: 'المكان',
+      startsAt: 'التاريخ والوقت',
+      description: 'وصف قصير',
+      titleField: 'العنوان'
     },
     common: {
       language: 'اللغة',
