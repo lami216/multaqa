@@ -225,14 +225,18 @@ const ProfilePage: React.FC = () => {
       ? getMajorsByFacultyAndLevel(resolvedFaculty.id, resolvedLevel.id, academicSettings.catalogVisibility)
       : [];
   const resolvedMajor = matchByIdOrName<CatalogMajor>(majors, profile?.majorId ?? profile?.major);
-  const currentTermType = resolveCurrentAcademicTerm(academicSettings);
-  const mappedSemesterId = resolvedLevel ? getTermSemesterForLevel(resolvedLevel.id, currentTermType) : undefined;
-  const catalogSubjects = getCurrentTermSubjects({
-    facultyId: resolvedFaculty?.id,
-    level: resolvedLevel?.id,
-    majorId: resolvedMajor?.id,
-    academicSettings
-  });
+  const mappedSemesterId = resolvedLevel ? getTermSemesterForLevel(resolvedLevel.id, academicSettings.academicTermType) : undefined;
+  const catalogSubjects =
+    resolvedFaculty && resolvedLevel && resolvedMajor && mappedSemesterId
+      ? getSubjectsByMajorAndSemester(
+          resolvedFaculty.id,
+          resolvedLevel.id,
+          resolvedMajor.id,
+          mappedSemesterId,
+          academicSettings.academicTermType,
+          academicSettings.catalogVisibility
+        )
+      : [];
   const subjectCandidates = [...(profile?.subjectCodes ?? []), ...(profile?.subjects ?? [])].filter(Boolean);
   const resolvedSubjectNames = catalogSubjects
     .filter((subject: CatalogSubject) =>
@@ -283,17 +287,17 @@ const ProfilePage: React.FC = () => {
       L2: { odd: ['S3', 'S1'], even: ['S4', 'S2'] },
       L3: { odd: ['S5', 'S3'], even: ['S6', 'S4'] }
     };
-    const semesters = levelTermMap[currentLevelId]?.[currentTermType] ?? [];
+    const semesters = levelTermMap[currentLevelId]?.[academicSettings.academicTermType] ?? [];
     const generated = getSubjectsByMajorAndSemesters(
       resolvedFaculty.id,
       previousLevel,
       previousMajorId,
       semesters,
-      currentTermType,
+      academicSettings.academicTermType,
       academicSettings.catalogVisibility
     );
     return Array.from(new Map(generated.map((subject) => [subject.code, subject])).values());
-  }, [resolvedFaculty, previousLevel, previousMajorId, currentLevelId, currentTermType, academicSettings.catalogVisibility]);
+  }, [resolvedFaculty, previousLevel, previousMajorId, currentLevelId, academicSettings.academicTermType, academicSettings.catalogVisibility]);
 
   useEffect(() => {
     const existing = (profile?.remainingSubjects ?? []).filter((item) => item.level === previousLevel);
