@@ -6,8 +6,8 @@ import AdminSidebar from '../components/admin/AdminSidebar';
 import UnionReviewCard from '../components/UnionReviewCard';
 import { useLanguage } from '../context/LanguageContext';
 import { fetchAdminAcademicSettings, createUnionReview, fetchAdminUnionReviews, type AcademicSettingsResponse, type UnionReviewItem } from '../lib/http';
-import { getFaculties, getLevelsByFaculty, getMajorsByFacultyAndLevel, isFacultyEnabled, type CatalogFaculty, type CatalogLevel, type CatalogMajor, type CatalogSubject } from '../lib/catalog';
-import { getCurrentSemesterIdForLevel, getCurrentTermSubjects, resolveCurrentAcademicTerm } from '../lib/academicTerm';
+import { getFaculties, getLevelsByFaculty, getMajorsByFacultyAndLevel, getSubjectsByMajorAndSemester, isFacultyEnabled, type CatalogFaculty, type CatalogLevel, type CatalogMajor, type CatalogSubject } from '../lib/catalog';
+import { getActiveSemesterForLevel, resolveCurrentAcademicTerm } from '../lib/academicTerm';
 
 type AdminUnionReviewForm = {
   organizer: 'UNEM' | 'UGEM';
@@ -44,22 +44,19 @@ export default function AdminUnionReviewsPage() {
   const currentTermType = useMemo(() => resolveCurrentAcademicTerm(academicSettings), [academicSettings]);
 
   console.log('[AcademicTerm] raw settings', academicSettings);
-  console.log('[AcademicTerm] resolved term', currentTermType);
+  console.log('[AcademicTerm] resolved', currentTermType);
 
   const levels = useMemo<CatalogLevel[]>(() => getLevelsByFaculty(form.facultyId, academicSettings.catalogVisibility), [form.facultyId, academicSettings.catalogVisibility]);
 
   const majors = useMemo<CatalogMajor[]>(() => getMajorsByFacultyAndLevel(form.facultyId, form.level, academicSettings.catalogVisibility), [form.facultyId, form.level, academicSettings.catalogVisibility]);
 
   const subjects = useMemo<CatalogSubject[]>(() => {
-    const semesterId = getCurrentSemesterIdForLevel(form.level, academicSettings);
+    const semesterId = getActiveSemesterForLevel(form.level, academicSettings);
+    console.log('[AcademicTerm] level', form.level);
     console.log('[AcademicTerm] semesterId', semesterId);
-    const resolvedSubjects = getCurrentTermSubjects({
-      facultyId: form.facultyId,
-      level: form.level,
-      majorId: form.majorId,
-      academicSettings
-    });
-    console.log('[AcademicTerm] subject codes', resolvedSubjects.map((s) => s.code));
+    if (!semesterId) return [];
+    const resolvedSubjects = getSubjectsByMajorAndSemester(form.facultyId, form.level, form.majorId, semesterId, currentTermType, academicSettings.catalogVisibility);
+    console.log('[AcademicTerm] subjects', resolvedSubjects.map((s) => s.code));
     return resolvedSubjects;
   }, [form.facultyId, form.level, form.majorId, currentTermType, academicSettings.catalogVisibility]);
 
