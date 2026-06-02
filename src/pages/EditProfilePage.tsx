@@ -110,16 +110,20 @@ const EditProfilePage: React.FC = () => {
     );
   };
 
-  const normalizeProfileWithCatalog = (rawProfile?: Profile): Profile => {
-    const catalogFaculties = getFaculties().filter((faculty) => isFacultyEnabled(faculty.id, academicSettings.catalogVisibility));
+  const normalizeProfileWithCatalog = (
+    rawProfile?: Profile,
+    settingsOverride?: AcademicSettingsResponse
+  ): Profile => {
+    const settings = settingsOverride ?? academicSettings;
+    const catalogFaculties = getFaculties().filter((faculty) => isFacultyEnabled(faculty.id, settings.catalogVisibility));
     const facultyMatch = matchByIdOrName(catalogFaculties, rawProfile?.facultyId ?? rawProfile?.faculty);
 
-    const levels = facultyMatch ? getLevelsByFaculty(facultyMatch.id, academicSettings.catalogVisibility) : [];
+    const levels = facultyMatch ? getLevelsByFaculty(facultyMatch.id, settings.catalogVisibility) : [];
     const levelMatch = matchByIdOrName(levels, rawProfile?.level);
 
     const majors = facultyMatch && levelMatch ? getMajorsIncludingClosed(facultyMatch.id, levelMatch.id) : [];
     const majorMatch = matchByIdOrName(majors, rawProfile?.majorId ?? rawProfile?.major);
-    const mappedSemesterId = levelMatch ? getTermSemesterForLevel(levelMatch.id, academicSettings.academicTermType) : undefined;
+    const mappedSemesterId = levelMatch ? getTermSemesterForLevel(levelMatch.id, settings.academicTermType) : undefined;
 
     const catalogSubjects =
       facultyMatch && levelMatch && majorMatch && mappedSemesterId
@@ -128,8 +132,8 @@ const EditProfilePage: React.FC = () => {
             levelMatch.id,
             majorMatch.id,
             mappedSemesterId,
-            academicSettings.academicTermType,
-            academicSettings.catalogVisibility
+            settings.academicTermType,
+            settings.catalogVisibility
           )
         : [];
 
@@ -214,7 +218,7 @@ const EditProfilePage: React.FC = () => {
         } as Profile;
 
         const catalogFaculties = getFaculties().filter((faculty) => isFacultyEnabled(faculty.id, settingsData.catalogVisibility));
-        const normalizedProfile = normalizeProfileWithCatalog(nextProfile);
+        const normalizedProfile = normalizeProfileWithCatalog(nextProfile, settingsData);
 
         setFaculties(catalogFaculties);
         syncServerProfile(normalizedProfile);
