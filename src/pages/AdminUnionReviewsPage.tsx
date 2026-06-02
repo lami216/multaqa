@@ -45,8 +45,9 @@ export default function AdminUnionReviewsPage() {
   useEffect(() => {
     void Promise.all([fetchAdminUnionReviews(), fetchAdminAcademicSettings()]).then(([reviewsRes, settingsRes]) => {
       setReviews(reviewsRes.data.reviews ?? []);
-      setAcademicSettings(settingsRes);
-      setFaculties(getFaculties().filter((faculty) => isFacultyEnabled(faculty.id, settingsRes.catalogVisibility)));
+      const settingsData = settingsRes.data;
+      setAcademicSettings(settingsData);
+      setFaculties(getFaculties().filter((faculty) => isFacultyEnabled(faculty.id, settingsData.catalogVisibility)));
     });
   }, []);
 

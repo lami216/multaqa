@@ -237,25 +237,21 @@ const ProfilePage: React.FC = () => {
           academicSettings.catalogVisibility
         )
       : [];
-  const subjectCandidates = [...(profile?.subjectCodes ?? []), ...(profile?.subjects ?? [])].filter(Boolean);
-  const resolvedSubjectNames = catalogSubjects
-    .filter((subject: CatalogSubject) =>
-      subjectCandidates.some(
-        (candidate) =>
-          candidate === subject.code ||
-          candidate?.toLowerCase?.() === subject.nameFr.toLowerCase() ||
-          candidate?.toLowerCase?.() === subject.nameAr.toLowerCase()
-      )
-    )
-    .map((subject) => subject.nameFr);
-
   const facultyLabel = resolvedFaculty?.nameFr ?? profile?.faculty ?? 'Faculté non renseignée';
   const levelLabel = resolvedLevel?.nameFr ?? profile?.level ?? 'Niveau libre';
   const majorLabel = resolvedMajor?.nameFr ?? profile?.major ?? 'Filière non renseignée';
   const prioritySet = new Set((profile?.subjectsSettings ?? []).filter((item) => item.isPriority).map((item) => item.subjectCode));
-  const courseLabels = (profile?.courses?.length
-    ? profile.courses.map((label) => ({ label, code: label, isImportant: false }))
-    : resolvedSubjectNames.map((label, index) => ({ label, code: catalogSubjects[index]?.code ?? label, isImportant: prioritySet.has(catalogSubjects[index]?.code ?? '') })));
+  const courseLabels = catalogSubjects.length
+    ? catalogSubjects.map((subject) => ({
+        label: subject.nameFr,
+        code: subject.code,
+        isImportant: prioritySet.has(subject.code)
+      }))
+    : (profile?.courses ?? []).map((label) => ({
+        label,
+        code: label,
+        isImportant: false
+      }));
   const normalizedPreferences = parseLegacyPriorities(profile?.prioritiesOrder);
   const rolePreferences = normalizeRolePreferences(profile?.rolePreferences ?? normalizedPreferences.rolePreferences);
   const activityPreferences = normalizeActivityPreferences(profile?.activityPreferences ?? normalizedPreferences.activityPreferences);
