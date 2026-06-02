@@ -12,11 +12,13 @@ export const generateLinkToken = async (req, res) => {
     }
     const telegramBotToken = process.env.TELEGRAM_BOT_TOKEN;
     if (!telegramBotToken) {
+      console.error('[telegram] link_token_failed reason=missing_bot_token');
       return res.status(500).json({ error: 'TELEGRAM_BOT_TOKEN is not configured' });
     }
 
     const token = await createTelegramLinkToken(req.user._id.toString());
     if (!token) {
+      console.error(`[telegram] link_token_failed reason=create_token_failed user=${req.user._id}`);
       return res.status(500).json({ error: 'Failed to create Telegram link token' });
     }
 
@@ -24,18 +26,31 @@ export const generateLinkToken = async (req, res) => {
     try {
       telegramResponse = await fetch(`https://api.telegram.org/bot${telegramBotToken}/getMe`);
     } catch (error) {
-      console.error('Telegram getMe network error:', error);
+      console.error('[telegram] link_token_failed reason=get_me_network_error', error);
       return res.status(500).json({ error: 'Failed to fetch Telegram bot username' });
     }
 
-    const telegramData = await telegramResponse.json();
+    if (!telegramResponse.ok) {
+      console.error(`[telegram] link_token_failed reason=get_me_http_error status=${telegramResponse.status}`);
+      return res.status(500).json({ error: 'Failed to fetch Telegram bot username' });
+    }
+
+    let telegramData;
+    try {
+      telegramData = await telegramResponse.json();
+    } catch (error) {
+      console.error('[telegram] link_token_failed reason=get_me_invalid_json', error);
+      return res.status(500).json({ error: 'Telegram getMe returned an invalid response' });
+    }
 
     if (telegramData?.ok !== true) {
+      console.error('[telegram] link_token_failed reason=get_me_invalid_response', telegramData);
       return res.status(500).json({ error: 'Telegram getMe returned an invalid response' });
     }
 
     const telegramUsername = telegramData?.result?.username;
     if (!telegramUsername) {
+      console.error('[telegram] link_token_failed reason=missing_bot_username', telegramData?.result);
       return res.status(500).json({ error: 'Telegram bot username is missing from getMe response' });
     }
 
