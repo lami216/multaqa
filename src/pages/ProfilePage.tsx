@@ -91,10 +91,15 @@ const ProfilePage: React.FC = () => {
     }
   };
 
-  const telegramStartCommand = telegramLinkData ? `/start ${telegramLinkData.token}` : '';
-  const telegramDeepLink = telegramLinkData
-    ? `https://t.me/${telegramLinkData.botUsername}?start=${telegramLinkData.token}`
-    : '';
+  const telegramBotUsername = telegramLinkData?.botUsername?.replace(/^@/, '').trim();
+  const telegramToken = telegramLinkData?.token?.trim();
+
+  const telegramStartCommand = telegramToken ? `/start ${telegramToken}` : '';
+
+  const telegramDeepLink =
+    telegramBotUsername && telegramToken
+      ? `https://t.me/${telegramBotUsername}?start=${encodeURIComponent(telegramToken)}`
+      : '';
 
   const handleCopyTelegramCommand = async () => {
     if (!telegramStartCommand) return;
@@ -418,7 +423,14 @@ const ProfilePage: React.FC = () => {
                 <Copy size={16} className="me-1" />
                 {copySuccess ? t.profile.telegramCopied : t.profile.telegramCopy}
               </button>
-              <a href={telegramDeepLink} className="primary-btn text-center" target="_blank" rel="noreferrer">
+              <a
+                href={telegramDeepLink}
+                className={`primary-btn text-center ${telegramDeepLink ? '' : 'pointer-events-none opacity-50'}`}
+                target="_blank"
+                rel="noreferrer"
+                aria-disabled={!telegramDeepLink}
+                tabIndex={telegramDeepLink ? 0 : -1}
+              >
                 <Send size={16} className="me-1" /> {t.profile.telegramOpen}
               </a>
             </div>
