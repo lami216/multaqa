@@ -173,6 +173,52 @@ const ProfilePage: React.FC = () => {
       setDisconnectingTelegram(false);
     }
   };
+
+  useEffect(() => {
+    if (!telegramLinkModalOpen || user?.telegramLinked) return;
+
+    let stopped = false;
+    let attempts = 0;
+    const maxAttempts = 30;
+    let intervalId: number | undefined;
+
+    const pollTelegramStatus = async () => {
+      attempts += 1;
+
+      try {
+        await refresh();
+      } catch (error) {
+        console.warn('[telegram] failed to poll link status', error);
+      }
+
+      if (!stopped && attempts >= maxAttempts && intervalId !== undefined) {
+        window.clearInterval(intervalId);
+      }
+    };
+
+    intervalId = window.setInterval(() => {
+      void pollTelegramStatus();
+    }, 2000);
+
+    void pollTelegramStatus();
+
+    return () => {
+      stopped = true;
+      if (intervalId !== undefined) {
+        window.clearInterval(intervalId);
+      }
+    };
+  }, [telegramLinkModalOpen, user?.telegramLinked, refresh]);
+
+  useEffect(() => {
+    if (!user?.telegramLinked) return;
+
+    setTelegramLinkModalOpen(false);
+    setTelegramLinkData(null);
+    setCopySuccess(false);
+    setSettingsError('');
+  }, [user?.telegramLinked]);
+
   const faculties = getFaculties().filter((faculty) => isFacultyEnabled(faculty.id, academicSettings.catalogVisibility));
 
   const cacheBustedAvatar = (url?: string, version?: string | number) => {
