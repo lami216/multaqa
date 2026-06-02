@@ -112,7 +112,11 @@ export const getAdminUnionReviews = async (req, res) => {
 
 export const getStudentUnionReviews = async (req, res) => {
   const isAdmin = req.user?.role === 'admin';
-  const baseQuery = isAdmin ? { status: 'published' } : { status: 'published', startsAt: { $gte: new Date(Date.now() - 60 * 60 * 1000) } };
+  const activeWindowStart = new Date(Date.now() - 60 * 60 * 1000);
+  const baseQuery = {
+    status: 'published',
+    startsAt: { $gte: activeWindowStart }
+  };
   const reviews = await UnionReview.find(baseQuery).sort({ startsAt: 1 });
   if (isAdmin) return res.json({ reviews });
   const profile = await Profile.findOne({ userId: req.user._id }).lean();
