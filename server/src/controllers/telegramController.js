@@ -18,7 +18,9 @@ export const generateLinkToken = async (req, res) => {
 
     const token = await createTelegramLinkToken(req.user._id.toString());
     if (!token) {
-      console.error('[telegram] failed to create link token for user', req.user?._id);
+      console.error('[telegram] failed to create link token', {
+        userId: req.user?._id
+      });
       return res.status(500).json({ error: 'Failed to create Telegram link token' });
     }
 

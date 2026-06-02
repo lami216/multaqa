@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import User from '../models/User.js';
 import redis from '../config/redis.js';
-import { verifyTelegramLinkToken } from './jwt.js';
+import { generateTelegramLinkToken, verifyTelegramLinkToken } from './jwt.js';
 
 const TELEGRAM_LINK_TOKEN_TTL_SECONDS = 10 * 60;
 const telegramLinkKey = (token) => `telegram:link:${token}`;
@@ -41,12 +41,12 @@ export const createTelegramLinkToken = async (userId) => {
       }
     }
 
-    console.warn('[telegram] Redis short link code save failed');
+    console.warn('[telegram] Redis short link code save failed, falling back to JWT token');
   } catch (error) {
-    console.warn('[telegram] Redis short link code save threw', error);
+    console.warn('[telegram] Redis short link code save threw, falling back to JWT token', error);
   }
 
-  return null;
+  return generateTelegramLinkToken(userId.toString());
 };
 
 export const sendTelegramMessageToChat = async (chatId, message, options = {}) => {
