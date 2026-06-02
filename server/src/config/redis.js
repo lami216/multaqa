@@ -20,16 +20,28 @@ class RedisClient {
   }
 
   async set(key, value, expirySeconds = null) {
+    if (!this.url || !this.token) {
+      console.error('Redis SET error: UPSTASH_REDIS_REST_URL or UPSTASH_REDIS_REST_TOKEN is not configured');
+      return false;
+    }
+
     try {
-      const url = expirySeconds 
+      const url = expirySeconds
         ? `${this.url}/setex/${key}/${expirySeconds}/${encodeURIComponent(value)}`
         : `${this.url}/set/${key}/${encodeURIComponent(value)}`;
-      
-      await fetch(url, {
+
+      const response = await fetch(url, {
         headers: {
           Authorization: `Bearer ${this.token}`
         }
       });
+
+      if (!response.ok) {
+        const body = await response.text().catch(() => '<failed to read body>');
+        console.error(`Redis SET error: status=${response.status} body=${body}`);
+        return false;
+      }
+
       return true;
     } catch (error) {
       console.error('Redis SET error:', error);
