@@ -47,6 +47,7 @@ const ProfilePage: React.FC = () => {
   const [settingsError, setSettingsError] = useState('');
   const [settingsDraft, setSettingsDraft] = useState({ displayName: '', bio: '', availability: '', language: 'Arabic' as 'Arabic' | 'French' });
   const [priorityDraft, setPriorityDraft] = useState<Record<string, boolean>>({});
+  const [prioritySectionOpen, setPrioritySectionOpen] = useState(false);
   const [linkingTelegram, setLinkingTelegram] = useState(false);
   const [telegramLinkModalOpen, setTelegramLinkModalOpen] = useState(false);
   const [telegramLinkData, setTelegramLinkData] = useState<{ token: string; botUsername: string } | null>(null);
@@ -116,6 +117,7 @@ const ProfilePage: React.FC = () => {
     setPriorityDraft(Object.fromEntries((profile?.subjectsSettings ?? []).map((item) => [item.subjectCode, Boolean(item.isPriority)])));
     setSettingsMessage('');
     setSettingsError('');
+    setPrioritySectionOpen(false);
     setSettingsOpen(true);
   };
 
@@ -481,34 +483,44 @@ const ProfilePage: React.FC = () => {
             </div>
 
             <div className="rounded-3xl border border-slate-200 bg-white p-4">
-              <div className="space-y-1">
-                <h3 className="font-bold text-slate-900">{language === 'ar' ? 'المواد المميزة' : 'Matières importantes'}</h3>
-                <p className="text-sm text-slate-500">{language === 'ar' ? 'اختر مواد هذا الفصل التي تريد تمييزها في الإشعارات والعرض.' : 'Choisissez les matières du semestre actuel à mettre en avant.'}</p>
-              </div>
-              {catalogSubjects.length ? (
-                <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                  {catalogSubjects.map((subject) => {
-                    const active = Boolean(priorityDraft[subject.code]);
-                    return (
-                      <button
-                        key={subject.code}
-                        type="button"
-                        onClick={() => togglePriorityDraft(subject.code)}
-                        className={`rounded-xl border px-3 py-2 text-left transition ${active ? 'border-amber-300 bg-amber-50 text-amber-900 shadow-sm' : 'border-slate-200 bg-white text-slate-700'}`}
-                        disabled={settingsSaving}
-                      >
-                        <div className="flex items-center justify-between gap-3">
-                          <span className="font-semibold">{language === 'ar' ? subject.nameAr : subject.nameFr}</span>
-                          <Star className={`h-4 w-4 ${active ? 'fill-amber-400 text-amber-500' : 'text-slate-400'}`} />
-                        </div>
-                        <p className="mt-1 text-xs text-slate-500">{subject.code}</p>
-                      </button>
-                    );
-                  })}
+              <button
+                type="button"
+                className="flex w-full items-center justify-between gap-3 text-left"
+                onClick={() => setPrioritySectionOpen((open) => !open)}
+                aria-expanded={prioritySectionOpen}
+              >
+                <div className="space-y-1">
+                  <h3 className="font-bold text-slate-900">{language === 'ar' ? 'المواد المميزة' : 'Matières importantes'}</h3>
+                  <p className="text-sm text-slate-500">{language === 'ar' ? 'اضغط لتعديل المواد المهمة لهذا الفصل.' : 'Appuyez pour modifier les matières importantes de ce semestre.'}</p>
                 </div>
-              ) : (
-                <p className="mt-3 text-sm text-slate-500">{language === 'ar' ? 'لا توجد مواد متاحة للفصل الحالي.' : 'Aucune matière disponible pour le semestre actuel.'}</p>
-              )}
+                <span className="text-sm font-bold text-slate-400">{prioritySectionOpen ? '−' : '+'}</span>
+              </button>
+              {prioritySectionOpen ? (
+                catalogSubjects.length ? (
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    {catalogSubjects.map((subject) => {
+                      const active = Boolean(priorityDraft[subject.code]);
+                      return (
+                        <button
+                          key={subject.code}
+                          type="button"
+                          onClick={() => togglePriorityDraft(subject.code)}
+                          className={`rounded-xl border px-3 py-2 text-left transition ${active ? 'border-amber-300 bg-amber-50 text-amber-900 shadow-sm' : 'border-slate-200 bg-white text-slate-700'}`}
+                          disabled={settingsSaving}
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="font-semibold">{language === 'ar' ? subject.nameAr : subject.nameFr}</span>
+                            <Star className={`h-4 w-4 ${active ? 'fill-amber-400 text-amber-500' : 'text-slate-400'}`} />
+                          </div>
+                          <p className="mt-1 text-xs text-slate-500">{subject.code}</p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="mt-3 text-sm text-slate-500">{language === 'ar' ? 'لا توجد مواد متاحة للفصل الحالي.' : 'Aucune matière disponible pour le semestre actuel.'}</p>
+                )
+              ) : null}
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
