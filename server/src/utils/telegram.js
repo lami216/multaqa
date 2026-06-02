@@ -1,24 +1,31 @@
 import crypto from 'crypto';
 import User from '../models/User.js';
 import redis from '../config/redis.js';
-import { verifyTelegramLinkToken } from './jwt.js';
+import { generateTelegramLinkToken, verifyTelegramLinkToken } from './jwt.js';
 
 const TELEGRAM_LINK_TOKEN_TTL_SECONDS = 10 * 60;
 const telegramLinkKey = (token) => `telegram:link:${token}`;
 
 export const createTelegramLinkToken = async (userId) => {
+  const token = crypto.randomBytes(24).toString('base64url');
+
   try {
-    const token = crypto.randomBytes(24).toString('base64url');
-    const saved = await redis.set(telegramLinkKey(token), userId.toString(), TELEGRAM_LINK_TOKEN_TTL_SECONDS);
-    if (!saved) {
-      console.error(`[telegram] create_link_token_failed reason=redis_set_returned_false user=${userId}`);
-      return null;
+    const saved = await redis.set(
+      telegramLinkKey(token),
+      userId.toString(),
+      TELEGRAM_LINK_TOKEN_TTL_SECONDS
+    );
+
+    if (saved) {
+      return token;
     }
-    return token;
+
+    console.warn('[telegram] Redis link token save failed, falling back to JWT token');
   } catch (error) {
-    console.error(`[telegram] create_link_token_failed reason=unexpected_error user=${userId}`, error);
-    return null;
+    console.warn('[telegram] Redis link token save threw, falling back to JWT token', error);
   }
+
+  return generateTelegramLinkToken(userId.toString());
 };
 
 export const sendTelegramMessageToChat = async (chatId, message, options = {}) => {
