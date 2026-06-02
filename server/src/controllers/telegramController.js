@@ -5,6 +5,10 @@ import {
   sendTelegramMessageToChat
 } from '../utils/telegram.js';
 
+const TELEGRAM_ALREADY_LINKED_MESSAGE =
+  'هذا حساب تيليغرام مربوط بالفعل بحساب آخر في ملتقى. افصل الربط من الحساب القديم أولاً ثم حاول مرة أخرى.';
+const TELEGRAM_ALREADY_LINKED_TO_USER_MESSAGE = 'حسابك مربوط بالفعل بملتقى ✅';
+
 export const generateLinkToken = async (req, res) => {
   try {
     if (req.user?.telegramLinked) {
@@ -94,19 +98,55 @@ export const webhook = async (req, res) => {
                 'الكود غير صالح أو منتهي. افتح ملتقى واضغط ربط تيليغرام للحصول على كود جديد.'
               );
             } else {
-              await User.findByIdAndUpdate(userId, {
-                $set: {
-                  telegramChatId: String(chatId),
-                  telegramLinked: true
-                }
-              });
+              const telegramChatId = String(chatId);
+              const existingLinkedUser = await User.findOne({
+                telegramChatId,
+                telegramLinked: true
+              }).select('_id');
 
-              const appUrl = (process.env.APP_URL || process.env.CLIENT_URL || 'https://multaqa.space').replace(/\/$/, '');
-              const profileUrl = `${appUrl}/profile`;
-              const successMessage = `تم ربط حسابك بملتقى بنجاح ✅\nيمكنك الآن استقبال الإشعارات على تيليغرام.\nافتح ملفك الشخصي: ${profileUrl}`;
-              const sent = await sendTelegramMessageToChat(chatId, successMessage);
-              if (!sent) {
-                console.error('[telegram] failed to send link success message', { chatId, userId });
+              if (existingLinkedUser && existingLinkedUser._id.toString() !== userId.toString()) {
+                const sent = await sendTelegramMessageToChat(chatId, TELEGRAM_ALREADY_LINKED_MESSAGE);
+                if (!sent) {
+                  console.error('[telegram] failed to send duplicate link warning message', {
+                    chatId,
+                    userId,
+                    existingUserId: existingLinkedUser._id
+                  });
+                }
+              } else if (existingLinkedUser) {
+                const sent = await sendTelegramMessageToChat(chatId, TELEGRAM_ALREADY_LINKED_TO_USER_MESSAGE);
+                if (!sent) {
+                  console.error('[telegram] failed to send already linked message', { chatId, userId });
+                }
+              } else {
+                try {
+                  await User.findByIdAndUpdate(userId, {
+                    $set: {
+                      telegramChatId,
+                      telegramLinked: true
+                    }
+                  });
+                } catch (error) {
+                  if (error?.code === 11000) {
+                    const sent = await sendTelegramMessageToChat(chatId, TELEGRAM_ALREADY_LINKED_MESSAGE);
+                    if (!sent) {
+                      console.error('[telegram] failed to send duplicate link warning message after unique index conflict', {
+                        chatId,
+                        userId
+                      });
+                    }
+                    return res.status(200).json({ ok: true });
+                  }
+                  throw error;
+                }
+
+                const appUrl = (process.env.APP_URL || process.env.CLIENT_URL || 'https://multaqa.space').replace(/\/$/, '');
+                const profileUrl = `${appUrl}/profile`;
+                const successMessage = `تم ربط حسابك بملتقى بنجاح ✅\nيمكنك الآن استقبال الإشعارات على تيليغرام.\nافتح ملفك الشخصي: ${profileUrl}`;
+                const sent = await sendTelegramMessageToChat(chatId, successMessage);
+                if (!sent) {
+                  console.error('[telegram] failed to send link success message', { chatId, userId });
+                }
               }
             }
           }

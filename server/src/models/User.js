@@ -67,6 +67,17 @@ const userSchema = new mongoose.Schema({
   timestamps: true
 });
 
+userSchema.index(
+  { telegramChatId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      telegramLinked: true,
+      telegramChatId: { $exists: true, $type: 'string' }
+    }
+  }
+);
+
 const User = mongoose.model('User', userSchema);
 
 export default User;
