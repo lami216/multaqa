@@ -4,92 +4,124 @@ class RedisClient {
     this.token = process.env.UPSTASH_REDIS_REST_TOKEN;
   }
 
-  async get(key) {
-    try {
-      const response = await fetch(`${this.url}/get/${key}`, {
-        headers: {
-          Authorization: `Bearer ${this.token}`
-        }
-      });
-      const data = await response.json();
-      return data.result;
-    } catch (error) {
-      console.error('Redis GET error:', error);
+  hasConfig() {
+    if (!this.url || !this.token) {
+      console.error('[redis] missing UPSTASH_REDIS_REST_URL or UPSTASH_REDIS_REST_TOKEN');
+      return false;
+    }
+
+    return true;
+  }
+
+  async request(command) {
+    if (!this.hasConfig()) {
       return null;
     }
+
+    try {
+      const response = await fetch(this.url, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${this.token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(command)
+      });
+
+      const body = await response.text().catch(() => '<failed to read body>');
+      let payload = null;
+
+      try {
+        payload = body ? JSON.parse(body) : null;
+      } catch (error) {
+        console.error(`[redis] ${command[0]} invalid_json status=${response.status} body=${body}`, error);
+      }
+
+      return {
+        body,
+        ok: response.ok,
+        payload,
+        status: response.status
+      };
+    } catch (error) {
+      console.error(`[redis] ${command[0]} error:`, error);
+      return null;
+    }
+  }
+
+  async get(key) {
+    const result = await this.request(['GET', key]);
+    if (!result) {
+      return null;
+    }
+
+    if (!result.ok) {
+      console.error(`[redis] GET failed status=${result.status} body=${result.body}`);
+      return null;
+    }
+
+    return result.payload?.result ?? null;
   }
 
   async set(key, value, expirySeconds = null) {
-    if (!this.url || !this.token) {
-      console.error('Redis SET error: UPSTASH_REDIS_REST_URL or UPSTASH_REDIS_REST_TOKEN is not configured');
+    const command = expirySeconds
+      ? ['SETEX', key, expirySeconds, value]
+      : ['SET', key, value];
+
+    const result = await this.request(command);
+    if (!result) {
       return false;
     }
 
-    try {
-      const url = expirySeconds
-        ? `${this.url}/setex/${key}/${expirySeconds}/${encodeURIComponent(value)}`
-        : `${this.url}/set/${key}/${encodeURIComponent(value)}`;
-
-      const response = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${this.token}`
-        }
-      });
-
-      if (!response.ok) {
-        const body = await response.text().catch(() => '<failed to read body>');
-        console.error(`Redis SET error: status=${response.status} body=${body}`);
-        return false;
-      }
-
-      return true;
-    } catch (error) {
-      console.error('Redis SET error:', error);
+    if (!result.ok || result.payload?.result !== 'OK') {
+      console.error(`[redis] ${command[0]} failed status=${result.status} body=${result.body}`);
       return false;
     }
+
+    console.info(`[redis] ${command[0]} success key=${key}`);
+    return true;
   }
 
   async del(key) {
-    try {
-      await fetch(`${this.url}/del/${key}`, {
-        headers: {
-          Authorization: `Bearer ${this.token}`
-        }
-      });
-      return true;
-    } catch (error) {
-      console.error('Redis DEL error:', error);
+    const result = await this.request(['DEL', key]);
+    if (!result) {
       return false;
     }
+
+    if (!result.ok) {
+      console.error(`[redis] DEL failed status=${result.status} body=${result.body}`);
+      return false;
+    }
+
+    return true;
   }
 
   async incr(key) {
-    try {
-      const response = await fetch(`${this.url}/incr/${key}`, {
-        headers: {
-          Authorization: `Bearer ${this.token}`
-        }
-      });
-      const data = await response.json();
-      return data.result;
-    } catch (error) {
-      console.error('Redis INCR error:', error);
+    const result = await this.request(['INCR', key]);
+    if (!result) {
       return null;
     }
+
+    if (!result.ok) {
+      console.error(`[redis] INCR failed status=${result.status} body=${result.body}`);
+      return null;
+    }
+
+    return result.payload?.result ?? null;
   }
 
   async expire(key, seconds) {
-    try {
-      await fetch(`${this.url}/expire/${key}/${seconds}`, {
-        headers: {
-          Authorization: `Bearer ${this.token}`
-        }
-      });
-      return true;
-    } catch (error) {
-      console.error('Redis EXPIRE error:', error);
+    const result = await this.request(['EXPIRE', key, seconds]);
+    if (!result) {
       return false;
     }
+
+    if (!result.ok) {
+      console.error(`[redis] EXPIRE failed status=${result.status} body=${result.body}`);
+      return false;
+    }
+
+    return true;
   }
 }
 
