@@ -153,42 +153,38 @@ const ProfilePage: React.FC = () => {
     const load = async () => {
       const profileEndpoint = id ? `/users/id/${id}` : (currentUserId ? `/users/id/${currentUserId}` : '');
       if (!profileEndpoint) return;
-      try {
-        const [{ data }, { data: settingsData }] = await Promise.all([
-          http.get<{ user: { id: string; averageRating?: number; totalReviews?: number; sessionsCount?: number }; profile: Profile; posts: unknown; ratingDistribution?: RatingDistribution; writtenReviews?: WrittenReviewItem[] }>(profileEndpoint, {
-            headers: {
-              'Cache-Control': 'no-cache',
-              Pragma: 'no-cache'
-            }
-          }),
-          fetchAcademicSettings()
-        ]);
-        const merged = {
-          ...(data.profile ?? {}),
-          userId: data.user?.id,
-          avgRating: data.user?.averageRating ?? 0,
-          reviewsCount: data.user?.totalReviews ?? 0,
-          sessionsCount: data.user?.sessionsCount ?? 0
-        } as ProfileView;
-        setProfile(merged);
-        const normalizedWrittenReviews = (data.writtenReviews ?? [])
-          .map((item) => {
-            const rawReview = (item as { review?: string; comment?: string; text?: string }).review
-              ?? (item as { comment?: string }).comment
-              ?? (item as { text?: string }).text
-              ?? '';
-            return {
-              ...item,
-              review: typeof rawReview === 'string' ? rawReview.trim() : ''
-            };
-          })
-          .filter((item) => item.review);
-        setWrittenReviews(normalizedWrittenReviews);
-        setRatingDistribution(data.ratingDistribution ?? { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 });
-        setAcademicSettings(settingsData);
-      } catch {
-        setProfile((prev) => prev ?? null);
-      }
+      const [{ data }, { data: settingsData }] = await Promise.all([
+        http.get<{ user: { id: string; averageRating?: number; totalReviews?: number; sessionsCount?: number }; profile: Profile; posts: unknown; ratingDistribution?: RatingDistribution; writtenReviews?: WrittenReviewItem[] }>(profileEndpoint, {
+          headers: {
+            'Cache-Control': 'no-cache',
+            Pragma: 'no-cache'
+          }
+        }),
+        fetchAcademicSettings()
+      ]);
+      const merged = {
+        ...(data.profile ?? {}),
+        userId: data.user?.id,
+        avgRating: data.user?.averageRating ?? 0,
+        reviewsCount: data.user?.totalReviews ?? 0,
+        sessionsCount: data.user?.sessionsCount ?? 0
+      } as ProfileView;
+      setProfile(merged);
+      const normalizedWrittenReviews = (data.writtenReviews ?? [])
+        .map((item) => {
+          const rawReview = (item as { review?: string; comment?: string; text?: string }).review
+            ?? (item as { comment?: string }).comment
+            ?? (item as { text?: string }).text
+            ?? '';
+          return {
+            ...item,
+            review: typeof rawReview === 'string' ? rawReview.trim() : ''
+          };
+        })
+        .filter((item) => item.review);
+      setWrittenReviews(normalizedWrittenReviews);
+      setRatingDistribution(data.ratingDistribution ?? { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 });
+      setAcademicSettings(settingsData);
     };
 
     void load();
@@ -257,10 +253,8 @@ const ProfilePage: React.FC = () => {
   const levelLabel = resolvedLevel?.nameFr ?? profile?.level ?? 'Niveau libre';
   const majorLabel = resolvedMajor?.nameFr ?? profile?.major ?? 'Filière non renseignée';
   const prioritySet = new Set((profile?.subjectsSettings ?? []).filter((item) => item.isPriority).map((item) => item.subjectCode));
-  const profileCourses = Array.isArray(profile?.courses) ? profile.courses : [];
-  const profileSkills = Array.isArray(profile?.skills) ? profile.skills : [];
-  const courseLabels = (profileCourses.length
-    ? profileCourses.map((label) => ({ label, code: label, isImportant: false }))
+  const courseLabels = (profile?.courses?.length
+    ? profile.courses.map((label) => ({ label, code: label, isImportant: false }))
     : resolvedSubjectNames.map((label, index) => ({ label, code: catalogSubjects[index]?.code ?? label, isImportant: prioritySet.has(catalogSubjects[index]?.code ?? '') })));
   const normalizedPreferences = parseLegacyPriorities(profile?.prioritiesOrder);
   const rolePreferences = normalizeRolePreferences(profile?.rolePreferences ?? normalizedPreferences.rolePreferences);
@@ -607,10 +601,10 @@ const ProfilePage: React.FC = () => {
               <div className="card-surface p-4">
                 <h3 className="font-semibold text-slate-900 mb-2">Compétences</h3>
                 <div className="flex flex-wrap gap-2">
-                  {profileSkills.map((skill) => (
+                  {(profile?.skills ?? []).map((skill) => (
                     <span key={skill} className="badge-soft">{skill}</span>
                   ))}
-                  {!profileSkills.length && <span className="text-sm text-slate-500">Aucune compétence déclarée.</span>}
+                  {!profile?.skills?.length && <span className="text-sm text-slate-500">Aucune compétence déclarée.</span>}
                 </div>
               </div>
               <div className="card-surface p-4">
