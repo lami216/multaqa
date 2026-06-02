@@ -87,7 +87,13 @@ export const webhook = async (req, res) => {
               }
             });
 
-            await sendTelegramMessageToChat(chatId, 'تم ربط حسابك بالمنصة بنجاح ✅');
+            const appUrl = (process.env.APP_URL || process.env.CLIENT_URL || 'https://multaqa.space').replace(/\/$/, '');
+            const profileUrl = `${appUrl}/profile`;
+            const successMessage = `تم ربط حسابك بملتقى بنجاح ✅\nيمكنك الآن استقبال الإشعارات على تيليغرام.\nافتح ملفك الشخصي: ${profileUrl}`;
+            const sent = await sendTelegramMessageToChat(chatId, successMessage);
+            if (!sent) {
+              console.error('[telegram] failed to send link success message', { chatId, userId });
+            }
           }
         }
       }
