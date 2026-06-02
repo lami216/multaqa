@@ -22,6 +22,7 @@ import {
   isFacultyEnabled
 } from '../lib/catalog';
 import { type AcademicSettingsResponse, disconnectTelegramRequest, fetchAcademicSettings, generateTelegramLinkTokenRequest, http, type Profile, type RatingDistribution, type RemainingSubjectItem, type WrittenReviewItem, updateProfileSettingsRequest } from '../lib/http';
+import { getEffectiveMajorAvailability } from '../lib/majorAvailability';
 import { normalizeActivityPreferences, normalizeRolePreferences, parseLegacyPriorities } from '../lib/priorities';
 import { buildSubjectInitials } from '../lib/subjectDisplay';
 
@@ -44,6 +45,7 @@ const ProfilePage: React.FC = () => {
   const [settingsMessage, setSettingsMessage] = useState('');
   const [settingsError, setSettingsError] = useState('');
   const [settingsDraft, setSettingsDraft] = useState({ displayName: '', bio: '', availability: '', language: 'Arabic' as 'Arabic' | 'French' });
+  const [priorityDraft, setPriorityDraft] = useState<Record<string, boolean>>({});
   const [linkingTelegram, setLinkingTelegram] = useState(false);
   const [telegramLinkModalOpen, setTelegramLinkModalOpen] = useState(false);
   const [telegramLinkData, setTelegramLinkData] = useState<{ token: string; botUsername: string } | null>(null);
@@ -102,9 +104,15 @@ const ProfilePage: React.FC = () => {
       availability: profile?.availability ?? '',
       language: (profile?.languages?.[0] === 'French' ? 'French' : 'Arabic')
     });
+    setPriorityDraft(Object.fromEntries((profile?.subjectsSettings ?? []).map((item) => [item.subjectCode, Boolean(item.isPriority)])));
     setSettingsMessage('');
     setSettingsError('');
     setSettingsOpen(true);
+  };
+
+  const togglePriorityDraft = (subjectCode: string) => {
+    if (!catalogSubjects.some((subject) => subject.code === subjectCode)) return;
+    setPriorityDraft((prev) => ({ ...prev, [subjectCode]: !prev[subjectCode] }));
   };
 
   const saveSettings = async () => {
@@ -112,14 +120,22 @@ const ProfilePage: React.FC = () => {
     setSettingsMessage('');
     setSettingsError('');
     try {
+      const currentSubjectCodes = new Set(catalogSubjects.map((subject) => subject.code));
+      const nextSubjectsSettings = [
+        ...(profile?.subjectsSettings ?? []).filter((item) => !currentSubjectCodes.has(item.subjectCode)),
+        ...catalogSubjects.map((subject) => ({ subjectCode: subject.code, isPriority: Boolean(priorityDraft[subject.code]) }))
+      ];
+
       const { data } = await updateProfileSettingsRequest({
         displayName: settingsDraft.displayName.trim(),
         bio: settingsDraft.bio.trim(),
         availability: settingsDraft.availability.trim(),
-        languages: [settingsDraft.language]
+        languages: [settingsDraft.language],
+        subjectsSettings: nextSubjectsSettings
       });
       setProfile((prev) => ({ ...(prev ?? {}), ...data.profile, userId: currentUserId }));
       setAuthProfile(data.profile);
+      setPriorityDraft(Object.fromEntries((data.profile.subjectsSettings ?? []).map((item) => [item.subjectCode, Boolean(item.isPriority)])));
       setSettingsMessage(t.profile.saved);
       await refresh();
     } catch {
@@ -262,10 +278,10 @@ const ProfilePage: React.FC = () => {
     ? { td: 'حل TD', archive: 'حل الأرشيف' }
     : { td: 'TD', archive: 'Archives / anciens sujets' };
   const majorKey = resolvedFaculty && resolvedLevel && resolvedMajor ? buildAcademicMajorKey(resolvedFaculty.id, resolvedLevel.id, resolvedMajor.id) : '';
-  const majorAvailability = majorKey ? academicSettings.majorAvailability?.[majorKey] : undefined;
-  const majorStatus = majorAvailability?.status ?? 'active';
-  const majorPreregCount = majorAvailability?.registeredCount ?? 0;
-  const majorThreshold = majorAvailability?.threshold ?? 0;
+  const majorAvailability = getEffectiveMajorAvailability(majorKey ? academicSettings.majorAvailability?.[majorKey] : undefined);
+  const majorStatus = majorAvailability.status;
+  const majorPreregCount = majorAvailability.registeredCount;
+  const majorThreshold = majorAvailability.threshold ?? 0;
 
   const currentLevelId = resolvedLevel?.id ?? profile?.level;
   const previousLevelMap: Record<string, string> = { L2: 'L1', L3: 'L2' };
@@ -454,6 +470,37 @@ const ProfilePage: React.FC = () => {
               </div>
             </div>
 
+            <div className="rounded-3xl border border-slate-200 bg-white p-4">
+              <div className="space-y-1">
+                <h3 className="font-bold text-slate-900">{language === 'ar' ? 'المواد المميزة' : 'Matières importantes'}</h3>
+                <p className="text-sm text-slate-500">{language === 'ar' ? 'اختر مواد هذا الفصل التي تريد تمييزها في الإشعارات والعرض.' : 'Choisissez les matières du semestre actuel à mettre en avant.'}</p>
+              </div>
+              {catalogSubjects.length ? (
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  {catalogSubjects.map((subject) => {
+                    const active = Boolean(priorityDraft[subject.code]);
+                    return (
+                      <button
+                        key={subject.code}
+                        type="button"
+                        onClick={() => togglePriorityDraft(subject.code)}
+                        className={`rounded-xl border px-3 py-2 text-left transition ${active ? 'border-amber-300 bg-amber-50 text-amber-900 shadow-sm' : 'border-slate-200 bg-white text-slate-700'}`}
+                        disabled={settingsSaving}
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="font-semibold">{language === 'ar' ? subject.nameAr : subject.nameFr}</span>
+                          <Star className={`h-4 w-4 ${active ? 'fill-amber-400 text-amber-500' : 'text-slate-400'}`} />
+                        </div>
+                        <p className="mt-1 text-xs text-slate-500">{subject.code}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="mt-3 text-sm text-slate-500">{language === 'ar' ? 'لا توجد مواد متاحة للفصل الحالي.' : 'Aucune matière disponible pour le semestre actuel.'}</p>
+              )}
+            </div>
+
             <div className="grid gap-4 sm:grid-cols-2">
               <label className="space-y-2 text-sm font-bold text-slate-700">
                 {t.profile.languagePreference}
@@ -626,9 +673,6 @@ const ProfilePage: React.FC = () => {
                         style={{ width: `${Math.min(100, majorThreshold > 0 ? (majorPreregCount / majorThreshold) * 100 : 0)}%` }}
                       />
                     </div>
-                    {majorThreshold > 0 && majorPreregCount >= majorThreshold && (
-                      <p className="text-emerald-700">Threshold reached. Posting is now enabled.</p>
-                    )}
                   </>
                 ) : (
                   <p>هذا التخصص مغلق حالياً.</p>

@@ -123,7 +123,8 @@ export const profileSettingsUpdateSchema = z.object({
   displayName: z.string().max(80).optional(),
   bio: z.string().max(500).optional(),
   availability: z.string().max(160).optional(),
-  languages: z.array(z.enum(['Arabic', 'French'])).optional()
+  languages: z.array(z.enum(['Arabic', 'French'])).optional(),
+  subjectsSettings: z.array(subjectSettingsSchema).optional()
 }).strict();
 
 export const messageSchema = z.object({

@@ -92,10 +92,15 @@ export const getMajorAvailabilityMap = (settings, counts = {}) => {
     for (const level of faculty?.levels ?? []) {
       for (const major of level?.majors ?? []) {
         const key = buildAcademicMajorKey(faculty.facultyId, level.levelId, major.majorId);
+        const registeredCount = counts[key] ?? 0;
+        const threshold = major.status === 'collecting' ? (major.threshold ?? 1) : null;
+        const status = major.status === 'collecting' && threshold > 0 && registeredCount >= threshold
+          ? 'active'
+          : (major.status ?? 'active');
         availability[key] = {
-          status: major.status ?? 'active',
-          threshold: major.status === 'collecting' ? (major.threshold ?? 1) : null,
-          registeredCount: counts[key] ?? 0
+          status,
+          threshold: status === 'collecting' ? threshold : null,
+          registeredCount
         };
       }
     }
@@ -117,7 +122,7 @@ export const getMajorAvailability = async (facultyId, levelId, majorId) => {
   const fallbackCount = counts[key] ?? 0;
   const fallbackStatus = fallbackCount >= DEFAULT_MAJOR_THRESHOLD ? 'active' : DEFAULT_MAJOR_STATUS;
 
-  return availabilityMap[key] ?? { status: fallbackStatus, threshold: DEFAULT_MAJOR_THRESHOLD, registeredCount: fallbackCount };
+  return availabilityMap[key] ?? { status: fallbackStatus, threshold: fallbackStatus === 'collecting' ? DEFAULT_MAJOR_THRESHOLD : null, registeredCount: fallbackCount };
 };
 
 export const maybeActivateMajor = async (facultyId, levelId, majorId) => {

@@ -443,7 +443,7 @@ export const signupRequest = (payload: { email: string; password: string; userna
 export const logoutRequest = () => http.post('/auth/logout');
 export const generateTelegramLinkTokenRequest = () => http.post<{ token: string; botUsername: string }>('/telegram/link-token');
 export const disconnectTelegramRequest = () => http.delete<{ message: string }>('/telegram/link');
-export const updateProfileSettingsRequest = (payload: Pick<Profile, 'displayName' | 'bio' | 'availability' | 'languages'>) =>
+export const updateProfileSettingsRequest = (payload: Pick<Profile, 'displayName' | 'bio' | 'availability' | 'languages' | 'subjectsSettings'>) =>
   http.patch<{ message: string; profile: Profile }>('/users/me/settings', payload);
 export const fetchPosts = (params?: Record<string, string>) => http.get<{ posts: PostResponse[] }>('/posts', { params });
 export const createPost = (payload: PostPayload) => http.post('/posts', payload);
