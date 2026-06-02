@@ -16,7 +16,6 @@ import {
   type CatalogSubject
 } from '../lib/catalog';
 import { fetchAcademicSettings, http, type AcademicSettingsResponse, type Profile, type RemainingSubjectItem } from '../lib/http';
-import { getActiveSemesterForLevel, resolveCurrentAcademicTerm } from '../lib/academicTerm';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { useAuth } from '../context/AuthContext';
 import { processImageFile } from '../lib/imageProcessing';
@@ -120,8 +119,7 @@ const EditProfilePage: React.FC = () => {
 
     const majors = facultyMatch && levelMatch ? getMajorsIncludingClosed(facultyMatch.id, levelMatch.id) : [];
     const majorMatch = matchByIdOrName(majors, rawProfile?.majorId ?? rawProfile?.major);
-    const currentTermType = resolveCurrentAcademicTerm(academicSettings);
-    const mappedSemesterId = levelMatch ? getTermSemesterForLevel(levelMatch.id, currentTermType) : undefined;
+    const mappedSemesterId = levelMatch ? getTermSemesterForLevel(levelMatch.id, academicSettings.academicTermType) : undefined;
 
     const catalogSubjects =
       facultyMatch && levelMatch && majorMatch && mappedSemesterId
@@ -130,7 +128,7 @@ const EditProfilePage: React.FC = () => {
             levelMatch.id,
             majorMatch.id,
             mappedSemesterId,
-            currentTermType,
+            academicSettings.academicTermType,
             academicSettings.catalogVisibility
           )
         : [];
@@ -340,19 +338,13 @@ const EditProfilePage: React.FC = () => {
       return;
     }
 
-    const currentTermType = resolveCurrentAcademicTerm(academicSettings);
-    const mappedSemesterId = getActiveSemesterForLevel(form.level, academicSettings);
-    console.log('[AcademicTerm] raw settings', academicSettings);
-    console.log('[AcademicTerm] resolved', currentTermType);
-    console.log('[AcademicTerm] level', form.level);
-    console.log('[AcademicTerm] semesterId', mappedSemesterId);
+    const mappedSemesterId = getTermSemesterForLevel(form.level, academicSettings.academicTermType);
     if (!mappedSemesterId) {
       setSubjects([]);
       return;
     }
 
-    const nextSubjects = getSubjectsByMajorAndSemester(form.facultyId, form.level, form.majorId, mappedSemesterId, currentTermType, academicSettings.catalogVisibility);
-    console.log('[AcademicTerm] subjects', nextSubjects.map((subject) => subject.code));
+    const nextSubjects = getSubjectsByMajorAndSemester(form.facultyId, form.level, form.majorId, mappedSemesterId, academicSettings.academicTermType, academicSettings.catalogVisibility);
     setSubjects(nextSubjects);
     setSubjectsError(nextSubjects.length ? '' : 'Aucune matière définie pour le terme académique actif.');
     setForm((prev) => ({
@@ -408,15 +400,14 @@ const EditProfilePage: React.FC = () => {
       return;
     }
 
-    const currentTermType = resolveCurrentAcademicTerm(academicSettings);
-    const mappedSemesterId = getTermSemesterForLevel(previousLevel, currentTermType);
+    const mappedSemesterId = getTermSemesterForLevel(previousLevel, academicSettings.academicTermType);
     const generated = mappedSemesterId
       ? getSubjectsByMajorAndSemester(
           form.facultyId as string,
           previousLevel,
           previousMajorId,
           mappedSemesterId,
-          currentTermType,
+          academicSettings.academicTermType,
           academicSettings.catalogVisibility
         )
       : [];
@@ -469,12 +460,7 @@ const EditProfilePage: React.FC = () => {
     try {
       const selectedFaculty = faculties.find((item) => item.id === form.facultyId);
       const selectedMajor = majors.find((item) => item.id === form.majorId);
-      const currentTermType = resolveCurrentAcademicTerm(academicSettings);
-    const mappedSemesterId = getActiveSemesterForLevel(form.level, academicSettings);
-    console.log('[AcademicTerm] raw settings', academicSettings);
-    console.log('[AcademicTerm] resolved', currentTermType);
-    console.log('[AcademicTerm] level', form.level);
-    console.log('[AcademicTerm] semesterId', mappedSemesterId);
+      const mappedSemesterId = getTermSemesterForLevel(form.level, academicSettings.academicTermType);
       const selectedSubjects = subjects;
 
       const { data } = await http.patch<{ profile: Profile }>('/users/me', {
