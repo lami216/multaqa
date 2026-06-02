@@ -71,30 +71,43 @@ export const webhook = async (req, res) => {
       const chatId = update.message.chat?.id;
       const text = update.message.text;
 
-      if (typeof text === 'string' && text.startsWith('/start ')) {
-        const token = text.slice(7).trim();
-
-        if (!token) {
-          await sendTelegramMessageToChat(chatId, 'يرجى ربط حسابك من داخل المنصة.');
+      if (typeof text === 'string' && text.startsWith('/start')) {
+        if (text === '/start' || !text.startsWith('/start ')) {
+          await sendTelegramMessageToChat(
+            chatId,
+            'لربط حسابك، افتح ملتقى واضغط ربط تيليغرام للحصول على كود جديد.'
+          );
         } else {
-          const userId = await getUserIdFromTelegramLinkToken(token);
+          const token = text.slice(7).trim();
 
-          if (!userId) {
-            await sendTelegramMessageToChat(chatId, 'يرجى ربط حسابك من داخل المنصة.');
+          if (!token) {
+            await sendTelegramMessageToChat(
+              chatId,
+              'لربط حسابك، افتح ملتقى واضغط ربط تيليغرام للحصول على كود جديد.'
+            );
           } else {
-            await User.findByIdAndUpdate(userId, {
-              $set: {
-                telegramChatId: String(chatId),
-                telegramLinked: true
-              }
-            });
+            const userId = await getUserIdFromTelegramLinkToken(token);
 
-            const appUrl = (process.env.APP_URL || process.env.CLIENT_URL || 'https://multaqa.space').replace(/\/$/, '');
-            const profileUrl = `${appUrl}/profile`;
-            const successMessage = `تم ربط حسابك بملتقى بنجاح ✅\nيمكنك الآن استقبال الإشعارات على تيليغرام.\nافتح ملفك الشخصي: ${profileUrl}`;
-            const sent = await sendTelegramMessageToChat(chatId, successMessage);
-            if (!sent) {
-              console.error('[telegram] failed to send link success message', { chatId, userId });
+            if (!userId) {
+              await sendTelegramMessageToChat(
+                chatId,
+                'الكود غير صالح أو منتهي. افتح ملتقى واضغط ربط تيليغرام للحصول على كود جديد.'
+              );
+            } else {
+              await User.findByIdAndUpdate(userId, {
+                $set: {
+                  telegramChatId: String(chatId),
+                  telegramLinked: true
+                }
+              });
+
+              const appUrl = (process.env.APP_URL || process.env.CLIENT_URL || 'https://multaqa.space').replace(/\/$/, '');
+              const profileUrl = `${appUrl}/profile`;
+              const successMessage = `تم ربط حسابك بملتقى بنجاح ✅\nيمكنك الآن استقبال الإشعارات على تيليغرام.\nافتح ملفك الشخصي: ${profileUrl}`;
+              const sent = await sendTelegramMessageToChat(chatId, successMessage);
+              if (!sent) {
+                console.error('[telegram] failed to send link success message', { chatId, userId });
+              }
             }
           }
         }
