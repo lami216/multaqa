@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import AdminSidebar from '../components/admin/AdminSidebar';
 import UnionReviewCard from '../components/UnionReviewCard';
 import { useLanguage } from '../context/LanguageContext';
-import { fetchAdminAcademicSettings, createUnionReview, fetchAdminUnionReviews, type AcademicSettingsResponse, type UnionReviewItem } from '../lib/http';
+import { fetchAdminAcademicSettings, createUnionReview, fetchAdminUnionReviews, type AcademicSettingsResponse, type UnionReviewAdminStats, type UnionReviewItem } from '../lib/http';
 import { getFaculties, getLevelsByFaculty, getMajorsByFacultyAndLevel, getSubjectsByMajorAndSemester, getTermSemesterForLevel, isFacultyEnabled, type CatalogFaculty, type CatalogLevel, type CatalogMajor, type CatalogSubject } from '../lib/catalog';
 
 
@@ -17,6 +17,12 @@ function resolveCurrentAcademicTerm(settings: AcademicSettingsResponse): 'odd' |
     ?? 'odd'
   );
 }
+
+
+const emptyAdminStats: UnionReviewAdminStats = {
+  UNEM: { totalReviews: 0, totalViews: 0, totalGoing: 0 },
+  UGEM: { totalReviews: 0, totalViews: 0, totalGoing: 0 }
+};
 
 type AdminUnionReviewForm = {
   organizer: 'UNEM' | 'UGEM';
@@ -32,6 +38,7 @@ type AdminUnionReviewForm = {
 export default function AdminUnionReviewsPage() {
   const { t, language } = useLanguage();
   const [reviews, setReviews] = useState<UnionReviewItem[]>([]);
+  const [stats, setStats] = useState<UnionReviewAdminStats>(emptyAdminStats);
   const [academicSettings, setAcademicSettings] = useState<AcademicSettingsResponse>({
     academicTermType: 'odd',
     catalogVisibility: { faculties: {}, majors: {} },
@@ -45,6 +52,7 @@ export default function AdminUnionReviewsPage() {
   useEffect(() => {
     void Promise.all([fetchAdminUnionReviews(), fetchAdminAcademicSettings()]).then(([reviewsRes, settingsRes]) => {
       setReviews(reviewsRes.data.reviews ?? []);
+      setStats(reviewsRes.data.stats ?? emptyAdminStats);
       const settingsData = settingsRes.data;
       setAcademicSettings(settingsData);
       setFaculties(getFaculties().filter((faculty) => isFacultyEnabled(faculty.id, settingsData.catalogVisibility)));
@@ -72,6 +80,7 @@ export default function AdminUnionReviewsPage() {
   const refreshReviews = async () => {
     const reviewsRes = await fetchAdminUnionReviews();
     setReviews(reviewsRes.data.reviews ?? []);
+    setStats(reviewsRes.data.stats ?? emptyAdminStats);
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -176,6 +185,35 @@ export default function AdminUnionReviewsPage() {
         </div>
         <button type='submit' className='primary-btn mt-3' disabled={publishing}>{publishing ? (language === 'ar' ? 'جاري النشر...' : 'Publication...') : t.unionReviews.publish}</button>
       </form>
+      <section className='card-surface p-5'>
+        <div className='mb-4 flex items-center gap-2'>
+          <CalendarClock size={18} className='text-emerald-600' />
+          <h2 className='text-base font-black text-slate-900 dark:text-slate-100'>
+            {language === 'ar' ? 'إحصائيات مراجعات الإتحادات' : 'Statistiques des révisions des unions'}
+          </h2>
+        </div>
+        <div className='grid gap-3 md:grid-cols-2'>
+          {(['UNEM', 'UGEM'] as const).map((organizer) => (
+            <div key={organizer} className='rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900'>
+              <div className='mb-3 text-sm font-black text-slate-900 dark:text-slate-100'>{organizer}</div>
+              <div className='grid grid-cols-3 gap-2 text-center'>
+                <div className='rounded-xl bg-slate-50 p-3 dark:bg-slate-800'>
+                  <p className='text-xs text-slate-500'>{language === 'ar' ? 'عدد المراجعات' : 'Reviews'}</p>
+                  <p className='mt-1 text-xl font-black text-slate-900 dark:text-slate-100'>{stats[organizer].totalReviews}</p>
+                </div>
+                <div className='rounded-xl bg-slate-50 p-3 dark:bg-slate-800'>
+                  <p className='text-xs text-slate-500'>{language === 'ar' ? 'المشاهدات' : 'Views'}</p>
+                  <p className='mt-1 text-xl font-black text-slate-900 dark:text-slate-100'>{stats[organizer].totalViews}</p>
+                </div>
+                <div className='rounded-xl bg-slate-50 p-3 dark:bg-slate-800'>
+                  <p className='text-xs text-slate-500'>{language === 'ar' ? 'الحضور' : 'Going'}</p>
+                  <p className='mt-1 text-xl font-black text-slate-900 dark:text-slate-100'>{stats[organizer].totalGoing}</p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
       <div className='grid gap-3'>{reviews.map((r) => <UnionReviewCard key={r._id} review={r} onUpdate={() => { }} admin />)}</div>
     </div>
   </div>;

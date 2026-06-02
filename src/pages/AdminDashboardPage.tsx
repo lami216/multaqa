@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { Activity, Shield, Users } from 'lucide-react';
-import { Link } from 'react-router-dom';
 import { fetchAdminStats, type AdminStatsResponse } from '../lib/http';
 import AdminSidebar from '../components/admin/AdminSidebar';
 import { useLanguage } from '../context/LanguageContext';
@@ -26,15 +25,6 @@ const AdminDashboardPage: React.FC = () => {
     <div className="grid gap-4 md:grid-cols-[240px_minmax(0,1fr)]">
       <AdminSidebar />
       <div className="space-y-4">
-      <div className="card-surface p-5 flex items-center gap-3">
-        <Shield className="text-emerald-600" />
-        <div>
-          <h1 className="section-title">{t.admin.consoleTitle}</h1>
-          <p className="helper-text">{t.admin.consoleSubtitle}</p>
-        </div>
-        <Link to="/admin/academic-settings" className="secondary-btn ms-auto">{t.admin.academicSettings}</Link>
-      </div>
-
       {loading ? (
         <div className="card-surface p-6 text-sm text-slate-600">{t.admin.loadingStats}</div>
       ) : (

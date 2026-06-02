@@ -484,6 +484,7 @@ export const translations = {
       statistics: 'الإحصائيات',
       academicSettings: 'الإعدادات الأكاديمية',
       warDashboard: 'ترتيب الجامعة',
+      unionReviews: 'مراجعات الإتحادات',
       consoleTitle: 'لوحة الإدارة',
       consoleSubtitle: 'نظرة عامة على المنشورات والمستخدمين والمؤشرات الأساسية.',
       loadingStats: 'جاري تحميل الإحصائيات…',

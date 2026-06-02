@@ -70,8 +70,44 @@ export const createUnionReview = async (req, res) => {
 };
 
 export const getAdminUnionReviews = async (req, res) => {
-  const reviews = await UnionReview.find().sort({ startsAt: -1 });
-  return res.json({ reviews: reviews.map((r) => ({ ...r.toObject(), computedStatus: isExpired(r.startsAt) ? 'expired' : r.status })) });
+  const activeWindowStart = new Date(Date.now() - 60 * 60 * 1000);
+  const [reviews, statRows] = await Promise.all([
+    UnionReview.find({
+      status: 'published',
+      startsAt: { $gte: activeWindowStart }
+    }).sort({ startsAt: 1 }),
+    UnionReview.aggregate([
+      { $match: { status: { $ne: 'cancelled' } } },
+      {
+        $group: {
+          _id: '$organizer',
+          totalReviews: { $sum: 1 },
+          totalViews: { $sum: { $ifNull: ['$viewsCount', 0] } },
+          totalGoing: { $sum: { $ifNull: ['$goingCount', 0] } }
+        }
+      }
+    ])
+  ]);
+
+  const stats = {
+    UNEM: { totalReviews: 0, totalViews: 0, totalGoing: 0 },
+    UGEM: { totalReviews: 0, totalViews: 0, totalGoing: 0 }
+  };
+
+  for (const row of statRows) {
+    if (row._id === 'UNEM' || row._id === 'UGEM') {
+      stats[row._id] = {
+        totalReviews: row.totalReviews ?? 0,
+        totalViews: row.totalViews ?? 0,
+        totalGoing: row.totalGoing ?? 0
+      };
+    }
+  }
+
+  return res.json({
+    reviews: reviews.map((r) => ({ ...r.toObject(), computedStatus: isExpired(r.startsAt) ? 'expired' : r.status })),
+    stats
+  });
 };
 
 export const getStudentUnionReviews = async (req, res) => {

@@ -279,6 +279,11 @@ export interface CreateUnionReviewPayload {
   location: string;
   startsAt: string;
 }
+
+export interface UnionReviewAdminStats {
+  UNEM: { totalReviews: number; totalViews: number; totalGoing: number };
+  UGEM: { totalReviews: number; totalViews: number; totalGoing: number };
+}
 export interface ConversationSummary {
   _id: string;
   type: 'post' | 'direct';
@@ -529,5 +534,6 @@ export const updateAdminAcademicSettings = (payload: { currentTermType: 'odd' | 
 export const fetchUnionReviews = () => http.get<{ reviews: UnionReviewItem[] }>('/union-reviews');
 export const markUnionReviewGoing = (id: string) => http.post<{ review: UnionReviewItem }>(`/union-reviews/${id}/going`);
 export const markUnionReviewView = (id: string) => http.post(`/union-reviews/${id}/view`);
-export const fetchAdminUnionReviews = () => http.get<{ reviews: UnionReviewItem[] }>('/admin/union-reviews');
+export const fetchAdminUnionReviews = () =>
+  http.get<{ reviews: UnionReviewItem[]; stats?: UnionReviewAdminStats }>('/admin/union-reviews');
 export const createUnionReview = (payload: CreateUnionReviewPayload) => http.post<{ review: UnionReviewItem }>('/admin/union-reviews', payload);
