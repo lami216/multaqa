@@ -1,31 +1,52 @@
 import crypto from 'crypto';
 import User from '../models/User.js';
 import redis from '../config/redis.js';
-import { generateTelegramLinkToken, verifyTelegramLinkToken } from './jwt.js';
+import { verifyTelegramLinkToken } from './jwt.js';
 
 const TELEGRAM_LINK_TOKEN_TTL_SECONDS = 10 * 60;
 const telegramLinkKey = (token) => `telegram:link:${token}`;
 
-export const createTelegramLinkToken = async (userId) => {
-  const token = crypto.randomBytes(24).toString('base64url');
+const generateShortCode = () => {
+  let code = '';
 
-  try {
-    const saved = await redis.set(
-      telegramLinkKey(token),
-      userId.toString(),
-      TELEGRAM_LINK_TOKEN_TTL_SECONDS
-    );
-
-    if (saved) {
-      return token;
-    }
-
-    console.warn('[telegram] Redis link token save failed, falling back to JWT token');
-  } catch (error) {
-    console.warn('[telegram] Redis link token save threw, falling back to JWT token', error);
+  while (code.length < 6) {
+    code += crypto
+      .randomBytes(4)
+      .toString('base64url')
+      .replace(/[^A-Z0-9]/gi, '')
+      .toUpperCase();
   }
 
-  return generateTelegramLinkToken(userId.toString());
+  return code.slice(0, 6);
+};
+
+export const createTelegramLinkToken = async (userId) => {
+  try {
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const token = generateShortCode();
+      const existingUserId = await redis.get(telegramLinkKey(token));
+
+      if (existingUserId) {
+        continue;
+      }
+
+      const saved = await redis.set(
+        telegramLinkKey(token),
+        userId.toString(),
+        TELEGRAM_LINK_TOKEN_TTL_SECONDS
+      );
+
+      if (saved) {
+        return token;
+      }
+    }
+
+    console.warn('[telegram] Redis short link code save failed');
+  } catch (error) {
+    console.warn('[telegram] Redis short link code save threw', error);
+  }
+
+  return null;
 };
 
 export const sendTelegramMessageToChat = async (chatId, message, options = {}) => {
@@ -105,9 +126,10 @@ export const sendTelegramNotificationForEvent = async ({ eventName, recipientUse
 export const getUserIdFromTelegramLinkToken = async (token) => {
   if (!token) return null;
 
-  const linkedUserId = await redis.get(telegramLinkKey(token));
+  const redisToken = /^[A-Z0-9]{6}$/i.test(token) ? token.toUpperCase() : token;
+  const linkedUserId = await redis.get(telegramLinkKey(redisToken));
   if (linkedUserId) {
-    await redis.del(telegramLinkKey(token));
+    await redis.del(telegramLinkKey(redisToken));
     return linkedUserId;
   }
 

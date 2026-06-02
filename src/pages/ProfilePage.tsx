@@ -93,7 +93,7 @@ const ProfilePage: React.FC = () => {
 
   const telegramStartCommand = telegramLinkData ? `/start ${telegramLinkData.token}` : '';
   const telegramDeepLink = telegramLinkData
-    ? `https://t.me/${telegramLinkData.botUsername}?start=${encodeURIComponent(telegramLinkData.token)}`
+    ? `https://t.me/${telegramLinkData.botUsername}?start=${telegramLinkData.token}`
     : '';
 
   const handleCopyTelegramCommand = async () => {
