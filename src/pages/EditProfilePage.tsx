@@ -582,10 +582,10 @@ const EditProfilePage: React.FC = () => {
   const selectedMajorKey = form.majorId && form.facultyId && form.level
     ? buildAcademicMajorKey(form.facultyId, form.level, form.majorId)
     : '';
-  const majorAvailability = selectedMajorKey ? academicSettings.majorAvailability?.[selectedMajorKey] : undefined;
-  const majorStatus = majorAvailability?.status ?? 'active';
-  const majorPreregCount = majorAvailability?.registeredCount ?? 0;
-  const majorThreshold = majorAvailability?.threshold ?? 0;
+  const majorAvailability = getEffectiveMajorAvailability(selectedMajorKey ? academicSettings.majorAvailability?.[selectedMajorKey] : undefined);
+  const majorStatus = majorAvailability.status;
+  const majorPreregCount = majorAvailability.registeredCount;
+  const majorThreshold = majorAvailability.threshold ?? 0;
 
   const toggleSubjectPriority = (subjectCode: string) => {
     isDirtyRef.current = true;
@@ -805,7 +805,7 @@ const EditProfilePage: React.FC = () => {
               <option value="">Choisir</option>
               {majors.map((major) => {
                 const majorKey = buildAcademicMajorKey(form.facultyId, form.level, major.id);
-                const status = academicSettings.majorAvailability?.[majorKey]?.status ?? 'active';
+                const status = getEffectiveMajorAvailability(academicSettings.majorAvailability?.[majorKey]).status;
                 return (
                   <option key={major.id} value={major.id}>
                     {major.nameFr}{status === 'collecting' ? ' (collecting)' : ''}
