@@ -1,8 +1,9 @@
 import { CheckCircle2, Copy, Edit3, GraduationCap, LogOut, MapPin, MessageCircle, Notebook, Send, Settings, Star, User, XCircle } from 'lucide-react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
+import { toast } from 'sonner';
 import SubjectBadge from '../components/subjects/SubjectBadge';
+import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -21,7 +22,7 @@ import {
   getTermSemesterForLevel,
   isFacultyEnabled
 } from '../lib/catalog';
-import { type AcademicSettingsResponse, disconnectTelegramRequest, fetchAcademicSettings, generateTelegramLinkTokenRequest, http, type Profile, type RatingDistribution, type RemainingSubjectItem, type WrittenReviewItem, updateProfileSettingsRequest } from '../lib/http';
+import { type AcademicSettingsResponse, disconnectTelegramRequest, fetchAcademicSettings, generateTelegramLinkTokenRequest, http, type Profile, type RatingDistribution, type RemainingSubjectItem, updateProfileSettingsRequest, type WrittenReviewItem } from '../lib/http';
 import { getEffectiveMajorAvailability } from '../lib/majorAvailability';
 import { normalizeActivityPreferences, normalizeRolePreferences, parseLegacyPriorities } from '../lib/priorities';
 import { buildSubjectInitials } from '../lib/subjectDisplay';
@@ -64,18 +65,26 @@ const ProfilePage: React.FC = () => {
   const handleTelegramLink = async () => {
     if (linkingTelegram || user?.telegramLinked) return;
     setLinkingTelegram(true);
+    setSettingsError('');
     try {
       const { data } = await generateTelegramLinkTokenRequest();
       const { token, botUsername } = data;
       if (!botUsername) {
-        setSettingsError(t.profile.telegramLinkError);
+        const message = t.profile.telegramLinkError || 'Failed to prepare Telegram link';
+        toast.error(message);
+        setSettingsError(message);
         return;
       }
       setTelegramLinkData({ token, botUsername });
       setTelegramLinkModalOpen(true);
       setCopySuccess(false);
-    } catch {
-      setSettingsError(t.profile.telegramLinkError);
+    } catch (error) {
+      const message =
+        (error as { response?: { data?: { error?: string } } })?.response?.data?.error ||
+        t.profile.telegramLinkError ||
+        'Failed to prepare Telegram link';
+      toast.error(message);
+      setSettingsError(message);
     } finally {
       setLinkingTelegram(false);
     }
@@ -376,7 +385,8 @@ const ProfilePage: React.FC = () => {
   const avgRatingDisplay = Number(avgRating).toFixed(1);
   const writtenReviewsToRender = showAllReviews ? writtenReviews : writtenReviews.slice(0, 3);
   const shouldShowAllButton = writtenReviews.length > 3;
-  const hasRatings = Object.values(ratingDistribution).some((count) => count > 0);
+  const ratingDistributionTotal = Object.values(ratingDistribution).reduce((sum, count) => sum + count, 0);
+  const hasRatings = ratingDistributionTotal > 0;
 
   return (
     <div className="space-y-6">
@@ -513,10 +523,6 @@ const ProfilePage: React.FC = () => {
                   <option value="French">{t.common.french}</option>
                 </select>
               </label>
-              <div className="rounded-3xl border border-slate-200 bg-white p-4">
-                <h3 className="font-bold text-slate-900">{t.profile.notificationPreferences}</h3>
-                <p className="mt-2 text-sm text-slate-500">{t.profile.notificationsReadonly}</p>
-              </div>
             </div>
 
             <div className="rounded-3xl border border-slate-200 bg-white p-4">
@@ -798,7 +804,9 @@ const ProfilePage: React.FC = () => {
             <div className="space-y-2">
               {[5, 4, 3, 2, 1].map((star) => {
                 const count = ratingDistribution[star as 1 | 2 | 3 | 4 | 5] ?? 0;
-                const width = reviewsCount > 0 ? Math.round((count / reviewsCount) * 100) : 0;
+                const width = ratingDistributionTotal > 0
+                  ? Math.round((count / ratingDistributionTotal) * 100)
+                  : 0;
                 return (
                   <div key={star} className="grid grid-cols-[58px_1fr_40px] items-center gap-2 text-sm">
                     <span className="font-semibold text-slate-700">{star} ⭐</span>

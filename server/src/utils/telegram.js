@@ -7,9 +7,18 @@ const TELEGRAM_LINK_TOKEN_TTL_SECONDS = 10 * 60;
 const telegramLinkKey = (token) => `telegram:link:${token}`;
 
 export const createTelegramLinkToken = async (userId) => {
-  const token = crypto.randomBytes(24).toString('base64url');
-  const saved = await redis.set(telegramLinkKey(token), userId.toString(), TELEGRAM_LINK_TOKEN_TTL_SECONDS);
-  return saved ? token : null;
+  try {
+    const token = crypto.randomBytes(24).toString('base64url');
+    const saved = await redis.set(telegramLinkKey(token), userId.toString(), TELEGRAM_LINK_TOKEN_TTL_SECONDS);
+    if (!saved) {
+      console.error(`[telegram] create_link_token_failed reason=redis_set_returned_false user=${userId}`);
+      return null;
+    }
+    return token;
+  } catch (error) {
+    console.error(`[telegram] create_link_token_failed reason=unexpected_error user=${userId}`, error);
+    return null;
+  }
 };
 
 export const sendTelegramMessageToChat = async (chatId, message, options = {}) => {
