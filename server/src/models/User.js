@@ -3,14 +3,13 @@ import mongoose from 'mongoose';
 const userSchema = new mongoose.Schema({
   email: {
     type: String,
-    required: true,
-    unique: true,
+    required: function () { return Boolean(this.passwordHash); },
     lowercase: true,
     trim: true
   },
   passwordHash: {
     type: String,
-    required: true
+    required: function () { return !this.googleSub && !this.telegramSub; }
   },
   username: {
     type: String,
@@ -33,8 +32,21 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
-  verificationToken: String,
-  resetPasswordToken: String,
+  verificationToken: { type: String, select: false },
+  emailVerifiedAt: Date,
+  verificationHash: { type: String, select: false },
+  verificationEmail: { type: String, select: false },
+  verificationExpires: { type: Date, select: false },
+  verificationSentAt: { type: Date, select: false },
+  googleSub: String,
+  telegramSub: String,
+  telegramUserId: String,
+  telegramOwnerId: String,
+  telegramConsentEventDate: Number,
+  telegramConsentEventId: Number,
+  telegramNotificationsEnabled: { type: Boolean, default: false },
+  telegramNotificationsDisabledAt: Date,
+  resetPasswordToken: { type: String, select: false },
   resetPasswordExpires: Date,
   refreshToken: String,
   previousRefreshTokenHash: String,
@@ -69,6 +81,11 @@ const userSchema = new mongoose.Schema({
 }, {
   timestamps: true
 });
+
+userSchema.index({ email: 1 }, { name: 'email_unique_present', unique: true, partialFilterExpression: { email: { $type: 'string' } } });
+for (const field of ['googleSub', 'telegramSub', 'telegramUserId', 'telegramOwnerId']) {
+  userSchema.index({ [field]: 1 }, { unique: true, partialFilterExpression: { [field]: { $type: 'string' } } });
+}
 
 userSchema.index(
   { telegramChatId: 1 },

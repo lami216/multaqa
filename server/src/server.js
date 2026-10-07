@@ -1,4 +1,7 @@
 import './config/env.js';
+import User from './models/User.js';
+import AuthFlow from './models/AuthFlow.js';
+import {validateSocialEnvironment} from './config/socialEnv.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -18,7 +21,7 @@ import conversationRoutes from './routes/conversationRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import telegramRoutes from './routes/telegramRoutes.js';
-import { authenticate } from './middleware/auth.js';
+import { authenticate, requireVerifiedIdentity } from './middleware/auth.js';
 import lookupRoutes from './routes/lookupRoutes.js';
 import sessionRoutes from './routes/sessionRoutes.js';
 import unionReviewRoutes from './routes/unionReviewRoutes.js';
@@ -31,6 +34,7 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const isProduction = process.env.NODE_ENV === 'production';
 const corsOrigin = process.env.CORS_ORIGIN || 'http://localhost:5173';
+validateSocialEnvironment();
 
 app.set('etag', false);
 
@@ -39,9 +43,15 @@ if (isProduction) {
 }
 
 await connectDB();
-const { default: User } = await import('./models/User.js');
+await User.createIndexes();
+await AuthFlow.createIndexes();
+const oldEmailIndex = (await User.collection.indexes()).find(index => index.name === 'email_1' && index.unique && index.key.email === 1 && Object.keys(index.key).length === 1 && !index.partialFilterExpression);
+if (oldEmailIndex) await User.collection.dropIndex(oldEmailIndex.name);
 const { default: Profile } = await import('./models/Profile.js');
 await Promise.all([User.createIndexes(), Profile.createIndexes()]);
+await User.updateMany({ telegramLinked: true, telegramNotificationsEnabled: { $exists: false } }, { $set: { telegramNotificationsEnabled: true } });
+await User.updateMany({telegramUserId:{$type:'string'},telegramOwnerId:{$exists:false}},[{$set:{telegramOwnerId:'$telegramUserId'}}]);
+await User.updateMany({telegramLinked:true,telegramChatId:{$type:'string'},telegramOwnerId:{$exists:false}},[{$set:{telegramOwnerId:'$telegramChatId'}}]);
 startLifecycleJob();
 
 app.use(helmet());
@@ -64,7 +74,7 @@ app.get('/api/health', (req, res) => {
   res.json({ ok: true });
 });
 
-app.get('/api/imagekit-auth', authenticate, (req, res) => {
+app.get('/api/imagekit-auth', authenticate, requireVerifiedIdentity, (req, res) => {
   try {
     const authenticationParameters = imagekit.getAuthenticationParameters();
     res.json({

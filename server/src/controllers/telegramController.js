@@ -1,184 +1,228 @@
 import User from '../models/User.js';
 import { timingSafeEqual } from 'node:crypto';
 import {
+  consentPredicate,
+  consentMarker
+} from '../services/telegramConsentService.js';
+import {
   createTelegramLinkToken,
   getUserIdFromTelegramLinkToken,
   sendTelegramMessageToChat
 } from '../utils/telegram.js';
 
-const TELEGRAM_ALREADY_LINKED_MESSAGE =
-  'هذا حساب تيليغرام مربوط بالفعل بحساب آخر في ملتقى. افصل الربط من الحساب القديم أولاً ثم حاول مرة أخرى.';
-const TELEGRAM_ALREADY_LINKED_TO_USER_MESSAGE = 'حسابك مربوط بالفعل بملتقى ✅';
-
-export const generateLinkToken = async (req, res) => {
+export async function botInfo(req, res) {
+  const username = process.env.TELEGRAM_BOT_USERNAME;
+  if (!username || !/^[A-Za-z][A-Za-z0-9_]{4,31}$/.test(username))
+    return res
+      .status(503)
+      .json({ error: 'Bot notifications are not configured' });
+  return res.json({
+    botUsername: username,
+    url: `https://t.me/${username}?start=notifications`
+  });
+}
+export async function generateLinkToken(req, res) {
   try {
-    if (req.user?.telegramLinked) {
-      return res.status(409).json({ error: 'Telegram account is already connected' });
-    }
-    const telegramBotToken = process.env.TELEGRAM_BOT_TOKEN;
-    if (!telegramBotToken) {
-      console.error('[telegram] link_token_failed reason=missing_bot_token');
-      return res.status(500).json({ error: 'TELEGRAM_BOT_TOKEN is not configured' });
-    }
-
+    if (req.user.telegramLinked)
+      return res
+        .status(409)
+        .json({ error: 'Telegram account is already connected' });
+    if (req.user.telegramSub) return botInfo(req, res);
+    if (!process.env.TELEGRAM_BOT_TOKEN)
+      return res.status(503).json({ error: 'Bot is not configured' });
+    const result = await fetch(
+      `https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/getMe`,
+      { signal: AbortSignal.timeout(5000) }
+    );
+    const data = await result.json();
+    const username = data?.result?.username;
+    if (
+      !result.ok ||
+      !data.ok ||
+      typeof username !== 'string' ||
+      !/^[A-Za-z][A-Za-z0-9_]{4,31}$/.test(username)
+    )
+      return res.status(503).json({ error: 'Bot unavailable' });
     const token = await createTelegramLinkToken(req.user._id.toString());
-    if (!token) {
-      console.error('[telegram] failed to create link token', {
-        userId: req.user?._id
-      });
-      return res.status(500).json({ error: 'Failed to create Telegram link token' });
-    }
-
-    let telegramResponse;
-    try {
-      telegramResponse = await fetch(`https://api.telegram.org/bot${telegramBotToken}/getMe`);
-    } catch (error) {
-      console.error('[telegram] link_token_failed reason=get_me_network_error', error);
-      return res.status(500).json({ error: 'Failed to fetch Telegram bot username' });
-    }
-
-    if (!telegramResponse.ok) {
-      console.error(`[telegram] link_token_failed reason=get_me_http_error status=${telegramResponse.status}`);
-      return res.status(500).json({ error: 'Failed to fetch Telegram bot username' });
-    }
-
-    let telegramData;
-    try {
-      telegramData = await telegramResponse.json();
-    } catch (error) {
-      console.error('[telegram] link_token_failed reason=get_me_invalid_json', error);
-      return res.status(500).json({ error: 'Telegram getMe returned an invalid response' });
-    }
-
-    if (telegramData?.ok !== true) {
-      console.error('[telegram] link_token_failed reason=get_me_invalid_response', telegramData);
-      return res.status(500).json({ error: 'Telegram getMe returned an invalid response' });
-    }
-
-    const telegramUsername = telegramData?.result?.username;
-    if (!telegramUsername) {
-      console.error('[telegram] link_token_failed reason=missing_bot_username', telegramData?.result);
-      return res.status(500).json({ error: 'Telegram bot username is missing from getMe response' });
-    }
-
-    res.json({ token, botUsername: telegramUsername });
-  } catch (error) {
-    console.error('Generate Telegram link token error:', error);
-    res.status(500).json({ error: 'Failed to generate token' });
+    if (!token) return res.status(503).json({ error: 'Cannot create link' });
+    return res.json({ token, botUsername: username });
+  } catch {
+    return res.status(503).json({ error: 'Bot unavailable' });
   }
-};
-
-export const webhook = async (req, res) => {
-  const expected = process.env.TELEGRAM_WEBHOOK_SECRET;
-  const supplied = req.headers['x-telegram-bot-api-secret-token'];
-  if (!expected || typeof supplied !== 'string' ||
-      Buffer.byteLength(expected) !== Buffer.byteLength(supplied) ||
-      !timingSafeEqual(Buffer.from(expected), Buffer.from(supplied))) {
+}
+export async function webhook(req, res) {
+  const expected = process.env.TELEGRAM_WEBHOOK_SECRET,
+    supplied = req.headers['x-telegram-bot-api-secret-token'];
+  if (
+    !expected ||
+    typeof supplied !== 'string' ||
+    Buffer.byteLength(expected) !== Buffer.byteLength(supplied) ||
+    !timingSafeEqual(Buffer.from(expected), Buffer.from(supplied))
+  )
     return res.status(403).json({ error: 'Invalid webhook secret' });
-  }
   try {
-    const update = req.body;
-
-    if (update?.message) {
-      const chatId = update.message.chat?.id;
-      const text = update.message.text;
-
-      if (typeof text === 'string' && text.startsWith('/start')) {
-        if (text === '/start' || !text.startsWith('/start ')) {
-          await sendTelegramMessageToChat(
-            chatId,
-            'لربط حسابك، افتح ملتقى واضغط ربط تيليغرام للحصول على كود جديد.'
-          );
-        } else {
-          const token = text.slice(7).trim();
-
-          if (!token) {
-            await sendTelegramMessageToChat(
-              chatId,
-              'لربط حسابك، افتح ملتقى واضغط ربط تيليغرام للحصول على كود جديد.'
-            );
-          } else {
-            const userId = await getUserIdFromTelegramLinkToken(token);
-
-            if (!userId) {
-              await sendTelegramMessageToChat(
-                chatId,
-                'الكود غير صالح أو منتهي. افتح ملتقى واضغط ربط تيليغرام للحصول على كود جديد.'
-              );
-            } else {
-              const telegramChatId = String(chatId);
-              const existingLinkedUser = await User.findOne({
-                telegramChatId,
-                telegramLinked: true
-              }).select('_id');
-
-              if (existingLinkedUser && existingLinkedUser._id.toString() !== userId.toString()) {
-                const sent = await sendTelegramMessageToChat(chatId, TELEGRAM_ALREADY_LINKED_MESSAGE);
-                if (!sent) {
-                  console.error('[telegram] failed to send duplicate link warning message', {
-                    chatId,
-                    userId,
-                    existingUserId: existingLinkedUser._id
-                  });
-                }
-              } else if (existingLinkedUser) {
-                const sent = await sendTelegramMessageToChat(chatId, TELEGRAM_ALREADY_LINKED_TO_USER_MESSAGE);
-                if (!sent) {
-                  console.error('[telegram] failed to send already linked message', { chatId, userId });
-                }
-              } else {
-                try {
-                  await User.findByIdAndUpdate(userId, {
-                    $set: {
-                      telegramChatId,
-                      telegramLinked: true
-                    }
-                  });
-                } catch (error) {
-                  if (error?.code === 11000) {
-                    const sent = await sendTelegramMessageToChat(chatId, TELEGRAM_ALREADY_LINKED_MESSAGE);
-                    if (!sent) {
-                      console.error('[telegram] failed to send duplicate link warning message after unique index conflict', {
-                        chatId,
-                        userId
-                      });
-                    }
-                    return res.status(200).json({ ok: true });
-                  }
-                  throw error;
-                }
-
-                const appUrl = (process.env.APP_URL || process.env.CLIENT_URL || 'https://multaqa.space').replace(/\/$/, '');
-                const profileUrl = `${appUrl}/profile`;
-                const successMessage = `تم ربط حسابك بملتقى بنجاح ✅\nيمكنك الآن استقبال الإشعارات على تيليغرام.\nافتح ملفك الشخصي: ${profileUrl}`;
-                const sent = await sendTelegramMessageToChat(chatId, successMessage);
-                if (!sent) {
-                  console.error('[telegram] failed to send link success message', { chatId, userId });
-                }
-              }
+    const blocked = req.body?.my_chat_member;
+    if (
+      blocked?.chat?.type === 'private' &&
+      blocked.new_chat_member?.status === 'kicked'
+    ) {
+      const order = consentPredicate(req.body, blocked);
+      if (order)
+        await User.updateMany(
+          { telegramChatId: String(blocked.chat.id), ...order },
+          {
+            $set: {
+              telegramNotificationsEnabled: false,
+              telegramLinked: false,
+              telegramNotificationsDisabledAt: new Date(),
+              ...consentMarker(req.body, blocked)
             }
           }
+        );
+    }
+    const message = req.body?.message;
+    if (
+      !message ||
+      message.chat?.type !== 'private' ||
+      !Number.isSafeInteger(message.from?.id) ||
+      message.from.id <= 0 ||
+      message.chat.id !== message.from.id
+    )
+      return res.json({ ok: true });
+    const order = consentPredicate(req.body, message);
+    if (!order) return res.json({ ok: true });
+    const marker = consentMarker(req.body, message);
+    const id = String(message.from.id);
+    const text = typeof message.text === 'string' ? message.text.trim() : '';
+    if (/^\/stop(?:\s|$)/.test(text)) {
+      const stopped = await User.updateMany(
+        { $or: [{ telegramUserId: id }, { telegramChatId: id }], ...order },
+        {
+          $set: {
+            telegramNotificationsEnabled: false,
+            telegramLinked: false,
+            telegramNotificationsDisabledAt: new Date(),
+            ...marker
+          }
+        }
+      );
+      if (stopped.modifiedCount)
+        await sendTelegramMessageToChat(
+          id,
+          'تم إيقاف الإشعارات. دخولك بتيليغرام ما زال متاحًا. لإعادة تفعيلها أرسل /start'
+        );
+      return res.json({ ok: true });
+    }
+    const start = /^\/start(?:\s|$)/.test(text);
+    const user = await User.findOneAndUpdate(
+      {
+        $or: [
+          { telegramUserId: id, telegramSub: { $type: 'string' } },
+          ...(start
+            ? [{
+                telegramOwnerId: id,
+                telegramChatId: id,
+                telegramSub: null,
+                telegramUserId: null
+              }]
+            : [])
+        ],
+        banned: { $ne: true },
+        ...order,
+        ...(start
+          ? {}
+          : {
+              telegramNotificationsDisabledAt: null,
+              telegramNotificationsEnabled: { $ne: true }
+            })
+      },
+      {
+        $set: {
+          telegramOwnerId: id,
+          telegramChatId: id,
+          telegramLinked: true,
+          telegramNotificationsEnabled: true,
+          ...marker
+        },
+        $unset: { telegramNotificationsDisabledAt: '' }
+      },
+      { new: true }
+    );
+    if (user) {
+      await sendTelegramMessageToChat(
+        id,
+        'تم تفعيل إشعارات ملتقى ✅ لإيقافها أرسل /stop أو عطّلها من إعدادات الحساب.'
+      );
+      return res.json({ ok: true });
+    }
+    // Backwards-compatible notification links never grant a login identity.
+    const match = /^\/start ([A-Z0-9]{6})$/.exec(text);
+    if (match) {
+      const userId = await getUserIdFromTelegramLinkToken(match[1]);
+      if (userId) {
+        const owner = await User.exists({
+          telegramUserId: id,
+          _id: { $ne: userId }
+        });
+        if (!owner) {
+          const linked = await User.findOneAndUpdate(
+            {
+              _id: userId,
+              banned: { $ne: true },
+              telegramOwnerId: { $in: [null, id] },
+              $or: [{ telegramUserId: null }, { telegramUserId: id }],
+              ...order
+            },
+            {
+              $set: {
+                telegramOwnerId: id,
+                telegramChatId: id,
+                telegramLinked: true,
+                telegramNotificationsEnabled: true,
+                ...marker
+              },
+              $unset: { telegramNotificationsDisabledAt: '' }
+            },
+            { new: true }
+          );
+          if (linked)
+            await sendTelegramMessageToChat(
+              id,
+              'تم ربط إشعارات ملتقى ✅ الربط بالإشعارات لا يضيف وسيلة تسجيل دخول.'
+            );
         }
       }
+    } else if (start)
+      await sendTelegramMessageToChat(
+        id,
+        'سجّل أو اربط تيليغرام من إعدادات حساب ملتقى، ثم أرسل /start لتفعيل الإشعارات.'
+      );
+  } catch (error) {
+    if (error.code !== 11000) {
+      console.error('Telegram webhook processing unavailable');
+      return res.status(503).json({ error: 'Temporarily unavailable' });
     }
-  } catch (error) {
-    console.error('Telegram webhook error:', error);
   }
-
-  return res.status(200).json({ ok: true });
-};
-
-
-export const disconnect = async (req, res) => {
+  return res.json({ ok: true });
+}
+export async function disconnect(req, res) {
   try {
-    await User.findByIdAndUpdate(req.user._id, {
-      $set: { telegramLinked: false },
-      $unset: { telegramChatId: '' }
+    const disable = {
+      $set: {
+        telegramLinked: false,
+        telegramNotificationsEnabled: false,
+        telegramNotificationsDisabledAt: new Date()
+      }
+    };
+    const legacy = await User.findOneAndUpdate(
+      { _id: req.user._id, telegramSub: null },
+      { ...disable, $unset: { telegramOwnerId: '', telegramChatId: '' } }
+    );
+    if (!legacy) await User.findByIdAndUpdate(req.user._id, disable);
+    res.json({
+      message: 'Notifications disabled. Telegram login is unchanged.'
     });
-
-    res.json({ message: 'Telegram disconnected' });
-  } catch (error) {
-    console.error('Disconnect Telegram error:', error);
-    res.status(500).json({ error: 'Failed to disconnect Telegram' });
+  } catch {
+    res.status(503).json({ error: 'Could not disable notifications' });
   }
-};
+}

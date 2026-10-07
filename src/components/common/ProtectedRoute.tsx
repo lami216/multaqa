@@ -14,6 +14,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactElement }> = ({ children }
     return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   }
 
+  if (!user.identityVerified && !['/account','/profile','/profile/edit'].includes(location.pathname)) return <Navigate to="/verify-email" replace />;
   return children;
 };
 
