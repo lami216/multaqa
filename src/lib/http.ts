@@ -35,7 +35,9 @@ type RequestMetadata = {
   id: string;
 };
 
-type RetriableConfig = AxiosRequestConfig & {
+let refreshPromise: Promise<string> | null = null;
+
+type RetriableConfig = import('axios').InternalAxiosRequestConfig & {
   metadata?: RequestMetadata;
   _retry?: boolean;
 };
@@ -73,10 +75,27 @@ http.interceptors.response.use(
     const status = error.response?.status ?? 'no-response';
     logEndpoint(config ?? {}, ` -> error status=${status} (id=${metadata?.id ?? 'n/a'}, duration=${duration})`);
 
-    if (status === 401 && !config?._retry) {
+    const isAuthRequest = /^\/auth\/(login|register|refresh|logout|forgot-password|reset-password)(?:$|\?)/.test(config?.url ?? '');
+    if (status === 401 && config && !config._retry && !isAuthRequest) {
       config._retry = true;
-      await new Promise((resolve) => setTimeout(resolve, 350));
-      return http(config);
+      try {
+        if (!refreshPromise) {
+          refreshPromise = http.post<{ accessToken: string }>('/auth/refresh')
+            .then(({ data }) => {
+              if (!data.accessToken) throw new Error('Missing refreshed token');
+              storeAccessToken(data.accessToken);
+              return data.accessToken;
+            })
+            .finally(() => { refreshPromise = null; });
+        }
+        const token = await refreshPromise;
+        config.headers = AxiosHeaders.from(config.headers);
+        config.headers.set('Authorization', `Bearer ${token}`);
+        return http(config);
+      } catch (refreshError) {
+        storeAccessToken(null);
+        return Promise.reject(refreshError);
+      }
     }
 
     if (status === 401) {

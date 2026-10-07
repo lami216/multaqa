@@ -3,7 +3,7 @@ import { z } from 'zod';
 export const validate = (schema) => {
   return (req, res, next) => {
     try {
-      schema.parse(req.body);
+      req.body = schema.parse(req.body);
       next();
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -22,6 +22,12 @@ export const registerSchema = z.object({
   password: z.string().min(6),
   username: z.string().min(3).max(30)
 });
+
+export const forgotPasswordSchema = z.object({ email: z.string().email().max(254).trim().toLowerCase() }).strict();
+export const resetPasswordSchema = z.object({
+  token: z.string().regex(/^[a-f0-9]{64}$/i),
+  password: z.string().min(10).refine(value => Buffer.byteLength(value) <= 72)
+}).strict();
 
 export const loginSchema = z.object({
   email: z.string().email(),

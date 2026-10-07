@@ -1,4 +1,5 @@
 import express from 'express';
+import { messageRateLimit } from '../middleware/rateLimit.js';
 import { authenticate } from '../middleware/auth.js';
 import * as conversationController from '../controllers/conversationController.js';
 import { requireActiveMajor } from '../middleware/majorAccess.js';
@@ -12,7 +13,7 @@ router.patch('/:id/unarchive', authenticate, conversationController.unarchiveCon
 router.patch('/:id/pin', authenticate, conversationController.pinConversation);
 router.patch('/:id/unpin', authenticate, conversationController.unpinConversation);
 router.patch('/:id/delete-for-me', authenticate, conversationController.deleteConversationForMe);
-router.post('/:id/messages', authenticate, conversationController.sendMessage);
+router.post('/:id/messages', authenticate, messageRateLimit, conversationController.sendMessage);
 router.get('/:id/messages', authenticate, conversationController.getMessages);
 router.get('/:id/message-status-changes', authenticate, conversationController.getMessageStatusChanges);
 router.post('/:id/read', authenticate, conversationController.markRead);

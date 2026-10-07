@@ -1,7 +1,6 @@
 import crypto from 'crypto';
 import User from '../models/User.js';
 import redis from '../config/redis.js';
-import { verifyTelegramLinkToken } from './jwt.js';
 
 const TELEGRAM_LINK_TOKEN_TTL_SECONDS = 10 * 60;
 const telegramLinkKey = (token) => `telegram:link:${token}`;
@@ -24,13 +23,7 @@ export const createTelegramLinkToken = async (userId) => {
   try {
     for (let attempt = 0; attempt < 5; attempt += 1) {
       const token = generateShortCode();
-      const existingUserId = await redis.get(telegramLinkKey(token));
-
-      if (existingUserId) {
-        continue;
-      }
-
-      const saved = await redis.set(
+      const saved = await redis.setIfAbsent(
         telegramLinkKey(token),
         userId.toString(),
         TELEGRAM_LINK_TOKEN_TTL_SECONDS
@@ -124,19 +117,6 @@ export const sendTelegramNotificationForEvent = async ({ eventName, recipientUse
 };
 
 export const getUserIdFromTelegramLinkToken = async (token) => {
-  if (!token) return null;
-
-  const redisToken = /^[A-Z0-9]{6}$/i.test(token) ? token.toUpperCase() : token;
-  const linkedUserId = await redis.get(telegramLinkKey(redisToken));
-  if (linkedUserId) {
-    await redis.del(telegramLinkKey(redisToken));
-    return linkedUserId;
-  }
-
-  const decoded = verifyTelegramLinkToken(token);
-  if (!decoded || decoded.purpose !== 'telegram_link' || !decoded.userId) {
-    return null;
-  }
-
-  return decoded.userId;
+  if (typeof token !== 'string' || !/^[A-Z0-9]{6}$/i.test(token)) return null;
+  return redis.getdel(telegramLinkKey(token.toUpperCase()));
 };

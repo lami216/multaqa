@@ -6,10 +6,9 @@ const rateLimit = (options) => {
   return async (req, res, next) => {
     try {
       const key = keyGenerator ? keyGenerator(req) : `ratelimit:${req.ip}`;
-      const current = await redis.incr(key);
-
-      if (current === 1) {
-        await redis.expire(key, Math.ceil(windowMs / 1000));
+      const current = await redis.fixedWindow(key, Math.ceil(windowMs / 1000));
+      if (!Number.isInteger(current) || current < 1) {
+        return res.status(503).json({ error: 'Request protection temporarily unavailable' });
       }
 
       if (current > max) {
@@ -20,8 +19,8 @@ const rateLimit = (options) => {
 
       next();
     } catch (error) {
-      console.error('Rate limit error:', error);
-      next();
+      console.error('Rate limit unavailable');
+      res.status(503).json({ error: 'Request protection temporarily unavailable' });
     }
   };
 };

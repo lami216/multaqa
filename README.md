@@ -1,5 +1,7 @@
 # Multaqa | ملتقى
 
+> Deployment/security instructions have changed. Read [SECURITY_DEPLOYMENT.md](docs/SECURITY_DEPLOYMENT.md) first; use Node 22 LTS, one HTTPS origin, the lockfiles, and a production build. Docker no longer runs Vite development or publishes MongoDB. Old JWT sessions are invalidated on upgrade.
+
 Multaqa is a bilingual Arabic/French academic collaboration platform for University of Nouakchott students. It helps students complete their profiles, find compatible study partners, form project teams, offer tutoring, continue private conversations, receive in-app/Telegram notifications, and manage academic availability from an admin console.
 
 ## Current platform state
