@@ -20,6 +20,10 @@ import AdminDashboardPage from './pages/AdminDashboardPage';
 import AdminAcademicSettingsPage from './pages/AdminAcademicSettingsPage';
 import AdminWarDashboardPage from './pages/AdminWarDashboardPage';
 import { LoginPage, SignupPage } from './pages/AuthPages';
+import VerifyEmailPage from './pages/VerifyEmailPage';
+import AuthCompletePage from './pages/AuthCompletePage';
+import AccountSecurityPage from './pages/AccountSecurityPage';
+import PasswordRecoveryPage from './pages/PasswordRecoveryPage';
 import AdminUnionReviewsPage from './pages/AdminUnionReviewsPage';
 
 const AdminRoute: React.FC<{ children: React.ReactElement }> = ({ children }) => {
@@ -41,6 +45,11 @@ const App: React.FC = () => {
               <Routes>
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/signup" element={<SignupPage />} />
+                <Route path="/verify-email" element={<VerifyEmailPage />} />
+                <Route path="/auth/complete" element={<AuthCompletePage />} />
+                <Route path="/account" element={<ProtectedRoute><Layout><AccountSecurityPage /></Layout></ProtectedRoute>} />
+                <Route path="/forgot-password" element={<PasswordRecoveryPage />} />
+                <Route path="/reset-password" element={<PasswordRecoveryPage />} />
                 <Route
                   path="/"
                   element={(

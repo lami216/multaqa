@@ -109,10 +109,13 @@ http.interceptors.response.use(
 export interface ApiUser {
   id: string;
   _id?: string;
-  email: string;
+  email?: string;
   username: string;
   role?: string;
   emailVerified?: boolean;
+  identityVerified?: boolean;
+  loginMethods?: {password: boolean;google: boolean;telegram: boolean};
+  telegramNotificationsEnabled?: boolean;
   avatarUrl?: string;
   remainingSubjects?: string[];
   remainingSubjectsConfirmed?: boolean;

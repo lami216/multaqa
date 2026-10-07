@@ -1,8 +1,10 @@
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
+import redis from '../config/redis.js';
 import { sendPasswordResetEmail } from '../utils/passwordResetEmail.js';
 import User from '../models/User.js';
 import Profile from '../models/Profile.js';
+import { issueVerification, isEmailVerified, hasVerifiedIdentity } from '../services/emailVerificationService.js';
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../utils/jwt.js';
 
 const isProduction = process.env.NODE_ENV === 'production';
@@ -24,7 +26,7 @@ const accessCookieOptions = {
   maxAge: 15 * 60 * 1000
 };
 
-const setAuthCookies = (res, accessToken, refreshToken) => {
+export const setAuthCookies = (res, accessToken, refreshToken) => {
   res.cookie('accessToken', accessToken, accessCookieOptions);
   res.cookie('refreshToken', refreshToken, refreshCookieOptions);
 };
@@ -39,17 +41,16 @@ export const register = async (req, res) => {
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
-    const verificationToken = crypto.randomBytes(32).toString('hex');
 
     const user = await User.create({
       email,
       passwordHash,
       username,
-      verificationToken,
-      emailVerified: true
+      emailVerified: false
     });
 
     await Profile.create({ userId: user._id });
+    await issueVerification(user);
 
     const accessToken = generateAccessToken(user._id, user.tokenVersion ?? 0);
     const refreshToken = generateRefreshToken(user._id, user.tokenVersion ?? 0);
@@ -83,7 +84,7 @@ export const login = async (req, res) => {
     const { email, password } = req.body;
 
     const user = await User.findOne({ email });
-    if (!user) {
+    if (!user || !user.passwordHash) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
@@ -159,7 +160,7 @@ export const refresh = async (req, res) => {
     };
     let user = await User.findOne(graceFilter);
     if (!user) {
-      const successor = generateRefreshToken(decoded.userId, decoded.tokenVersion);
+      const successor = generateRefreshToken(decoded.userId, decoded.tokenVersion, decoded.authTime ?? 0);
       user = await User.findOneAndUpdate({
         ...identity,
         refreshToken,
@@ -177,7 +178,7 @@ export const refresh = async (req, res) => {
     if (!user?.refreshToken) {
       return res.status(401).json({ error: 'Invalid refresh token' });
     }
-    const newAccessToken = generateAccessToken(user._id, user.tokenVersion);
+    const newAccessToken = generateAccessToken(user._id, user.tokenVersion, decoded.authTime ?? 0);
     setAuthCookies(res, newAccessToken, user.refreshToken);
     res.json({ accessToken: newAccessToken });
   } catch (error) {
@@ -217,14 +218,16 @@ export const forgotPassword = async (req, res) => {
     const { email } = req.body;
 
     const user = await User.findOne({ email });
-    if (!user) {
+    if (!user || !isEmailVerified(user) || user.banned) {
       return res.json({ message: 'If the email exists, a reset code has been sent' });
     }
 
+    const count = await redis.fixedWindow(`email:reset:${user._id}`, 3600);
+    if (count == null || count > 3) return res.json({ message: 'If the email exists, a reset code has been sent' });
     const resetToken = crypto.randomBytes(32).toString('hex');
-    user.resetPasswordToken = crypto.createHash('sha256').update(resetToken).digest('hex');
-    user.resetPasswordExpires = Date.now() + 3600000;
-    await user.save();
+    const saved = await User.findOneAndUpdate({ _id: user._id, email, emailVerified: true, emailVerifiedAt: { $type: 'date' }, banned: { $ne: true } },
+      { $set: { resetPasswordToken: crypto.createHash('sha256').update(resetToken).digest('hex'), resetPasswordExpires: new Date(Date.now()+3600000) } });
+    if (!saved) return res.json({ message: 'If the email exists, a reset code has been sent' });
 
     try {
       await sendPasswordResetEmail(user.email, resetToken);
@@ -251,6 +254,7 @@ export const resetPassword = async (req, res) => {
     const user = await User.findOneAndUpdate({
       resetPasswordToken: crypto.createHash('sha256').update(token).digest('hex'),
       resetPasswordExpires: { $gt: Date.now() },
+      emailVerified: true, emailVerifiedAt: { $type: 'date' },
       banned: { $ne: true }
     }, {
       $set: { passwordHash },
@@ -272,7 +276,7 @@ export const resetPassword = async (req, res) => {
 export const getMe = async (req, res) => {
   try {
     const user = await User.findById(req.user._id)
-      .select('-passwordHash -refreshToken')
+      .select('-refreshToken')
       .lean();
     const profile = await Profile.findOne({ userId: req.user._id }).lean();
 
@@ -282,7 +286,10 @@ export const getMe = async (req, res) => {
         email: user?.email,
         username: user?.username,
         role: user?.role,
-        emailVerified: user?.emailVerified,
+        emailVerified: isEmailVerified(user),
+        identityVerified: hasVerifiedIdentity(user),
+        loginMethods: { password: Boolean(user.passwordHash), google: Boolean(user.googleSub), telegram: Boolean(user.telegramSub) },
+        telegramNotificationsEnabled: Boolean(user.telegramNotificationsEnabled),
         remainingSubjects: user?.remainingSubjects ?? [],
         remainingSubjectsConfirmed: user?.remainingSubjectsConfirmed === true,
         telegramLinked: user?.telegramLinked === true

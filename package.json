@@ -10,7 +10,7 @@
     "lint": "npm run typecheck && biome lint src && npm run build",
     "typecheck": "tsc -p tsconfig.check.json --noEmit",
     "test": "npm --prefix server test",
-    "test:integration": "node --experimental-vm-modules scripts/security-smoke.mjs"
+    "test:integration": "node --experimental-vm-modules scripts/security-smoke.mjs && node scripts/social-auth-smoke.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",

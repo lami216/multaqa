@@ -21,10 +21,20 @@ const redis=createServer(async(req,res)=>{
 });
 try {
  mongo=await MongoMemoryServer.create();redis.listen(0,'127.0.0.1');await once(redis,'listening');
+ await mongoose.connect(mongo.getUri('security_smoke'));
+ const oldUsers=mongoose.connection.collection('users');
+ await oldUsers.createIndex({email:1},{name:'email_1',unique:true});
+ const legacyId=new mongoose.Types.ObjectId();
+ await oldUsers.insertOne({_id:legacyId,email:'legacy@example.invalid',username:'legacy-verified-flag',passwordHash:'unused-fixture-hash',emailVerified:true,telegramLinked:true,telegramChatId:'555888123'});
  const portServer=createServer();portServer.listen(0,'127.0.0.1');await once(portServer,'listening');const port=portServer.address().port;await new Promise(r=>portServer.close(r));
  child=spawn(process.execPath,['server/src/server.js'],{cwd:root,env:{...process.env,NODE_ENV:'production',PORT:String(port),HOST:'127.0.0.1',MONGODB_URI:mongo.getUri('security_smoke'),CORS_ORIGIN:'https://test.example.invalid',JWT_ACCESS_SECRET:'a'.repeat(40),JWT_REFRESH_SECRET:'b'.repeat(40),UPSTASH_REDIS_REST_URL:`http://127.0.0.1:${redis.address().port}`,UPSTASH_REDIS_REST_TOKEN:'test',IMAGEKIT_PUBLIC_KEY:'test_public',IMAGEKIT_PRIVATE_KEY:'test_private',IMAGEKIT_URL_ENDPOINT:'https://ik.imagekit.io/test',WEEKLY_SUMMARY_ENABLED:'false'}});
  let logs='';child.stdout.on('data',c=>logs+=c);child.stderr.on('data',c=>logs+=c);
  await new Promise((resolve,reject)=>{const timeout=setTimeout(()=>reject(new Error('Startup timeout: '+logs)),20000);child.stdout.on('data',c=>{if(String(c).includes('Server running')){clearTimeout(timeout);resolve();}});child.once('exit',code=>{clearTimeout(timeout);reject(new Error(`Startup exit ${code}: ${logs}`));});});
+ const indexes=await oldUsers.indexes();
+ assert(!indexes.some(index=>index.name==='email_1'));
+ assert(indexes.some(index=>index.name==='email_unique_present'&&index.unique&&index.partialFilterExpression));
+ const migratedLegacy=await oldUsers.findOne({_id:legacyId});assert.equal(migratedLegacy.telegramNotificationsEnabled,true);assert.equal(migratedLegacy.telegramOwnerId,'555888123');assert.equal(migratedLegacy.emailVerifiedAt,undefined,'upgrade must not forge mailbox proof');
+ await oldUsers.insertMany([{username:'migration-telegram-one',telegramSub:'migration-one',telegramUserId:'555888124',telegramOwnerId:'555888124'},{username:'migration-telegram-two',telegramSub:'migration-two',telegramUserId:'555888125',telegramOwnerId:'555888125'}]);
  const url=`http://127.0.0.1:${port}/api`;
  const request=async(path,body,token,cookie)=>{
   const r=await fetch(url+path,{method:body?'POST':'GET',headers:{'Content-Type':'application/json',...(token?{Authorization:`Bearer ${token}`}:{ }),...(cookie?{Cookie:cookie}:{})},body:body?JSON.stringify(body):undefined});
@@ -33,6 +43,8 @@ try {
  assert.equal((await request('/health')).status,200);
  const registered=await request('/auth/register',{email:'smoke@example.invalid',username:'smoke',password:'old-password-123'});assert.equal(registered.status,201);
  const oldAccess=registered.body.accessToken;assert.equal((await request('/auth/me',undefined,oldAccess)).status,200);
+ for(const path of ['/imagekit-auth','/ImageKit-Auth','/IMAGEKIT-AUTH'])assert.equal((await request(path,undefined,oldAccess)).status,403,'every upload-signature route spelling requires a verified identity');
+ for(const path of ['/posts','/Posts','/POSTS'])assert.equal((await request(path,{},oldAccess)).status,403,'every publishing route spelling requires a verified identity');
  const cookie=registered.cookies.find(x=>x.startsWith('refreshToken=')).split(';')[0];
  // Contend on the initial token BEFORE any grace window exists.
  const parallel=await Promise.all(Array.from({length:6},()=>request('/auth/refresh',{},undefined,cookie)));
@@ -46,7 +58,7 @@ try {
  await users.updateOne({email:'smoke@example.invalid'},{$set:{previousRefreshExpires:new Date(Date.now()-1)}});
  assert.equal((await request('/auth/refresh',{},undefined,cookie)).status,401,'predecessor must be rejected after grace expiry');
  assert.equal((await request('/auth/refresh',{},undefined,successorCookies[0])).status,200,'current successor should rotate after grace');
- const raw=crypto.randomBytes(32).toString('hex');await users.updateOne({email:'smoke@example.invalid'},{$set:{resetPasswordToken:crypto.createHash('sha256').update(raw).digest('hex'),resetPasswordExpires:new Date(Date.now()+60000)}});
+ const raw=crypto.randomBytes(32).toString('hex');await users.updateOne({email:'smoke@example.invalid'},{$set:{resetPasswordToken:crypto.createHash('sha256').update(raw).digest('hex'),resetPasswordExpires:new Date(Date.now()+60000),emailVerified:true,emailVerifiedAt:new Date()}});
  assert.equal((await request('/auth/reset-password',{token:raw,password:'new-password-123'})).status,200);
  assert.equal((await request('/auth/reset-password',{token:raw,password:'other-password-123'})).status,400);
  assert.equal((await request('/auth/me',undefined,oldAccess)).status,401);

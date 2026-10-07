@@ -64,6 +64,7 @@ const ProfilePage: React.FC = () => {
   });
 
   const handleTelegramLink = async () => {
+    if (user?.loginMethods?.telegram) { navigate('/account'); return; }
     if (linkingTelegram || user?.telegramLinked) return;
     setLinkingTelegram(true);
     setSettingsError('');
@@ -659,6 +660,7 @@ const ProfilePage: React.FC = () => {
                     <Edit3 size={16} /> {t.profile.edit}
                   </Link>
                 )}
+                <Link to="/account" className="secondary-btn">{language === 'ar' ? 'أمان الحساب وطرق الدخول' : 'Sécurité et connexions'}</Link>
                 <button type="button" className="secondary-btn" aria-label="Settings" onClick={openSettings}>
                   <Settings size={16} /> {t.profile.settings}
                 </button>

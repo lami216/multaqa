@@ -5,14 +5,14 @@ import {loadModule,response} from './helpers.js';
 async function controller(User,sendPasswordResetEmail=async()=>{}) {
  return loadModule('../controllers/authController.js',{
  'bcrypt':{default:{hash:async()=> 'hash'}},'bcryptjs':{default:{hash:async()=> 'hash'}},
- 'crypto':{default:crypto},'../models/User.js':{default:User},'../models/Profile.js':{default:{}},
+ 'crypto':{default:crypto},'../config/redis.js':{default:{fixedWindow:async()=>1}},'../models/User.js':{default:User},'../services/emailVerificationService.js':{issueVerification:async()=>{},isEmailVerified:u=>Boolean(u?.emailVerifiedAt),hasVerifiedIdentity:()=>true},'../models/Profile.js':{default:{}},
  '../utils/jwt.js':{generateAccessToken:()=> 'access',generateRefreshToken:()=> 'refresh',verifyRefreshToken:()=>({userId:'u',tokenVersion:0})},
  '../utils/passwordResetEmail.js':{sendPasswordResetEmail}
  });
 }
 test('password reset request never reveals secret; stores only hash and emails raw token',async()=>{
- let emailed;const user={email:'student@example.invalid',save:async()=>{}};
- const auth=await controller({findOne:async()=>user},async(email,token)=>{emailed=token;});
+ let emailed;const user={email:'student@example.invalid',emailVerifiedAt:new Date(),save:async()=>{}};
+ const auth=await controller({findOne:async()=>user,findOneAndUpdate:async(f,u)=>{Object.assign(user,u.$set);return user;}},async(email,token)=>{emailed=token;});
  const res=response();await auth.forgotPassword({body:{email:user.email}},res);
  assert.equal(res.body.resetToken,undefined);assert.equal(typeof emailed,'string');
  assert.equal(user.resetPasswordToken,crypto.createHash('sha256').update(emailed).digest('hex'));

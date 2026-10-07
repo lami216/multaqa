@@ -12,7 +12,7 @@ export async function runLoginRaces() {
   const passwordHash = await bcrypt.hash('old-password-123',10);
   for (const action of ['reset','logout','refresh']) {
     const email=`race-${action}@example.invalid`;
-    const user=await User.create({email,username:`race-${action}`,passwordHash});
+    const user=await User.create({email,username:`race-${action}`,passwordHash,emailVerified:true,emailVerifiedAt:new Date()});
     const originalRefresh=jwt.generateRefreshToken(user._id,0);
     await User.updateOne({_id:user._id},{$set:{refreshToken:originalRefresh},...(action !== 'refresh'?{$unset:{tokenVersion:''}}:{})});
     let resume, signal;
@@ -20,7 +20,7 @@ export async function runLoginRaces() {
     const gate=new Promise(resolve=>resume=resolve);
     const auth=await loadModule('../controllers/authController.js',{
       'bcryptjs':{default:{...bcrypt,compare:async(...args)=>{const valid=await bcrypt.compare(...args);signal();await gate;return valid;}}},
-      'crypto':{default:crypto},'../models/User.js':{default:User},'../models/Profile.js':{default:Profile},
+      'crypto':{default:crypto},'../config/redis.js':{default:{fixedWindow:async()=>1}},'../models/User.js':{default:User},'../services/emailVerificationService.js':{issueVerification:async()=>{},isEmailVerified:u=>Boolean(u?.emailVerifiedAt),hasVerifiedIdentity:()=>true},'../models/Profile.js':{default:Profile},
       '../utils/jwt.js':jwt,'../utils/passwordResetEmail.js':{sendPasswordResetEmail:async()=>{}}
     });
     const loginResponse=response();

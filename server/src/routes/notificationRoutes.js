@@ -1,13 +1,14 @@
 import express from 'express';
 import * as notificationController from '../controllers/notificationController.js';
-import { authenticate } from '../middleware/auth.js';
+import { authenticate, requireVerifiedMutation } from '../middleware/auth.js';
 
 const router = express.Router();
+router.use(authenticate, requireVerifiedMutation);
 
-router.get('/', authenticate, notificationController.getNotifications);
-router.post('/read', authenticate, notificationController.markAsRead);
-router.patch('/read-all', authenticate, notificationController.markAllNotificationsRead);
-router.patch('/:id/read', authenticate, notificationController.markNotificationRead);
-router.get('/unread-count', authenticate, notificationController.getUnreadCount);
+router.get('/', notificationController.getNotifications);
+router.post('/read', notificationController.markAsRead);
+router.patch('/read-all', notificationController.markAllNotificationsRead);
+router.patch('/:id/read', notificationController.markNotificationRead);
+router.get('/unread-count', notificationController.getUnreadCount);
 
 export default router;

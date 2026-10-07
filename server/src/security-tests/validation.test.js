@@ -11,7 +11,7 @@ test('validated profile body discards unapproved ownership fields',()=>{
 test('access authentication rejects revoked token versions',async()=>{
  const middleware=await loadModule('../middleware/auth.js',{
  '../utils/jwt.js':{verifyAccessToken:()=>({userId:'u',tokenVersion:0})},
- '../models/User.js':{default:{findById:()=>({select:async()=>({tokenVersion:1,banned:false})})}}
+ '../services/emailVerificationService.js':{hasVerifiedIdentity:()=>true},'../models/User.js':{default:{findById:()=>({select:async()=>({tokenVersion:1,banned:false})})}}
  });
  const res=response();let next=false;
  await middleware.authenticate({headers:{authorization:'Bearer test'},cookies:{}},res,()=>next=true);

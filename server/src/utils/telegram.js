@@ -63,9 +63,11 @@ export const sendTelegramMessageToChat = async (chatId, message, options = {}) =
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(telegramPayload)
+      body: JSON.stringify(telegramPayload),
+      signal: AbortSignal.timeout(5000)
     });
 
+    if (response.status === 403) await User.updateMany({ telegramChatId: String(chatId) }, { $set: { telegramNotificationsEnabled: false, telegramLinked: false, telegramNotificationsDisabledAt: new Date() } });
     if (!response.ok) {
       console.error(`[telegram] api_error status=${response.status} chatId=${chatId}`);
       return false;
@@ -85,8 +87,8 @@ export const sendTelegramMessageToChat = async (chatId, message, options = {}) =
 
 export const sendTelegramNotification = async (userId, message) => {
   try {
-    const user = await User.findById(userId).select('telegramLinked telegramChatId');
-    if (!user?.telegramLinked || !user?.telegramChatId) {
+    const user = await User.findOne({ _id: userId, banned: { $ne: true } }).select('telegramLinked telegramChatId telegramNotificationsEnabled');
+    if (!user?.telegramLinked || !user?.telegramChatId || !user.telegramNotificationsEnabled) {
       console.info(`[telegram] skipped user=${userId} reason=not_linked`);
       return false;
     }
