@@ -1,4 +1,5 @@
 import User from '../models/User.js';
+import { timingSafeEqual } from 'node:crypto';
 import {
   createTelegramLinkToken,
   getUserIdFromTelegramLinkToken,
@@ -68,6 +69,13 @@ export const generateLinkToken = async (req, res) => {
 };
 
 export const webhook = async (req, res) => {
+  const expected = process.env.TELEGRAM_WEBHOOK_SECRET;
+  const supplied = req.headers['x-telegram-bot-api-secret-token'];
+  if (!expected || typeof supplied !== 'string' ||
+      Buffer.byteLength(expected) !== Buffer.byteLength(supplied) ||
+      !timingSafeEqual(Buffer.from(expected), Buffer.from(supplied))) {
+    return res.status(403).json({ error: 'Invalid webhook secret' });
+  }
   try {
     const update = req.body;
 

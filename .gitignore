@@ -5,3 +5,8 @@ dist/
 .rules/*.log
 .DS_Store
 *.local
+.env
+.env.*
+!.env.example
+!server/.env.example
+*.log

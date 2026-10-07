@@ -1,11 +1,10 @@
-import dotenv from 'dotenv';
+import './config/env.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-dotenv.config({ path: path.join(__dirname, '../.env') });
 
 import express from 'express';
 import cors from 'cors';
@@ -39,7 +38,10 @@ if (isProduction) {
   app.set('trust proxy', 1);
 }
 
-connectDB();
+await connectDB();
+const { default: User } = await import('./models/User.js');
+const { default: Profile } = await import('./models/Profile.js');
+await Promise.all([User.createIndexes(), Profile.createIndexes()]);
 startLifecycleJob();
 
 app.use(helmet());
@@ -103,10 +105,10 @@ if (isProduction) {
 app.use((err, req, res, next) => {
   console.error('Error:', err);
   res.status(err.status || 500).json({
-    error: err.message || 'Internal server error'
+    error: isProduction ? 'Internal server error' : err.message || 'Internal server error'
   });
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, process.env.HOST || '127.0.0.1', () => {
   console.log(`Server running on port ${PORT}`);
 });

@@ -1,5 +1,4 @@
 import { defineConfig } from "vite";
-import { miaodaDevPlugin } from "miaoda-sc-plugin";
 import react from "@vitejs/plugin-react";
 import svgr from "vite-plugin-svgr";
 import path from "path";
@@ -11,7 +10,6 @@ const PREVIEW_PORT = Number(process.env.PREVIEW_PORT || process.env.PORT) || 417
 export default defineConfig({
   plugins: [
     react(),
-    miaodaDevPlugin(),
     svgr({
       svgrOptions: {
         icon: true,

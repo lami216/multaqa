@@ -33,6 +33,7 @@ import {
   type RolePreferenceKey
 } from '../lib/priorities';
 import { buildSubjectInitials } from '../lib/subjectDisplay';
+import { getEffectiveMajorAvailability } from '../lib/majorAvailability';
 
 const EditProfilePage: React.FC = () => {
   const [form, setForm] = useState<Profile>({ subjects: [], subjectCodes: [], subjectsSettings: [], remainingSubjects: [], prioritiesOrder: DEFAULT_PRIORITIES_ORDER });

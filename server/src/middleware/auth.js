@@ -22,6 +22,10 @@ export const authenticate = async (req, res, next) => {
       return res.status(401).json({ error: 'User not found' });
     }
 
+    if ((decoded.tokenVersion ?? 0) !== (user.tokenVersion ?? 0)) {
+      return res.status(401).json({ error: 'Session revoked' });
+    }
+
     if (user.banned) {
       return res.status(403).json({ error: 'Account has been banned' });
     }

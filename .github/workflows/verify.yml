@@ -1,0 +1,26 @@
+name: Verify
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.34.6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - run: npm ci --prefix server --ignore-scripts
+      - run: npm test
+      - run: npm run test:integration
+      - run: npm run lint
+      - run: pnpm audit --prod
+      - run: npm audit --prefix server --omit=dev
+      - run: docker build --tag multaqa-ci .

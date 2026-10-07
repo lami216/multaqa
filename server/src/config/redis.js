@@ -1,7 +1,21 @@
 class RedisClient {
-  constructor() {
-    this.url = process.env.UPSTASH_REDIS_REST_URL;
-    this.token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  get url() { return process.env.UPSTASH_REDIS_REST_URL; }
+  get token() { return process.env.UPSTASH_REDIS_REST_TOKEN; }
+
+  async fixedWindow(key, seconds) {
+    const script = "local n=redis.call('INCR',KEYS[1]); if n==1 then redis.call('EXPIRE',KEYS[1],ARGV[1]) end; return n";
+    const result = await this.request(['EVAL', script, 1, key, seconds]);
+    return result?.ok && !result.payload?.error ? result.payload?.result ?? null : null;
+  }
+
+  async setIfAbsent(key, value, seconds) {
+    const result = await this.request(['SET', key, value, 'EX', seconds, 'NX']);
+    return result?.ok && result.payload?.result === 'OK';
+  }
+
+  async getdel(key) {
+    const result = await this.request(['GETDEL', key]);
+    return result?.ok && !result.payload?.error ? result.payload?.result ?? null : null;
   }
 
   hasConfig() {
@@ -25,7 +39,8 @@ class RedisClient {
           Authorization: `Bearer ${this.token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(command)
+        body: JSON.stringify(command),
+        signal: AbortSignal.timeout(5000)
       });
 
       const body = await response.text().catch(() => '<failed to read body>');
